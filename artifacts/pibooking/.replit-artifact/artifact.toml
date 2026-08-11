@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "PiBooking - W3C Digital Network"
+description = "A Pi Network booking platform for W3C Digital Network that lets clients browse services, book appointments with a multi-step flow (details, schedule, summary, Pi payment), and manage their bookings. Includes a business admin console for managing services, customers, and bookings."
+version = "1.0.0"
+id = "artifacts/pibooking"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24798
+
+[services.development]
+run = "pnpm --filter @workspace/pibooking run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/pibooking", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/pibooking/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24798"
+BASE_PATH = "/"

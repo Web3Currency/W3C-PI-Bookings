@@ -1,0 +1,6 @@
+{
+  "name": "W3C Pi Booking Platform",
+  "description": "Pi Network service booking platform allowing pioneers to browse services and pay with Pi coin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

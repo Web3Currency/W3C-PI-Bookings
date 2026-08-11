@@ -1,0 +1,320 @@
+import React, { useState } from 'react';
+import { Service } from '../types';
+import { ArrowLeft, User, Phone, FileText, Paperclip, Upload, X, ArrowRight, ShieldCheck, AtSign } from 'lucide-react';
+import { BookingProgressBar } from './BookingProgressBar';
+
+interface AttachedFile {
+  id: string;
+  name: string;
+  size: string;
+  type: string;
+  dataUrl?: string;
+}
+
+interface SelectDetailsStepProps {
+  service: Service;
+  initialDetails: {
+    clientName: string;
+    clientPiUsername: string;
+    clientPhone: string;
+    notes: string;
+    attachments?: AttachedFile[];
+  };
+  onBack: () => void;
+  onProceedToSchedule: (details: {
+    clientName: string;
+    clientPiUsername: string;
+    clientPhone: string;
+    notes: string;
+    attachments: AttachedFile[];
+  }) => void;
+}
+
+export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
+  service,
+  initialDetails,
+  onBack,
+  onProceedToSchedule,
+}) => {
+  const [clientName, setClientName] = useState(initialDetails.clientName || '');
+  
+  // Clean handle sanitization to avoid double @@
+  const formatHandle = (val: string) => {
+    let cleaned = val.replace(/^@+/, ''); // strip leading @s
+    return cleaned ? `@${cleaned}` : '';
+  };
+
+  const [rawUsername, setRawUsername] = useState(() => {
+    return initialDetails.clientPiUsername ? initialDetails.clientPiUsername.replace(/^@+/, '') : '';
+  });
+
+  const [clientPhone, setClientPhone] = useState(initialDetails.clientPhone || '');
+  const [notes, setNotes] = useState(initialDetails.notes || '');
+  const [attachments, setAttachments] = useState<AttachedFile[]>(initialDetails.attachments || []);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // File upload simulator / reader
+  const handleFileUpload = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newFiles: AttachedFile[] = [];
+
+    Array.from(files).forEach((file) => {
+      const sizeFormatted = file.size > 1024 * 1024 
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
+        : `${Math.round(file.size / 1024)} KB`;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        newFiles.push({
+          id: `file_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          name: file.name,
+          size: sizeFormatted,
+          type: file.type || 'application/octet-stream',
+          dataUrl: e.target?.result as string,
+        });
+
+        if (newFiles.length === files.length) {
+          setAttachments((prev) => [...prev, ...newFiles]);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleRemoveAttachment = (id: string) => {
+    setAttachments((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const finalHandle = rawUsername ? `@${rawUsername.replace(/^@+/, '')}` : (initialDetails.clientPiUsername || '');
+    onProceedToSchedule({
+      clientName: clientName.trim(),
+      clientPiUsername: finalHandle,
+      clientPhone: clientPhone.trim(),
+      notes,
+      attachments,
+    });
+  };
+
+  return (
+    <div className="space-y-4 pb-28 animate-in fade-in slide-in-from-right-4 duration-200">
+      {/* Consolidated 4-Step Progress Bar Header */}
+      <BookingProgressBar currentStep={1} />
+
+      {/* Top Navigation */}
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={onBack}
+          id="btn-back-to-service-detail"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 text-zinc-800 text-xs font-semibold hover:bg-zinc-200 transition"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Service Details</span>
+        </button>
+      </div>
+
+      {/* Selected Service Quick Badge - No border/outline */}
+      <div className="p-4 rounded-2xl bg-amber-500/10 shadow-md flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 block">
+            Selected Service
+          </span>
+          <h2 className="text-sm font-black text-zinc-900 truncate">{service.name}</h2>
+          <span className="text-xs text-zinc-600 font-medium">{service.durationMinutes} mins duration</span>
+        </div>
+        <div className="text-right shrink-0">
+          <span className="text-lg font-black text-amber-600">{service.pricePi} π</span>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Client Contact Info Section Card - No border/outline */}
+        <div className="p-5 rounded-2xl bg-white shadow-md space-y-4">
+          <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
+            <User className="w-4 h-4 text-amber-600" />
+            <span>1. Client Contact Details</span>
+          </h3>
+
+          <div className="space-y-3">
+            {/* Full Name */}
+            <div>
+              <label className="block text-[11px] font-bold text-zinc-700 mb-1">Full Name</label>
+              <div className="relative">
+                <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  required
+                  value={clientName}
+                  onChange={(e) => setClientName(e.target.value)}
+                  placeholder="e.g. Adeyemo Jibola"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                />
+              </div>
+            </div>
+
+            {/* Pi Network Username with Sanitized Handle (@) */}
+            <div>
+              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                Pi Network Username
+              </label>
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 text-amber-600 font-bold text-xs flex items-center pointer-events-none">
+                  <AtSign className="w-3.5 h-3.5" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={rawUsername}
+                  onChange={(e) => setRawUsername(e.target.value.replace(/^@+/, ''))}
+                  onBlur={() => setRawUsername(rawUsername.replace(/^@+/, ''))}
+                  placeholder="pi_pioneer_2749"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                />
+              </div>
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Your verified Pi handle for order tracking: <span className="text-amber-700 font-mono font-bold">@{rawUsername.replace(/^@+/, '') || 'pi_user'}</span>
+              </p>
+            </div>
+
+            {/* Phone Number */}
+            <div>
+              <label className="block text-[11px] font-bold text-zinc-700 mb-1">Phone Number</label>
+              <div className="relative">
+                <Phone className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                <input
+                  type="tel"
+                  required
+                  value={clientPhone}
+                  onChange={(e) => setClientPhone(e.target.value)}
+                  placeholder="+234 814 962 5496"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Requirements & Brief Attachment Section Card - No border/outline */}
+        <div className="p-5 rounded-2xl bg-white shadow-md space-y-4">
+          <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
+            <FileText className="w-4 h-4 text-amber-600" />
+            <span>2. Project Brief & Asset Upload</span>
+          </h3>
+
+          <div>
+            <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+              Appointment Notes / Requirements Brief
+            </label>
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Describe your goals, reference links, specific requirements or questions..."
+              className="w-full p-3 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+            />
+          </div>
+
+          {/* Asset Attachment Drag & Drop Dropzone */}
+          <div>
+            <label className="block text-[11px] font-bold text-zinc-700 mb-1.5">
+              Attach Wireframes, Specs, or Assets (Optional)
+            </label>
+
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                handleFileUpload(e.dataTransfer.files);
+              }}
+              className={`rounded-2xl p-5 text-center cursor-pointer transition shadow-xs ${
+                isDragging
+                  ? 'bg-amber-100/80 scale-[0.99]'
+                  : 'bg-zinc-50 hover:bg-amber-50/70'
+              }`}
+            >
+              <input
+                type="file"
+                multiple
+                id="file-brief-upload"
+                className="hidden"
+                onChange={(e) => handleFileUpload(e.target.files)}
+              />
+              <label htmlFor="file-brief-upload" className="cursor-pointer flex flex-col items-center gap-1.5">
+                <Upload className="w-6 h-6 text-amber-600" />
+                <span className="text-xs font-bold text-zinc-800">
+                  Tap to upload wireframes, PDFs, images or specs
+                </span>
+                <span className="text-[10px] text-zinc-500">
+                  Supports PNG, JPG, PDF, Figma specs (Max 25MB)
+                </span>
+              </label>
+            </div>
+
+            {/* List of Attached Files */}
+            {attachments.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider block">
+                  Attached Assets ({attachments.length})
+                </span>
+                {attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="p-3 rounded-xl bg-zinc-50 flex items-center justify-between text-xs shadow-2xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Paperclip className="w-4 h-4 text-amber-600 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="font-bold text-zinc-900 truncate text-xs">{att.name}</p>
+                        <p className="text-[10px] text-zinc-500">{att.size}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveAttachment(att.id)}
+                      className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-zinc-200/60 transition cursor-pointer"
+                      title="Remove attachment"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Security & Escrow Guarantee Note Card - No border/outline */}
+        <div className="p-3.5 rounded-2xl bg-emerald-50 shadow-xs flex items-center gap-2.5 text-xs text-emerald-900 font-medium">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Your booking & brief are protected by Pi Network Merchant Security.</span>
+        </div>
+
+        {/* Fixed Bottom Action Bar */}
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-zinc-200 z-50">
+          <div className="max-w-md mx-auto flex items-center justify-between gap-3">
+            <div className="text-xs">
+              <span className="block text-zinc-500 font-medium">Step 1 of 4</span>
+              <span className="font-bold text-zinc-900">Details & Requirements</span>
+            </div>
+
+            <button
+              type="submit"
+              id="btn-proceed-to-schedule"
+              className="flex-1 py-3.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 min-h-[48px] shadow-md shadow-amber-500/20"
+            >
+              <span>Next: Schedule Session</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
