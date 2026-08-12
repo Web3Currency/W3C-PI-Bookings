@@ -1,6 +1,19 @@
 import React from 'react';
 import { Service, BusinessProfile, PiUser } from '../types';
-import { ArrowLeft, Calendar, Clock, User, Phone, FileText, Lock, ArrowRight, ShieldCheck, Paperclip } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  Clock,
+  User,
+  Phone,
+  FileText,
+  Lock,
+  ArrowRight,
+  ShieldCheck,
+  Paperclip,
+  CheckCircle2,
+  ChevronRight
+} from 'lucide-react';
 import { getUpcomingDays } from './SelectDateStep';
 import { BookingProgressBar } from './BookingProgressBar';
 
@@ -42,166 +55,182 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
   const dateObj = availableDays.find((d) => d.dateStr === selectedDate) || availableDays[0];
 
   return (
-    <div className="space-y-4 pb-28 animate-in fade-in slide-in-from-right-4 duration-200">
-      {/* Consolidated 4-Step Progress Bar Header */}
+    <div className="max-w-md mx-auto space-y-4 pb-28 animate-in fade-in duration-200">
+      {/* Step Progress Bar */}
       <BookingProgressBar currentStep={3} />
 
-      {/* Header */}
+      {/* Navigation & Header */}
       <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
           id="btn-back-to-schedule-step"
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 text-zinc-800 text-xs font-semibold hover:bg-zinc-200 transition"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold transition cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-3.5 h-3.5" />
           <span>Back</span>
         </button>
+
+        <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/80">
+          Step 3: Final Review
+        </span>
       </div>
 
-      {/* Page Title */}
-      <div>
-        <h1 className="text-xl font-black text-zinc-900 flex items-center gap-2">
-          <FileText className="w-5 h-5 text-amber-600" />
-          <span>Review Booking Summary</span>
+      {/* Section Title */}
+      <div className="space-y-1">
+        <h1 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
+          <FileText className="w-5 h-5 text-amber-600 shrink-0" />
+          <span>Confirm Booking Details</span>
         </h1>
-        <p className="text-xs text-zinc-600 mt-1 font-medium">
-          Verify your appointment schedule & pioneer contact information before Pi payment.
+        <p className="text-xs text-zinc-500 font-medium">
+          Preview your provisional appointment pass and verify information before authorizing Pi payment.
         </p>
       </div>
 
-      {/* Selected Service Card - No border/outline */}
-      <div className="p-4 rounded-2xl bg-white shadow-md space-y-3">
-        <div className="flex items-center gap-3">
-          {service.coverImageUrl && (
-            <img
-              src={service.coverImageUrl}
-              alt={service.name}
-              className="w-16 h-16 rounded-xl object-cover shrink-0 shadow-xs"
-            />
-          )}
-          <div className="min-w-0 flex-1">
-            <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-wider block">
+      {/* PROVISIONAL APPOINTMENT PASS (PRE-CREATION PREVIEW) */}
+      <div className="rounded-3xl bg-white border border-zinc-200 shadow-md overflow-hidden">
+        {/* Pass Top Ticket Header */}
+        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 text-white p-4 sm:p-5 relative overflow-hidden">
+          <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+            <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-extrabold uppercase tracking-widest border border-amber-500/30">
+              PROVISIONAL PASS PREVIEW
+            </span>
+            <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-800/50">
+              UNCONFIRMED
+            </span>
+          </div>
+
+          <div className="mt-3 space-y-1">
+            <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider block">
               {business.name}
             </span>
-            <h2 className="text-base font-extrabold text-zinc-900 truncate">
+            <h2 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">
               {service.name}
             </h2>
-            <p className="text-xs text-zinc-600 mt-0.5">
-              Duration: {service.durationMinutes} mins • {service.locationType}
+            <p className="text-xs text-zinc-400 font-medium">
+              {service.durationMinutes} mins • {service.locationType}
             </p>
           </div>
         </div>
 
-        {/* Schedule Highlights */}
-        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-100 flex items-center text-xs">
-          <div className="p-3 rounded-xl bg-zinc-50 flex items-center gap-2 shadow-2xs">
-            <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
-            <div className="min-w-0">
-              <span className="text-[10px] text-zinc-500 font-bold block">DATE</span>
-              <span className="font-bold text-zinc-900 truncate block">
+        {/* Perforated Edge Divider */}
+        <div className="relative bg-white h-4 border-b border-dashed border-zinc-200/90 flex items-center justify-between px-3">
+          <div className="w-4 h-4 rounded-full bg-zinc-100 -ml-5 border-r border-zinc-200" />
+          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400">
+            PRE-PAYMENT CHECKOUT
+          </div>
+          <div className="w-4 h-4 rounded-full bg-zinc-100 -mr-5 border-l border-zinc-200" />
+        </div>
+
+        {/* Pass Details Body */}
+        <div className="p-4 sm:p-5 space-y-3.5 text-xs">
+          {/* Schedule Grid */}
+          <div className="grid grid-cols-2 gap-2.5">
+            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
+                <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Selected Date</span>
+              </div>
+              <span className="text-xs font-black text-zinc-900 block truncate">
                 {dateObj.dayName}, {dateObj.monthName} {dateObj.dayNum}
               </span>
             </div>
-          </div>
 
-          <div className="p-3 rounded-xl bg-zinc-50 flex items-center gap-2 shadow-2xs">
-            <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-            <div className="min-w-0">
-              <span className="text-[10px] text-zinc-500 font-bold block">TIME SLOT</span>
-              <span className="font-bold text-zinc-900 truncate block">{selectedTimeSlot}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Client Details Summary Card - No border/outline */}
-      <div className="p-4 rounded-2xl bg-white shadow-md space-y-3">
-        <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
-          <User className="w-4 h-4 text-amber-600" />
-          <span>Pioneer Client Details</span>
-        </h3>
-
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between py-1 border-b border-zinc-100">
-            <span className="text-zinc-600 font-medium">Name:</span>
-            <span className="font-bold text-zinc-900">{clientDetails.clientName}</span>
-          </div>
-
-          <div className="flex justify-between py-1 border-b border-zinc-100">
-            <span className="text-zinc-600 font-medium">Pi Username:</span>
-            <span className="font-bold text-amber-700 font-mono">{clientDetails.clientPiUsername}</span>
-          </div>
-
-          <div className="flex justify-between py-1 border-b border-zinc-100">
-            <span className="text-zinc-600 font-medium">Phone Number:</span>
-            <span className="font-bold text-zinc-900">{clientDetails.clientPhone}</span>
-          </div>
-
-          {clientDetails.notes && (
-            <div className="py-1">
-              <span className="text-zinc-600 font-medium block mb-0.5">Appointment Notes:</span>
-              <p className="p-3 rounded-xl bg-zinc-50 text-zinc-800 text-xs italic shadow-2xs">
-                "{clientDetails.notes}"
-              </p>
-            </div>
-          )}
-
-          {clientDetails.attachments && clientDetails.attachments.length > 0 && (
-            <div className="py-1">
-              <span className="text-zinc-600 font-medium block mb-1">Attached Wireframes / Specs ({clientDetails.attachments.length}):</span>
-              <div className="space-y-1.5">
-                {clientDetails.attachments.map((att) => (
-                  <div key={att.id} className="p-2.5 rounded-xl bg-zinc-50 flex items-center gap-2 text-xs shadow-2xs">
-                    <Paperclip className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="font-medium text-zinc-900 truncate">{att.name}</span>
-                    <span className="text-[10px] text-zinc-500 ml-auto">{att.size}</span>
-                  </div>
-                ))}
+            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
+                <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Time Slot</span>
               </div>
+              <span className="text-xs font-black text-zinc-900 block truncate">{selectedTimeSlot}</span>
             </div>
-          )}
+          </div>
+
+          {/* Client Information */}
+          <div className="space-y-2 pt-1 border-t border-zinc-100">
+            <div className="flex items-center justify-between text-xs py-0.5">
+              <span className="text-zinc-500 font-medium">Pioneer Client</span>
+              <span className="font-bold text-zinc-900 truncate max-w-[200px]">
+                {clientDetails.clientName} <span className="text-zinc-400 font-normal">(@{clientDetails.clientPiUsername})</span>
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between text-xs py-0.5">
+              <span className="text-zinc-500 font-medium">Contact Phone</span>
+              <span className="font-mono font-bold text-zinc-800">{clientDetails.clientPhone}</span>
+            </div>
+
+            {/* Requirement Notes */}
+            {clientDetails.notes && (
+              <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/50 text-[11px] text-zinc-700 space-y-0.5">
+                <span className="font-bold text-amber-800 flex items-center gap-1 text-[10px] uppercase">
+                  <FileText className="w-3 h-3 text-amber-600" />
+                  <span>Appointment Notes</span>
+                </span>
+                <p className="italic text-zinc-600">"{clientDetails.notes}"</p>
+              </div>
+            )}
+
+            {/* Attached Files */}
+            {clientDetails.attachments && clientDetails.attachments.length > 0 && (
+              <div className="pt-2 border-t border-zinc-100">
+                <span className="text-zinc-500 block text-[10px] font-bold uppercase mb-1">
+                  Attached Specifications ({clientDetails.attachments.length})
+                </span>
+                <div className="space-y-1">
+                  {clientDetails.attachments.map((att) => (
+                    <div key={att.id} className="p-2 rounded-xl bg-zinc-50 border border-zinc-200/70 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Paperclip className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        <span className="font-medium text-zinc-800 truncate">{att.name}</span>
+                      </div>
+                      <span className="text-[10px] text-zinc-400 shrink-0">{att.size}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Payment Breakdown */}
+          <div className="pt-3 border-t border-zinc-100 space-y-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
+              Payment Summary
+            </span>
+
+            <div className="flex justify-between text-xs text-zinc-600">
+              <span>Service Rate</span>
+              <span className="font-bold text-zinc-900">{service.pricePi.toFixed(2)} π</span>
+            </div>
+
+            <div className="flex justify-between text-xs text-zinc-600">
+              <span>Pi Network Escrow Fee</span>
+              <span className="font-bold text-emerald-600">0.00 π (Waived)</span>
+            </div>
+
+            <div className="pt-2 border-t border-zinc-100 flex justify-between items-center text-sm font-black text-zinc-900">
+              <span>Total Payable</span>
+              <span className="text-amber-600 text-base font-black">{service.pricePi.toFixed(2)} π</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Price Breakdown Card - No border/outline */}
-      <div className="p-4 rounded-2xl bg-white shadow-md space-y-2 text-xs">
-        <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider mb-1">
-          Payment Breakdown (Pi Network)
-        </h3>
-
-        <div className="flex justify-between text-zinc-700 font-medium">
-          <span>Service Rate</span>
-          <span className="font-bold text-zinc-900">{service.pricePi.toFixed(2)} π</span>
-        </div>
-
-        <div className="flex justify-between text-zinc-700 font-medium">
-          <span>Pi Network Escrow Fee</span>
-          <span className="font-bold text-emerald-600">0.00 π (Waived)</span>
-        </div>
-
-        <div className="pt-2 border-t border-zinc-100 flex justify-between items-center text-sm font-black text-zinc-900">
-          <span>Total Payment Amount</span>
-          <span className="text-amber-600 text-base">{service.pricePi.toFixed(2)} π</span>
-        </div>
-      </div>
-
-      {/* Security Banner Card - No border/outline */}
-      <div className="p-4 rounded-xl bg-amber-500/10 shadow-sm flex items-center gap-3">
+      {/* Escrow Guarantee Banner */}
+      <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3">
         <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
         <div className="text-[11px] text-amber-950">
-          <p className="font-bold">Secured by Pi Network Bridge</p>
-          <p className="text-amber-800">
-            Funds will be held securely in Pi escrow until deliverable review.
+          <p className="font-bold">Secured by Pi Network Escrow</p>
+          <p className="text-amber-800 font-medium">
+            Payment will be held in smart escrow until service completion is confirmed.
           </p>
         </div>
       </div>
 
       {/* Fixed Sticky Action Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-zinc-200 z-50">
+      <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-zinc-200/80 z-50 shadow-lg">
         <div className="max-w-md mx-auto flex items-center justify-between gap-3">
           <div className="text-xs">
-            <span className="block text-zinc-500 font-medium text-[10px]">Step 3 of 4</span>
+            <span className="block text-zinc-400 font-bold text-[10px]">TOTAL PRICE</span>
             <span className="text-lg font-black text-amber-600">
               {service.pricePi.toFixed(2)} π
             </span>
@@ -211,11 +240,11 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
             type="button"
             onClick={onProceedToPayment}
             id="btn-proceed-to-pi-payment"
-            className="flex-1 py-3.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 min-h-[48px] shadow-md shadow-amber-500/20"
+            className="flex-1 py-3.5 px-5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 min-h-[48px] shadow-md shadow-amber-600/20 cursor-pointer"
           >
             <Lock className="w-4 h-4 stroke-[2.5]" />
             <span>Proceed to Pi Pay</span>
-            <ArrowRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 stroke-[3]" />
           </button>
         </div>
       </div>

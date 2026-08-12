@@ -139,16 +139,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                     Become a Provider
                   </button>
                 )}
-                {piUser && hasProvider && onOpenProviderConsole && (
-                  <button
-                    onClick={onOpenProviderConsole}
-                    id="btn-nav-provider-console"
-                    title="My Provider Console"
-                    className="px-3.5 py-1.5 rounded-full bg-orange-100/90 hover:bg-orange-200 text-orange-950 text-xs font-bold transition shadow-2xs cursor-pointer"
-                  >
-                    Provider Console
-                  </button>
-                )}
                 <div className="flex items-center gap-1.5 pl-1">
                   <div
                     title={piUser.username}

@@ -17,9 +17,9 @@ export const BookingProgressBar: React.FC<BookingProgressBarProps> = ({ currentS
     <div className="w-full py-2 px-1 mb-4">
       <div className="flex items-center justify-between relative">
         {/* Background Connecting Line & Active Fill Line */}
-        <div className="absolute top-3.5 left-3.5 right-3.5 h-0.5 bg-zinc-800 -z-0">
+        <div className="absolute top-3.5 left-3.5 right-3.5 h-0.5 bg-zinc-200 -z-0">
           <div
-            className="h-full bg-amber-500 transition-all duration-300"
+            className="h-full bg-amber-600 transition-all duration-300"
             style={{ width: `${((currentStep - 1) / (STEPS.length - 1)) * 100}%` }}
           />
         </div>
@@ -33,10 +33,10 @@ export const BookingProgressBar: React.FC<BookingProgressBarProps> = ({ currentS
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all duration-200 border-2 ${
                   isCompleted
-                    ? 'bg-amber-500 text-zinc-950 border-amber-400'
+                    ? 'bg-amber-600 text-white border-amber-600'
                     : isCurrent
-                    ? 'bg-amber-500 text-zinc-950 border-amber-300 ring-4 ring-amber-500/20 scale-110'
-                    : 'bg-zinc-900 text-zinc-400 border-zinc-700'
+                    ? 'bg-amber-600 text-white border-amber-600 ring-4 ring-amber-600/20 scale-110'
+                    : 'bg-white text-zinc-400 border-zinc-200'
                 }`}
               >
                 {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : s.step}
@@ -44,10 +44,10 @@ export const BookingProgressBar: React.FC<BookingProgressBarProps> = ({ currentS
               <span
                 className={`text-[10px] font-bold mt-1.5 transition-colors ${
                   isCurrent
-                    ? 'text-amber-300 font-extrabold'
+                    ? 'text-amber-800 font-extrabold'
                     : isCompleted
-                    ? 'text-zinc-200'
-                    : 'text-zinc-500'
+                    ? 'text-zinc-800'
+                    : 'text-zinc-400'
                 }`}
               >
                 {s.label}

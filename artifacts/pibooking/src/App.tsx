@@ -22,6 +22,7 @@ import { BecomeProviderStep, BecomeProviderDetails } from './components/BecomePr
 import { BecomeProviderModal } from './components/BecomeProviderModal';
 import { ProviderDashboardView } from './features/provider/ProviderDashboardView';
 import { providerService } from './services/providerService';
+import { ThemeService } from './services/themeService';
 
 type FlowStep =
   | 'browse'
@@ -85,6 +86,11 @@ export default function App() {
   const handleRefreshAll = async () => {
     await Promise.all([refreshBusiness(), refreshServices(), refreshBookings()]);
   };
+
+  // Initialize centralized database-driven color theme
+  useEffect(() => {
+    ThemeService.initTheme();
+  }, []);
 
   // Pre-fill booking form handle with Pi identity when authenticated
   useEffect(() => {
@@ -299,7 +305,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-zinc-900 font-sans selection:bg-amber-500 selection:text-white transition-colors">
+    <div className="min-h-screen w-full flex flex-col bg-white text-zinc-900 font-sans selection:bg-amber-500 selection:text-white transition-colors overflow-x-hidden">
       <Navbar
         currentBusiness={businessWithServices}
         piUser={piUser}
@@ -321,7 +327,7 @@ export default function App() {
         onOpenAboutBusiness={handleOpenAboutBusiness}
       />
 
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
         {activeTab === 'search' ? (
           <SearchView
             services={services}

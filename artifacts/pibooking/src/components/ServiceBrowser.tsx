@@ -70,25 +70,25 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
   };
 
   return (
-    <div className="space-y-8 pb-12 animate-in fade-in duration-200">
+    <div className="w-full space-y-8 pb-12 animate-in fade-in duration-200">
       {/* 1. MARKETPLACE HERO SECTION */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-orange-600 via-orange-500 to-amber-600 text-white p-6 sm:p-10 shadow-lg space-y-6">
-        <div className="relative z-10 max-w-xl space-y-3">
+      <div className="relative w-full rounded-3xl overflow-hidden bg-hero-gradient text-white p-6 sm:p-10 shadow-lg space-y-6 text-left flex flex-col items-start justify-center">
+        <div className="relative z-10 max-w-xl mx-0 space-y-3 flex flex-col items-start text-left">
           <div className="inline-block px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-extrabold uppercase tracking-widest text-orange-50">
             W3C Service Marketplace
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight">
+          <h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-left">
             Find & book expert digital services natively with Pi
           </h1>
 
-          <p className="text-xs sm:text-sm text-orange-100 leading-relaxed font-medium">
+          <p className="text-xs sm:text-sm text-orange-100 leading-relaxed font-medium text-left">
             Connect with verified Web3 developers, UI/UX designers, and digital professionals. Secure bookings with smart Pi Escrow protection.
           </p>
         </div>
 
         {/* Marketplace Search Bar */}
-        <form onSubmit={handleSearchSubmit} className="relative z-10 max-w-xl">
+        <form onSubmit={handleSearchSubmit} className="relative z-10 w-full max-w-xl mx-0">
           <div className="flex items-center p-1.5 rounded-2xl bg-white shadow-xl">
             <input
               type="text"
@@ -107,7 +107,7 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
         </form>
 
         {/* Hero Quick Category Pills */}
-        <div className="relative z-10 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none text-xs font-bold text-orange-100">
+        <div className="relative z-10 flex items-center justify-start gap-2 overflow-x-auto pb-1 scrollbar-none text-xs font-bold text-orange-100 w-full">
           <span className="text-[11px] text-orange-200 shrink-0 font-extrabold uppercase tracking-wider">Popular:</span>
           {CATEGORIES.slice(0, 4).map((cat) => (
             <button
@@ -123,8 +123,8 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
       </div>
 
       {/* 2. CATEGORY DISCOVERY GRID */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
+      <div className="w-full space-y-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 px-1 text-center sm:text-left">
           <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">
             Explore Categories
           </h2>
@@ -142,12 +142,12 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
               key={cat.id}
               onClick={() => handleCategoryClick(cat.id)}
               id={`cat-btn-${cat.id}`}
-              className="p-4 rounded-2xl bg-zinc-50 hover:bg-orange-50/60 shadow-xs hover:shadow-sm transition text-left space-y-1 active:scale-95 cursor-pointer"
+              className="p-4 rounded-2xl bg-zinc-50 hover:bg-orange-50/60 shadow-xs hover:shadow-sm transition text-center sm:text-left space-y-1 active:scale-95 cursor-pointer flex flex-col items-center sm:items-start justify-center"
             >
-              <span className="text-xs font-black text-zinc-900 block tracking-tight">
+              <span className="text-xs font-black text-zinc-900 block tracking-tight text-center sm:text-left">
                 {cat.label}
               </span>
-              <span className="text-[11px] font-semibold text-orange-600 block">
+              <span className="text-[11px] font-semibold text-orange-600 block text-center sm:text-left">
                 Browse listings
               </span>
             </button>
@@ -156,8 +156,8 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
       </div>
 
       {/* 3. FEATURED / TOP PROVIDERS SECTION */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
+      <div className="w-full space-y-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-2 px-1">
           <div>
             <h2 className="text-base font-black text-zinc-900 tracking-tight">
               Top Service Providers
@@ -169,14 +169,14 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
         </div>
 
         {/* Horizontal scroll container for discovery cards */}
-        <div className="flex gap-4 overflow-x-auto pb-4 pt-1 px-1 snap-x snap-mandatory scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="w-full flex gap-4 overflow-x-auto pb-4 pt-1 px-1 snap-x snap-mandatory scrollbar-none justify-start sm:justify-start">
           {topProviders.map((provider) => (
             <MerchantCard
               key={provider.id}
               merchant={provider}
               services={publishedServices}
               onOpenAbout={onOpenAbout}
-              className="w-[290px] sm:w-[330px] shrink-0 snap-start"
+              className="w-[280px] sm:w-[330px] shrink-0 snap-center sm:snap-start"
             />
           ))}
         </div>
@@ -184,8 +184,8 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
 
       {/* 4. POPULAR SERVICES / LISTINGS SECTION */}
       {publishedServices.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
+        <div className="w-full space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-2 px-1">
             <div>
               <h2 className="text-base font-black text-zinc-900 tracking-tight">
                 Popular Service Offerings
@@ -208,7 +208,7 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
                 key={service.id}
                 onClick={() => onSelectService?.(service)}
                 id={`home-service-card-${service.id}`}
-                className="group p-5 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4"
+                className="group p-5 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 border border-zinc-100/60"
               >
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2">
@@ -220,12 +220,12 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
                     </span>
                   </div>
 
-                  <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 group-hover:text-orange-600 transition line-clamp-2">
+                  <h3 className="font-extrabold text-sm sm:text-base text-zinc-900 group-hover:text-orange-600 transition line-clamp-2 text-left">
                     {service.name}
                   </h3>
 
                   {service.description && (
-                    <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal">
+                    <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">
                       {service.description}
                     </p>
                   )}
@@ -254,8 +254,8 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
 
       {/* 5. RISING PROVIDERS SECTION */}
       {risingProviders.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between px-1">
+        <div className="w-full space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between text-center sm:text-left gap-2 px-1">
             <div>
               <h2 className="text-base font-black text-zinc-900 tracking-tight">
                 Rising Professionals
@@ -280,7 +280,7 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
       )}
 
       {/* 6. MARKETPLACE TRUST GUARANTEES */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-orange-50/40 space-y-6">
+      <div className="w-full p-6 sm:p-8 rounded-3xl bg-orange-50/40 space-y-6 text-center">
         <div className="text-center space-y-1.5 max-w-md mx-auto">
           <h2 className="text-lg font-black text-zinc-900 tracking-tight">
             Why Book on W3C Marketplace?
@@ -291,28 +291,28 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs text-center flex flex-col items-center justify-center">
             <h3 className="text-xs font-black text-zinc-900">Pi Escrow Protection</h3>
             <p className="text-xs text-zinc-500 leading-relaxed font-normal">
               Funds are held safely in escrow until deliverables meet project criteria.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs text-center flex flex-col items-center justify-center">
             <h3 className="text-xs font-black text-zinc-900">Verified Profiles</h3>
             <p className="text-xs text-zinc-500 leading-relaxed font-normal">
               Review genuine provider bios, portfolios, ratings, and skill tags before booking.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs text-center flex flex-col items-center justify-center">
             <h3 className="text-xs font-black text-zinc-900">Direct Pi Payments</h3>
             <p className="text-xs text-zinc-500 leading-relaxed font-normal">
               Pay natively using Pi Cryptocurrency inside the Pi Browser app.
             </p>
           </div>
 
-          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs">
+          <div className="p-4 rounded-2xl bg-white space-y-1 shadow-xs text-center flex flex-col items-center justify-center">
             <h3 className="text-xs font-black text-zinc-900">Clear Service Scope</h3>
             <p className="text-xs text-zinc-500 leading-relaxed font-normal">
               Transparent turnarounds, clear inclusions, and fixed Pi pricing upfront.

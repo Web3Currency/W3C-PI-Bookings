@@ -1,5 +1,5 @@
 import React from 'react';
-import { Globe, Accessibility, Twitter, Facebook, Instagram, Linkedin, Send, Youtube, Github } from 'lucide-react';
+import { Globe, Accessibility, Twitter, Facebook, Instagram, Linkedin, Send, Youtube, Github, User } from 'lucide-react';
 import { BusinessProfile } from '../types';
 
 interface FooterProps {
@@ -33,6 +33,9 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
     }
     if (p.includes('github')) {
       return <Github className="w-4 h-4" />;
+    }
+    if (p.includes('profile') || p.includes('pinet') || p.includes('pi chat') || p.includes('user') || p.includes('pi')) {
+      return <User className="w-4 h-4" />;
     }
     if (p.includes('tiktok')) {
       return (
@@ -95,7 +98,6 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
             <span>English</span>
           </button>
           <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
-            <span className="font-bold text-amber-500">π</span>
             <span>PI</span>
           </button>
           <button className="p-1 rounded-full hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer" title="Accessibility">

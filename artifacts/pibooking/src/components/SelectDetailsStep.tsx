@@ -37,12 +37,6 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
   onProceedToSchedule,
 }) => {
   const [clientName, setClientName] = useState(initialDetails.clientName || '');
-  
-  // Clean handle sanitization to avoid double @@
-  const formatHandle = (val: string) => {
-    let cleaned = val.replace(/^@+/, ''); // strip leading @s
-    return cleaned ? `@${cleaned}` : '';
-  };
 
   const [rawUsername, setRawUsername] = useState(() => {
     return initialDetails.clientPiUsername ? initialDetails.clientPiUsername.replace(/^@+/, '') : '';
@@ -98,8 +92,8 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-28 animate-in fade-in slide-in-from-right-4 duration-200">
-      {/* Consolidated 4-Step Progress Bar Header */}
+    <div className="max-w-md mx-auto space-y-4 pb-28 animate-in fade-in duration-200">
+      {/* 4-Step Progress Bar Header */}
       <BookingProgressBar currentStep={1} />
 
       {/* Top Navigation */}
@@ -108,15 +102,19 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
           type="button"
           onClick={onBack}
           id="btn-back-to-service-detail"
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-zinc-100 text-zinc-800 text-xs font-semibold hover:bg-zinc-200 transition"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 text-zinc-800 text-xs font-bold hover:bg-zinc-200 transition cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-3.5 h-3.5" />
           <span>Service Details</span>
         </button>
+
+        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200/80">
+          Step 1: Contact & Brief
+        </span>
       </div>
 
-      {/* Selected Service Quick Badge - No border/outline */}
-      <div className="p-4 rounded-2xl bg-amber-500/10 shadow-md flex items-center justify-between gap-3">
+      {/* Selected Service Quick Badge */}
+      <div className="p-4 rounded-3xl bg-amber-500/10 shadow-md flex items-center justify-between gap-3">
         <div className="min-w-0">
           <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 block">
             Selected Service
@@ -130,8 +128,8 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Client Contact Info Section Card - No border/outline */}
-        <div className="p-5 rounded-2xl bg-white shadow-md space-y-4">
+        {/* Client Contact Info Section Card */}
+        <div className="p-5 rounded-3xl bg-white shadow-md space-y-4">
           <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
             <User className="w-4 h-4 text-amber-600" />
             <span>1. Client Contact Details</span>
@@ -149,7 +147,7 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                   placeholder="e.g. Adeyemo Jibola"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
                 />
               </div>
             </div>
@@ -170,7 +168,7 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
                   onChange={(e) => setRawUsername(e.target.value.replace(/^@+/, ''))}
                   onBlur={() => setRawUsername(rawUsername.replace(/^@+/, ''))}
                   placeholder="pi_pioneer_2749"
-                  className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
                 />
               </div>
               <p className="text-[10px] text-zinc-500 mt-1">
@@ -189,15 +187,15 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
                   value={clientPhone}
                   onChange={(e) => setClientPhone(e.target.value)}
                   placeholder="+234 814 962 5496"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Requirements & Brief Attachment Section Card - No border/outline */}
-        <div className="p-5 rounded-2xl bg-white shadow-md space-y-4">
+        {/* Requirements & Brief Attachment Section Card */}
+        <div className="p-5 rounded-3xl bg-white shadow-md space-y-4">
           <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
             <FileText className="w-4 h-4 text-amber-600" />
             <span>2. Project Brief & Asset Upload</span>
@@ -212,7 +210,7 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Describe your goals, reference links, specific requirements or questions..."
-              className="w-full p-3 rounded-xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+              className="w-full p-3 rounded-2xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
             />
           </div>
 
@@ -266,7 +264,7 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
                 {attachments.map((att) => (
                   <div
                     key={att.id}
-                    className="p-3 rounded-xl bg-zinc-50 flex items-center justify-between text-xs shadow-2xs"
+                    className="p-3 rounded-2xl bg-zinc-50 flex items-center justify-between text-xs shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Paperclip className="w-4 h-4 text-amber-600 shrink-0" />
@@ -278,7 +276,7 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
                     <button
                       type="button"
                       onClick={() => handleRemoveAttachment(att.id)}
-                      className="p-1 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-zinc-200/60 transition cursor-pointer"
+                      className="p-1.5 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-zinc-200/60 transition cursor-pointer"
                       title="Remove attachment"
                     >
                       <X className="w-4 h-4" />
@@ -290,27 +288,27 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
           </div>
         </div>
 
-        {/* Security & Escrow Guarantee Note Card - No border/outline */}
-        <div className="p-3.5 rounded-2xl bg-emerald-50 shadow-xs flex items-center gap-2.5 text-xs text-emerald-900 font-medium">
+        {/* Security & Escrow Guarantee Note Card */}
+        <div className="p-3.5 rounded-2xl bg-emerald-50 shadow-2xs flex items-center gap-2.5 text-xs text-emerald-900 font-medium">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>Your booking & brief are protected by Pi Network Merchant Security.</span>
         </div>
 
         {/* Fixed Bottom Action Bar */}
-        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-zinc-200 z-50">
+        <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-zinc-200 z-50 shadow-lg">
           <div className="max-w-md mx-auto flex items-center justify-between gap-3">
             <div className="text-xs">
-              <span className="block text-zinc-500 font-medium">Step 1 of 4</span>
-              <span className="font-bold text-zinc-900">Details & Requirements</span>
+              <span className="block text-zinc-400 font-bold text-[10px]">STEP 1 OF 4</span>
+              <span className="font-bold text-zinc-900">Details & Brief</span>
             </div>
 
             <button
               type="submit"
               id="btn-proceed-to-schedule"
-              className="flex-1 py-3.5 px-5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 min-h-[48px] shadow-md shadow-amber-500/20"
+              className="flex-1 py-3.5 px-5 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-sm active:scale-[0.98] transition flex items-center justify-center gap-2 min-h-[48px] shadow-md shadow-amber-600/20 cursor-pointer"
             >
-              <span>Next: Schedule Session</span>
-              <ArrowRight className="w-4 h-4" />
+              <span>Next: Select Date</span>
+              <ArrowRight className="w-4 h-4 stroke-[2.5]" />
             </button>
           </div>
         </div>

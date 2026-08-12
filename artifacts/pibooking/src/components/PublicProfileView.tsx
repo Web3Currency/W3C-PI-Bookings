@@ -108,7 +108,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
       </div>
 
       {/* Hero Header Card - Clean marketplace presentation, no heavy outlines */}
-      <div className="relative rounded-3xl bg-gradient-to-br from-white via-orange-50/40 to-amber-50/40 p-6 sm:p-8 space-y-4 shadow-sm">
+      <div className="relative rounded-3xl bg-profile-hero-gradient p-6 sm:p-8 space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           <div className="relative shrink-0">
             <div className="w-24 h-24 rounded-full bg-orange-100 p-0.5 overflow-hidden shadow-xs">

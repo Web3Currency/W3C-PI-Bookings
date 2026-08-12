@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Service, BusinessProfile, Booking, PiUser } from '../types';
 import { piPaymentService } from '../services/piPaymentService';
-import { ArrowLeft, Wallet, ShieldCheck, Lock, Loader2, CheckCircle2, Sparkles, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Wallet, ShieldCheck, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BookingProgressBar } from './BookingProgressBar';
 
 interface PiPaymentModalProps {
@@ -95,16 +95,17 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
   };
 
   return (
-    <div className="space-y-4 pb-20">
+    <div className="max-w-md mx-auto space-y-4 pb-20 animate-in fade-in duration-200">
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
           disabled={paymentStatus === 'processing' || paymentStatus === 'confirming'}
-          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition disabled:opacity-50"
+          id="btn-back-from-pi-payment"
+          className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition disabled:opacity-50 cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <span className="text-xs font-extrabold text-amber-700 tracking-wider uppercase">
+        <span className="text-xs font-extrabold text-amber-700 tracking-wider uppercase bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/80">
           Pi Network Secure Checkout
         </span>
         <div className="w-8" />
@@ -112,7 +113,7 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
 
       <BookingProgressBar currentStep={4} />
 
-      <div className="p-5 rounded-2xl bg-white shadow-md space-y-5">
+      <div className="p-5 rounded-3xl bg-white shadow-md space-y-5">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-4">
           <div>
             <span className="text-xs text-zinc-500 block font-bold">Total Payment Amount</span>
@@ -129,23 +130,23 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
         </div>
 
         {paymentStatus === 'error' && errorMessage && (
-          <div className="p-3.5 rounded-xl bg-red-50 text-red-800 text-xs flex items-center gap-2 font-medium shadow-2xs">
-            <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-800 text-xs flex items-center gap-2 font-medium shadow-2xs">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {paymentStatus === 'success' ? (
-          <div className="p-6 text-center space-y-3 bg-emerald-50 rounded-xl shadow-2xs">
+          <div className="p-6 text-center space-y-3 bg-emerald-50 rounded-2xl shadow-2xs">
             <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto animate-bounce" />
             <h4 className="font-extrabold text-zinc-900 text-base">Payment Validated!</h4>
-            <p className="text-xs text-zinc-800 font-mono break-all bg-white p-2.5 rounded-lg shadow-2xs">
+            <p className="text-xs text-zinc-800 font-mono break-all bg-white p-2.5 rounded-xl shadow-2xs">
               TxHash: {simulatedTxHash}
             </p>
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="p-3.5 rounded-xl bg-zinc-50 space-y-2 text-xs shadow-2xs">
+            <div className="p-3.5 rounded-2xl bg-zinc-50 space-y-2 text-xs shadow-2xs">
               <div className="flex items-center justify-between text-zinc-600">
                 <span>Merchant Receiver:</span>
                 <span className="font-extrabold text-zinc-900">{business.name}</span>
@@ -159,7 +160,8 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
             <button
               onClick={handlePayNow}
               disabled={paymentStatus === 'processing' || paymentStatus === 'confirming'}
-              className="w-full py-3.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-md shadow-amber-500/20 disabled:opacity-50 cursor-pointer"
+              id="btn-confirm-and-pay-pi"
+              className="w-full py-3.5 px-4 rounded-2xl bg-amber-600 hover:bg-amber-500 text-white font-black text-sm flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-md shadow-amber-600/20 disabled:opacity-50 cursor-pointer min-h-[48px]"
             >
               {paymentStatus === 'processing' || paymentStatus === 'confirming' ? (
                 <>

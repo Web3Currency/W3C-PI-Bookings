@@ -320,21 +320,6 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
       {/* EDIT PROFILE TAB */}
       {activeTab === 'edit_profile' && (
         <form onSubmit={handleSaveProfile} className="space-y-4 animate-in fade-in duration-150">
-          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 shadow-xs flex justify-between items-center">
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700 block">Public Profile</span>
-              <h2 className="text-sm font-black text-zinc-900">Manage Your Public Merchant Card & Page</h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => setActiveTab('preview_profile')}
-              className="px-3 py-1.5 rounded-xl bg-zinc-200 hover:bg-zinc-300 text-zinc-800 text-xs font-bold transition flex items-center gap-1"
-            >
-              <Eye className="w-3.5 h-3.5 text-amber-700" />
-              <span>Preview</span>
-            </button>
-          </div>
-
           {/* Profile Photo */}
           <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
             <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Profile Photo</h3>
@@ -622,7 +607,11 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
             <h2 className="text-sm font-black text-zinc-900">Manage Your Bookings & Earnings</h2>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-1">
+              <span className="text-[10px] font-bold uppercase text-amber-700">Total Bookings</span>
+              <span className="text-lg font-black text-zinc-900 block">{providerBookings.length}</span>
+            </div>
             <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-1">
               <span className="text-[10px] font-bold uppercase text-amber-700">Total Earnings</span>
               <span className="text-lg font-black text-zinc-900 block">{earnings.totalEarnings.toFixed(2)} π</span>
