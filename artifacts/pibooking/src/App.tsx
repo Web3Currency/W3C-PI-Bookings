@@ -23,6 +23,7 @@ import { BecomeProviderModal } from './components/BecomeProviderModal';
 import { ProviderDashboardView } from './features/provider/ProviderDashboardView';
 import { providerService } from './services/providerService';
 import { ThemeService } from './services/themeService';
+import { settingsService } from './services/settingsService';
 
 type FlowStep =
   | 'browse'
@@ -78,6 +79,7 @@ export default function App() {
   const [myProviderId, setMyProviderId] = useState<string | null>(null);
   const [providerCheckDone, setProviderCheckDone] = useState<boolean>(false);
   const [showBecomeProviderModal, setShowBecomeProviderModal] = useState<boolean>(false);
+  const [becomeProviderPopupEnabled, setBecomeProviderPopupEnabled] = useState<boolean>(false);
   const [hasDismissedProviderModal, setHasDismissedProviderModal] = useState<boolean>(() => {
     return sessionStorage.getItem('pibooking_dismissed_provider_modal') === 'true';
   });
@@ -86,6 +88,13 @@ export default function App() {
   const handleRefreshAll = async () => {
     await Promise.all([refreshBusiness(), refreshServices(), refreshBookings()]);
   };
+
+  // Fetch remote marketplace settings (e.g. Become Provider popup feature flag)
+  useEffect(() => {
+    settingsService.getSettings().then((settings) => {
+      setBecomeProviderPopupEnabled(settings.become_provider_popup_enabled);
+    });
+  }, []);
 
   // Initialize centralized database-driven color theme
   useEffect(() => {
@@ -121,20 +130,20 @@ export default function App() {
 
   // Timed "Become a Provider" onboarding popup (7s after sign-in for non-providers)
   useEffect(() => {
-    // Trigger ONLY if piUser is signed in AND provider check completed AND myProviderId is null AND not dismissed
-    if (!piUser?.uid || !providerCheckDone || myProviderId !== null || hasDismissedProviderModal) {
+    // Trigger ONLY if feature flag is enabled AND piUser is signed in AND provider check completed AND myProviderId is null AND not dismissed
+    if (!becomeProviderPopupEnabled || !piUser?.uid || !providerCheckDone || myProviderId !== null || hasDismissedProviderModal) {
       return;
     }
 
     const timer = setTimeout(() => {
       // Re-verify conditions before showing
-      if (piUser?.uid && myProviderId === null && !hasDismissedProviderModal) {
+      if (becomeProviderPopupEnabled && piUser?.uid && myProviderId === null && !hasDismissedProviderModal) {
         setShowBecomeProviderModal(true);
       }
     }, 7000);
 
     return () => clearTimeout(timer);
-  }, [piUser, providerCheckDone, myProviderId, hasDismissedProviderModal]);
+  }, [becomeProviderPopupEnabled, piUser, providerCheckDone, myProviderId, hasDismissedProviderModal]);
 
   const handleDismissProviderModal = () => {
     setShowBecomeProviderModal(false);
@@ -446,7 +455,7 @@ export default function App() {
         )}
       </main>
 
-      {(currentFlow === 'browse' || currentFlow === 'home' || currentFlow === 'search') && activeTab === 'browse' && (
+      {(activeTab === 'search' || activeTab === 'bookings' || (activeTab === 'browse' && currentFlow === 'browse')) && (
         <Footer currentBusiness={businessWithServices} />
       )}
 

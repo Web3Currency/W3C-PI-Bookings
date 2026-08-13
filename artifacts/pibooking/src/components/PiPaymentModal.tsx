@@ -180,7 +180,7 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
 
         <div className="flex items-center justify-center gap-2 text-[11px] text-zinc-500 pt-2 border-t border-zinc-100">
           <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
-          <span>Encrypted via Pi Network Sandbox v2.0 Bridge</span>
+          <span>Encrypted via Pi Network Secure Checkout</span>
         </div>
       </div>
     </div>

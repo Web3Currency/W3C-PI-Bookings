@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { Service, BusinessProfile, Provider } from '../types';
 import { MerchantCard } from './MerchantCard';
 import { providerService } from '../services/providerService';
@@ -319,6 +320,20 @@ export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({
             </p>
           </div>
         </div>
+      </div>
+
+      {/* 7. DEDICATED NETWORK & SECURITY NOTICE */}
+      <div className="w-full p-6 sm:p-7 rounded-3xl bg-zinc-900 text-white space-y-3 shadow-md border border-zinc-800">
+        <div className="flex items-center gap-2 text-amber-400">
+          <ShieldCheck className="w-5 h-5 shrink-0" />
+          <h2 className="text-sm font-black uppercase tracking-wider">Testnet Safety Notice</h2>
+        </div>
+        <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+          W3C Pi Bookings is currently operating on Pi Testnet for testing and development. Transactions and balances in this environment are not Mainnet transactions.
+        </p>
+        <p className="text-xs text-zinc-400 leading-relaxed font-normal">
+          Use the Pi Wallet you intend to use for testing and treat your wallet credentials with the same level of security you would use on Mainnet. <strong className="text-white font-bold">Never share your passphrase, private key, or wallet credentials with this application or anyone else.</strong>
+        </p>
       </div>
     </div>
   );

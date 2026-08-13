@@ -6,7 +6,6 @@ import {
   Clock,
   User,
   Phone,
-  FileText,
   Lock,
   ArrowRight,
   ShieldCheck,
@@ -79,7 +78,6 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
       {/* Section Title */}
       <div className="space-y-1">
         <h1 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
-          <FileText className="w-5 h-5 text-amber-600 shrink-0" />
           <span>Confirm Booking Details</span>
         </h1>
         <p className="text-xs text-zinc-500 font-medium">
@@ -155,7 +153,7 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
             </div>
 
             <div className="flex items-center justify-between text-xs py-0.5">
-              <span className="text-zinc-500 font-medium">Contact Phone</span>
+              <span className="text-zinc-500 font-medium">Client Telegram</span>
               <span className="font-mono font-bold text-zinc-800">{clientDetails.clientPhone}</span>
             </div>
 
@@ -163,7 +161,6 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
             {clientDetails.notes && (
               <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/50 text-[11px] text-zinc-700 space-y-0.5">
                 <span className="font-bold text-amber-800 flex items-center gap-1 text-[10px] uppercase">
-                  <FileText className="w-3 h-3 text-amber-600" />
                   <span>Appointment Notes</span>
                 </span>
                 <p className="italic text-zinc-600">"{clientDetails.notes}"</p>

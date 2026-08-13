@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Service } from '../types';
-import { ArrowLeft, User, Phone, FileText, Paperclip, Upload, X, ArrowRight, ShieldCheck, AtSign } from 'lucide-react';
+import { ArrowLeft, User, Paperclip, Upload, X, ArrowRight, ShieldCheck, AtSign, Send } from 'lucide-react';
 import { BookingProgressBar } from './BookingProgressBar';
 
 interface AttachedFile {
@@ -131,7 +131,6 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
         {/* Client Contact Info Section Card */}
         <div className="p-5 rounded-3xl bg-white shadow-md space-y-4">
           <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
-            <User className="w-4 h-4 text-amber-600" />
             <span>1. Client Contact Details</span>
           </h3>
 
@@ -140,7 +139,7 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
             <div>
               <label className="block text-[11px] font-bold text-zinc-700 mb-1">Full Name</label>
               <div className="relative">
-                <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                <User className="w-4 h-4 text-[#e17100] absolute left-3.5 top-3" />
                 <input
                   type="text"
                   required
@@ -176,20 +175,25 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
               </p>
             </div>
 
-            {/* Phone Number */}
+            {/* Telegram Username */}
             <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1">Phone Number</label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+              <label className="block text-[11px] font-bold text-zinc-700 mb-1">Telegram Username</label>
+              <div className="relative flex items-center">
+                <div className="absolute left-3.5 text-amber-600 font-bold text-xs flex items-center pointer-events-none">
+                  <Send className="w-3.5 h-3.5" />
+                </div>
                 <input
-                  type="tel"
+                  type="text"
                   required
                   value={clientPhone}
                   onChange={(e) => setClientPhone(e.target.value)}
-                  placeholder="+234 814 962 5496"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
+                  placeholder="@telegram_handle"
+                  className="w-full pl-9 pr-4 py-2.5 rounded-2xl bg-zinc-50 focus:bg-white text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-amber-500/30 transition shadow-2xs"
                 />
               </div>
+              <p className="text-[10px] text-zinc-500 mt-1">
+                Client Telegram @username for order tracking & communication
+              </p>
             </div>
           </div>
         </div>
@@ -197,7 +201,6 @@ export const SelectDetailsStep: React.FC<SelectDetailsStepProps> = ({
         {/* Requirements & Brief Attachment Section Card */}
         <div className="p-5 rounded-3xl bg-white shadow-md space-y-4">
           <h3 className="text-xs font-bold text-zinc-600 uppercase tracking-wider flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-amber-600" />
             <span>2. Project Brief & Asset Upload</span>
           </h3>
 

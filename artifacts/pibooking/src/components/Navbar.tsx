@@ -269,7 +269,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-zinc-700 hover:bg-zinc-100 font-semibold'
               }`}
             >
-              <Home className="w-4 h-4 text-zinc-500" />
+              <Home className="w-4 h-4 text-[#e17100]" />
               <span>Home</span>
             </button>
             <button
@@ -281,7 +281,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-zinc-700 hover:bg-zinc-100 font-semibold'
               }`}
             >
-              <Search className="w-4 h-4 text-zinc-500" />
+              <Search className="w-4 h-4 text-[#e17100]" />
               <span>Search Services</span>
             </button>
           </div>
@@ -301,7 +301,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <div className="flex items-center gap-3">
-                <CalendarCheck className="w-4 h-4 text-zinc-500" />
+                <CalendarCheck className="w-4 h-4 text-[#e17100]" />
                 <span>My Bookings</span>
               </div>
               {bookingsCount > 0 && (

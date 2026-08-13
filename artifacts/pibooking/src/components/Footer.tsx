@@ -1,5 +1,5 @@
-import React from 'react';
-import { Globe, Accessibility, Twitter, Facebook, Instagram, Linkedin, Send, Youtube, Github, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Globe, Twitter, Facebook, Instagram, Linkedin, Send, Youtube, Github, User, ShieldCheck, X } from 'lucide-react';
 import { BusinessProfile } from '../types';
 
 interface FooterProps {
@@ -7,6 +7,7 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
+  const [showSafetyNotice, setShowSafetyNotice] = useState(false);
   const socials = (currentBusiness?.socials || currentBusiness?.socialLinks || []).filter(
     (s) => s && s.url && s.url.trim().length > 0
   );
@@ -100,11 +101,54 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
           <button className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer">
             <span>PI</span>
           </button>
-          <button className="p-1 rounded-full hover:bg-zinc-800 hover:text-white transition-colors cursor-pointer" title="Accessibility">
-            <Accessibility className="w-4 h-4 text-zinc-400" />
+          <button
+            onClick={() => setShowSafetyNotice(true)}
+            className="flex items-center gap-1.5 hover:text-amber-400 transition-colors cursor-pointer text-amber-500/90 font-semibold"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+            <span>Testnet Safety</span>
           </button>
         </div>
       </div>
+
+      {/* Testnet Safety Modal */}
+      {showSafetyNotice && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 text-left">
+          <div className="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-800 text-white p-6 space-y-4 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setShowSafetyNotice(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800 transition"
+              aria-label="Close modal"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            <div className="flex items-center gap-2 text-amber-400">
+              <ShieldCheck className="w-5 h-5 shrink-0" />
+              <h2 className="text-sm font-black uppercase tracking-wider">Testnet Safety Notice</h2>
+            </div>
+
+            <div className="space-y-2.5 text-xs text-zinc-300 leading-relaxed font-normal">
+              <p>
+                W3C Pi Bookings is currently operating on Pi Testnet for testing and development. Transactions and balances in this environment are not Mainnet transactions.
+              </p>
+              <p className="text-zinc-400">
+                Use the Pi Wallet you intend to use for testing and treat your wallet credentials with the same level of security you would use on Mainnet.
+              </p>
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 font-bold">
+                Never share your passphrase, private key, or wallet credentials with this application or anyone else.
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowSafetyNotice(false)}
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-black text-xs transition cursor-pointer"
+            >
+              Understand & Close
+            </button>
+          </div>
+        </div>
+      )}
     </footer>
   );
 };

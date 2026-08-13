@@ -270,7 +270,6 @@ export const SelectScheduleStep: React.FC<SelectScheduleStepProps> = ({
         <div className="p-4 rounded-2xl bg-white shadow-md border border-zinc-100 space-y-4 box-border animate-in fade-in duration-150">
           <div className="flex items-center justify-between text-xs font-bold text-zinc-800">
             <span className="flex items-center gap-1.5 font-extrabold uppercase text-amber-700 tracking-wider">
-              <CalendarIcon className="w-4 h-4 text-amber-600" />
               <span>Select Date</span>
             </span>
             <span className="text-[11px] font-semibold text-zinc-500">Tap to select date</span>
@@ -375,20 +374,11 @@ export const SelectScheduleStep: React.FC<SelectScheduleStepProps> = ({
             })}
           </div>
 
-          {/* Action button to switch to time selection */}
+          {/* Action footer displaying selected date */}
           <div className="pt-2 border-t border-zinc-100 flex items-center justify-between">
             <span className="text-xs text-zinc-500 font-semibold">
               Selected: <strong className="text-amber-800 font-extrabold">{displayFormattedDate}</strong>
             </span>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab('time')}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-            >
-              <span>Next: Set Time</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
           </div>
         </div>
       )}
