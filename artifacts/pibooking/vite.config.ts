@@ -57,6 +57,142 @@ function apiServerPlugin() {
           });
           return;
         }
+
+        if ((req.url?.match(/^\/api\/pi\/bookings\/[^/]+\/(accept|reject)$/)) && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', async () => {
+            try {
+              const match = req.url.match(/^\/api\/pi\/bookings\/([^/]+)\/(accept|reject)$/);
+              const bookingId = match?.[1];
+              const action = match?.[2];
+              const payload = JSON.parse(body || '{}');
+              const { accessToken, rejectionReason, payoutTxHash } = payload;
+
+              if (!bookingId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId)) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'A valid bookingId is required.' }));
+                return;
+              }
+              if (!accessToken || typeof accessToken !== 'string' || accessToken.trim() === '') {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Pi access token is required.' }));
+                return;
+              }
+              if (action === 'reject' && (!rejectionReason || String(rejectionReason).trim() === '')) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'A rejection reason is required.' }));
+                return;
+              }
+
+              const piResponse = await fetch('https://api.minepi.com/v2/me', {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${accessToken.trim()}` },
+              });
+              if (!piResponse.ok) {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Invalid or expired Pi access token.' }));
+                return;
+              }
+              const piUser = await piResponse.json();
+              if (!piUser.uid) {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Incomplete user data from Pi Network.' }));
+                return;
+              }
+
+              const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+              const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+              if (!supabaseUrl || !supabaseKey) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Server configuration error: Supabase server credentials are missing.' }));
+                return;
+              }
+
+              const supabaseHeaders: Record<string, string> = {
+                apikey: supabaseKey,
+                'Content-Type': 'application/json',
+                Prefer: 'return=representation',
+              };
+              if (supabaseKey.startsWith('eyJ')) {
+                supabaseHeaders.Authorization = `Bearer ${supabaseKey}`;
+              }
+
+              const cleanUrl = supabaseUrl.replace(/\/$/, '');
+              const providerResponse = await fetch(
+                `${cleanUrl}/rest/v1/providers?select=id,pi_uid&pi_uid=eq.${encodeURIComponent(piUser.uid)}&limit=1`,
+                { headers: supabaseHeaders },
+              );
+              if (!providerResponse.ok) {
+                const providerError = await providerResponse.text().catch(() => '');
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: providerError || `Supabase provider lookup failed (${providerResponse.status}).` }));
+                return;
+              }
+              const providers = await providerResponse.json();
+              const provider = providers[0];
+              if (!provider) {
+                res.statusCode = 403;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'No provider profile is linked to this Pi account.' }));
+                return;
+              }
+
+              const updates = action === 'accept'
+                ? { status: 'In Progress', updated_at: new Date().toISOString() }
+                : {
+                    status: 'Cancelled',
+                    escrow_status: 'refunded',
+                    rejection_reason: String(rejectionReason).trim(),
+                    refunded_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    ...(payoutTxHash ? { payout_tx_hash: payoutTxHash } : {}),
+                  };
+
+              const bookingResponse = await fetch(
+                `${cleanUrl}/rest/v1/bookings?id=eq.${encodeURIComponent(bookingId)}&provider_id=eq.${encodeURIComponent(provider.id)}&status=in.(Pending,Confirmed)&escrow_status=eq.paid_escrowed`,
+                {
+                  method: 'PATCH',
+                  headers: supabaseHeaders,
+                  body: JSON.stringify(updates),
+                },
+              );
+              if (!bookingResponse.ok) {
+                const bookingError = await bookingResponse.text().catch(() => '');
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: bookingError || `Supabase booking update failed (${bookingResponse.status}).` }));
+                return;
+              }
+
+              const rows = await bookingResponse.json();
+              if (!Array.isArray(rows) || rows.length === 0) {
+                res.statusCode = 409;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: action === 'accept'
+                  ? 'Booking is not available for acceptance or is not assigned to this provider.'
+                  : 'Booking is not available for rejection or is not assigned to this provider.' }));
+                return;
+              }
+
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, booking: rows[0] }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: err?.message || `Failed to ${req.url?.endsWith('/reject') ? 'reject' : 'accept'} booking.` }));
+            }
+          });
+          return;
+        }
+
         if (req.url === '/api/pi/payouts/release' && req.method === 'POST') {
           let body = '';
           req.on('data', (chunk: any) => { body += chunk; });
@@ -77,7 +213,6 @@ function apiServerPlugin() {
                 return;
               }
 
-              // Create Payment
               const createRes = await fetch('https://api.minepi.com/v2/payments', {
                 method: 'POST',
                 headers: {
@@ -107,7 +242,6 @@ function apiServerPlugin() {
 
               const paymentId = createData.identifier || createData.id;
 
-              // Submit Payment
               const submitRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/submit`, {
                 method: 'POST',
                 headers: {
@@ -129,7 +263,6 @@ function apiServerPlugin() {
 
               const txid = submitData.txid || submitData.transaction?.txid || paymentId;
 
-              // Complete Payment
               const completeRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/complete`, {
                 method: 'POST',
                 headers: {
@@ -150,8 +283,9 @@ function apiServerPlugin() {
                 return;
               }
 
+              const txidFinal = completeData.txid || completeData.transaction?.txid || txid;
               res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, txid, paymentId }));
+              res.end(JSON.stringify({ success: true, txid: txidFinal, paymentId }));
             } catch (err: any) {
               res.statusCode = 500;
               res.setHeader('Content-Type', 'application/json');
@@ -182,7 +316,6 @@ function apiServerPlugin() {
 
               const cleanUid = String(clientPiUid).trim().replace(/^@/, '');
 
-              // Create Payment
               const createRes = await fetch('https://api.minepi.com/v2/payments', {
                 method: 'POST',
                 headers: {
@@ -212,7 +345,6 @@ function apiServerPlugin() {
 
               const paymentId = createData.identifier || createData.id;
 
-              // Submit Payment
               const submitRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/submit`, {
                 method: 'POST',
                 headers: {
@@ -234,7 +366,6 @@ function apiServerPlugin() {
 
               const txid = submitData.txid || submitData.transaction?.txid || paymentId;
 
-              // Complete Payment
               const completeRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/complete`, {
                 method: 'POST',
                 headers: {
@@ -255,8 +386,9 @@ function apiServerPlugin() {
                 return;
               }
 
+              const txidFinal = completeData.txid || completeData.transaction?.txid || txid;
               res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ success: true, txid, paymentId }));
+              res.end(JSON.stringify({ success: true, txid: txidFinal, paymentId }));
             } catch (err: any) {
               res.statusCode = 500;
               res.setHeader('Content-Type', 'application/json');
