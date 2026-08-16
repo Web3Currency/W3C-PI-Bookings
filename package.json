@@ -9,10 +9,10 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=@workspace/pibooking",
-    "build": "npm run build --workspace=@workspace/pibooking",
+    "build": "npm run build --workspace=@workspace/pibooking && npm run build --workspace=@workspace/api-server",
     "lint": "tsc --build",
     "typecheck": "tsc --build",
-    "start": "npm run serve --workspace=@workspace/pibooking"
+    "start": "npm run build && npm run start --workspace=@workspace/api-server"
   },
   "private": true,
   "dependencies": {
