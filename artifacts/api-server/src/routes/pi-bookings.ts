@@ -53,6 +53,10 @@ async function verifyPiAccessToken(accessToken: string) {
   return piUser.uid ? piUser : null;
 }
 
+function normalizePiUsername(username?: string | null) {
+  return String(username || "").trim().replace(/^@+/, "").toLowerCase();
+}
+
 router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
   const bookingId = req.params.bookingId;
   const { accessToken } = req.body as { accessToken?: string };
@@ -125,7 +129,7 @@ router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
       const storedUsername = booking.customer_pi_username || booking.client_pi_username || null;
       const verifiedUsername = piUser.username || null;
       if (storedClientUid && storedClientUid !== clientUid) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
-      if (!storedClientUid && storedUsername && verifiedUsername && storedUsername.toLowerCase() !== verifiedUsername.toLowerCase()) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
+      if (!storedClientUid && storedUsername && verifiedUsername && normalizePiUsername(storedUsername) !== normalizePiUsername(verifiedUsername)) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
       const filters = storedClientUid ? `id=eq.${encodeURIComponent(bookingId)}&client_pi_uid=eq.${encodeURIComponent(clientUid)}` : `id=eq.${encodeURIComponent(bookingId)}`;
       const patch = { escrow_status: "completion_confirmed", confirmed_at: now, updated_at: now, ...(storedClientUid ? {} : { client_pi_uid: clientUid }) };
       const updateResponse = await supabaseRequest(`bookings?${filters}&status=eq.In%20Progress&escrow_status=eq.paid_escrowed`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
@@ -141,7 +145,7 @@ router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
     const booking = lookup.rows[0];
     const verifiedUsername = piUser.username || null;
     if (booking.client_pi_uid && booking.client_pi_uid !== clientUid) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
-    if (!booking.client_pi_uid && booking.customer_pi_username && verifiedUsername && booking.customer_pi_username.toLowerCase() !== verifiedUsername.toLowerCase()) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
+    if (!booking.client_pi_uid && booking.customer_pi_username && verifiedUsername && normalizePiUsername(booking.customer_pi_username) !== normalizePiUsername(verifiedUsername)) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
     const result = await pool.query(`UPDATE public.bookings SET escrow_status = 'completion_confirmed', confirmed_at = NOW(), updated_at = NOW(), client_pi_uid = COALESCE(client_pi_uid, $2) WHERE id = $1 AND status = 'In Progress' AND escrow_status = 'paid_escrowed' RETURNING id, status, escrow_status, confirmed_at, client_pi_uid, updated_at`, [bookingId, clientUid]);
     if (result.rowCount === 0) return void res.status(409).json({ error: "Booking could not be confirmed. It may have changed state." });
     return void res.json({ success: true, booking: result.rows[0] });
