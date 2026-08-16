@@ -20,8 +20,6 @@ export interface Provider {
   status: 'Pending' | 'Approved' | 'Rejected' | 'Suspended';
   createdAt?: string;
   updatedAt?: string;
-
-  // Public Profile Fields
   usernameSlug?: string;
   headline?: string;
   specialties?: string[];
@@ -90,6 +88,7 @@ export interface Booking {
   timeSlot: string;
   clientName: string;
   clientPiUsername: string;
+  clientPiUid?: string;
   clientPhone: string;
   clientEmail?: string;
   notes?: string;
@@ -183,8 +182,6 @@ export interface BusinessProfile {
   galleryImages: GalleryImage[];
   services: Service[];
   updatedAt?: string;
-
-  // Public Profile Fields
   usernameSlug?: string;
   headline?: string;
   specialties?: string[];
@@ -230,24 +227,16 @@ export interface TimeSlotOption {
 declare global {
   interface Window {
     Pi?: {
-      /** Returns a Promise that resolves once the SDK is fully initialised. */
       init: (config: { version: string; sandbox?: boolean }) => Promise<void>;
       authenticate: (
         scopes: string[],
         onIncompletePaymentFound: (payment: any) => void
       ) => Promise<{
         accessToken: string;
-        user: {
-          uid: string;
-          username: string;
-        };
+        user: { uid: string; username: string };
       }>;
       createPayment: (
-        paymentData: {
-          amount: number;
-          memo: string;
-          metadata: Record<string, any>;
-        },
+        paymentData: { amount: number; memo: string; metadata: Record<string, any> },
         callbacks: {
           onReadyForServerApproval: (paymentId: string) => void;
           onReadyForServerCompletion: (paymentId: string, txid: string) => void;
