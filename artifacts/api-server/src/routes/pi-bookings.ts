@@ -119,14 +119,14 @@ router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
     if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
     const clientUid = piUser.uid;
     const now = new Date().toISOString();
-    const supabaseResponse = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&status=eq.In%20Progress&escrow_status=eq.paid_escrowed`, { method: "GET" });
+    const supabaseResponse = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&status=eq.In%20Progress&escrow_status=eq.paid_escrowed&select=id,client_pi_uid,customer_pi_username,status,escrow_status`, { method: "GET" });
     if (supabaseResponse) {
       if (!supabaseResponse.ok) { const text = await supabaseResponse.text().catch(() => ""); throw new Error(text || `Supabase booking lookup failed (${supabaseResponse.status}).`); }
       const rows = await supabaseResponse.json();
       if (!Array.isArray(rows) || rows.length === 0) return void res.status(409).json({ error: "Booking is not in progress or escrow is not currently held." });
-      const booking = rows[0] as { client_pi_uid?: string | null; customer_pi_username?: string | null; client_pi_username?: string | null };
+      const booking = rows[0] as { client_pi_uid?: string | null; customer_pi_username?: string | null };
       const storedClientUid = booking.client_pi_uid || null;
-      const storedUsername = booking.customer_pi_username || booking.client_pi_username || null;
+      const storedUsername = booking.customer_pi_username || null;
       const verifiedUsername = piUser.username || null;
       if (storedClientUid && storedClientUid !== clientUid) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
       if (!storedClientUid && storedUsername && verifiedUsername && normalizePiUsername(storedUsername) !== normalizePiUsername(verifiedUsername)) return void res.status(403).json({ error: "This booking belongs to a different Pi account." });
@@ -140,7 +140,7 @@ router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
       return void res.json({ success: true, booking: updatedRows[0] });
     }
     if (!pool) return void res.status(500).json({ error: "Booking database connection is not configured on the API server." });
-    const lookup = await pool.query(`SELECT id, client_pi_uid, customer_pi_username, client_pi_username FROM public.bookings WHERE id = $1 AND status = 'In Progress' AND escrow_status = 'paid_escrowed' LIMIT 1`, [bookingId]);
+    const lookup = await pool.query(`SELECT id, client_pi_uid, customer_pi_username FROM public.bookings WHERE id = $1 AND status = 'In Progress' AND escrow_status = 'paid_escrowed' LIMIT 1`, [bookingId]);
     if (lookup.rowCount === 0) return void res.status(409).json({ error: "Booking is not in progress or escrow is not currently held." });
     const booking = lookup.rows[0];
     const verifiedUsername = piUser.username || null;
