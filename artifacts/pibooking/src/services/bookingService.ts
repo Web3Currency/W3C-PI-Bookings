@@ -80,9 +80,11 @@ export const bookingService = {
 
   async saveBookingAsync(newBooking: Omit<Booking, 'id'> & { id?: string }): Promise<Booking> {
     const id = newBooking.id || `bk_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
+    const verifiedClientPiUid = newBooking.clientPiUid || piAuthService.getStoredUser()?.uid;
     const fullBooking: Booking = {
       ...newBooking,
       id,
+      clientPiUid: verifiedClientPiUid,
       basePrice: newBooking.basePrice || newBooking.priceNGN,
       priceNGN: newBooking.basePrice || newBooking.priceNGN,
       currency: newBooking.currency || 'NGN',
@@ -142,8 +144,7 @@ export const bookingService = {
     const piUser = piAuthService.getStoredUser();
     if (!piUser?.accessToken) throw new Error('Please sign in with Pi before accepting a booking.');
     const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/accept', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessToken: piUser.accessToken }),
     });
     const body = await response.json().catch(() => ({}));
@@ -155,13 +156,8 @@ export const bookingService = {
     const piUser = piAuthService.getStoredUser();
     if (!piUser?.accessToken) throw new Error('Please sign in with Pi before rejecting a booking.');
     const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/reject', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        accessToken: piUser.accessToken,
-        rejectionReason,
-        payoutTxHash,
-      }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessToken: piUser.accessToken, rejectionReason, payoutTxHash }),
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || 'Failed to reject booking.');
@@ -176,8 +172,7 @@ export const bookingService = {
     if (payoutTxHash) updatePayload.payout_tx_hash = payoutTxHash;
     if (escrow_status === 'completion_confirmed') updatePayload.confirmed_at = timestamp;
     else if (escrow_status === 'released') {
-      updatePayload.status = 'Completed';
-      updatePayload.released_at = timestamp;
+      updatePayload.status = 'Completed'; updatePayload.released_at = timestamp;
       if (currentBooking) {
         const pricePi = Number(currentBooking.pricePi || 0);
         updatePayload.platform_fee_pi = Number((pricePi * 0.10).toFixed(7));
@@ -187,17 +182,13 @@ export const bookingService = {
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await safeSupabaseUpdate('bookings', updatePayload, 'id', bookingId);
-        if (error) {
-          console.warn('[Supabase Note] Failed to update booking escrow status in database:', error.message);
-          if (error.code === '42501') logRLSHint('bookings');
-        } else console.log('[Supabase Success] Booking escrow status updated in database:', data);
+        if (error) console.warn('[Supabase Note] Failed to update booking escrow status in database:', error.message);
+        else console.log('[Supabase Success] Booking escrow status updated in database:', data);
       } catch (e: any) { console.error('[Supabase Exception] Booking escrow status update failed:', e?.message || e); }
       return await this.getBookingsAsync();
     }
     const updatedBookings = sourceBookings.map((b) => b.id !== bookingId ? b : {
-      ...b,
-      escrow_status,
-      status: escrow_status === 'released' ? 'Completed' : b.status,
+      ...b, escrow_status, status: escrow_status === 'released' ? 'Completed' : b.status,
       payoutTxHash: payoutTxHash || b.payoutTxHash,
       platform_fee_pi: escrow_status === 'released' ? Number((Number(b.pricePi || 0) * 0.10).toFixed(7)) : b.platform_fee_pi,
       provider_payout_pi: escrow_status === 'released' ? Number((Number(b.pricePi || 0) * 0.90).toFixed(7)) : b.provider_payout_pi,
@@ -218,25 +209,19 @@ export const bookingService = {
     const updatePayload: Record<string, any> = { status: newStatus, updated_at: timestamp };
     if (payoutTxHash) updatePayload.payout_tx_hash = payoutTxHash;
     if (newStatus === 'Cancelled') {
-      updatePayload.escrow_status = 'refunded';
-      updatePayload.rejection_reason = rejectionReason || '';
-      updatePayload.refunded_at = timestamp;
+      updatePayload.escrow_status = 'refunded'; updatePayload.rejection_reason = rejectionReason || ''; updatePayload.refunded_at = timestamp;
     }
     if (isSupabaseConfigured()) {
       try {
         const { data, error } = await safeSupabaseUpdate('bookings', updatePayload, 'id', bookingId);
-        if (error) {
-          console.warn('[Supabase Note] Failed to update booking status:', error.message);
-          if (error.code === '42501') logRLSHint('bookings');
-        } else console.log('[Supabase Success] Booking status updated:', data);
+        if (error) console.warn('[Supabase Note] Failed to update booking status:', error.message);
+        else console.log('[Supabase Success] Booking status updated:', data);
       } catch (e: any) { console.error('[Supabase Exception] Booking status update failed:', e?.message || e); }
       return await this.getBookingsAsync();
     }
     const currentBookings = this.getBookingsLocal();
     const updatedBookings = currentBookings.map((b) => b.id === bookingId ? {
-      ...b,
-      status: newStatus as BookingStatus,
-      payoutTxHash: payoutTxHash || b.payoutTxHash,
+      ...b, status: newStatus as BookingStatus, payoutTxHash: payoutTxHash || b.payoutTxHash,
       ...(newStatus === 'Cancelled' ? { escrow_status: 'refunded', rejection_reason: rejectionReason || '', refunded_at: timestamp } : {}),
       updatedAt: timestamp,
     } : b);
