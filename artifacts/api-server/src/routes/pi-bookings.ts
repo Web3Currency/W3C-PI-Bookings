@@ -59,7 +59,7 @@ router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
       WHERE b.id = $1
         AND b.provider_id = p.id
         AND p.pi_uid = $2
-        AND b.status = 'Confirmed'
+        AND b.status IN ('Pending', 'Confirmed')
         AND b.escrow_status = 'paid_escrowed'
       RETURNING
         b.id,
@@ -97,7 +97,7 @@ router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
         return;
       }
 
-      if (booking.status !== "Confirmed" || booking.escrow_status !== "paid_escrowed") {
+      if (!['Pending', 'Confirmed'].includes(booking.status) || booking.escrow_status !== "paid_escrowed") {
         res.status(409).json({ error: "This booking is not available for acceptance." });
         return;
       }
