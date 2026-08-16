@@ -165,6 +165,18 @@ export const bookingService = {
   },
 
   async updateBookingEscrowStatusAsync(bookingId: string, escrow_status: string, payoutTxHash?: string): Promise<Booking[]> {
+    if (escrow_status === 'completion_confirmed') {
+      const piUser = piAuthService.getStoredUser();
+      if (!piUser?.accessToken) throw new Error('Please sign in with Pi before confirming completion.');
+      const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/complete', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: piUser.accessToken }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(body.error || 'Failed to confirm booking completion.');
+      return await this.getBookingsAsync();
+    }
+
     const timestamp = new Date().toISOString();
     const sourceBookings = isSupabaseConfigured() ? await this.getBookingsAsync() : this.getBookingsLocal();
     const currentBooking = sourceBookings.find((b) => b.id === bookingId);
