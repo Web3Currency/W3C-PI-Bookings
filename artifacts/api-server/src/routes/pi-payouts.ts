@@ -2,166 +2,145 @@ import { Router, type IRouter } from "express";
 
 const router: IRouter = Router();
 
-/**
- * POST /api/pi/payouts/release
- *
- * Executes a Pi Network App-to-User (A2U) payout using pi-backend SDK / Pi Network API v2.
- * Body: { bookingId: string, amountPi: number, providerPiUid: string, providerWalletAddress?: string }
- */
+function getPiApiKey() {
+  return (process.env.PI_API_KEY || "").trim();
+}
+
+function getPiError(data: any, fallback: string) {
+  if (data?.error === "missing_scope" || data?.code === "missing_scope") {
+    return "Pi A2U payout is not authorized for this app. The PI_API_KEY must have the required payment/payout scope in the Pi Developer Portal.";
+  }
+  return data?.error || data?.message || fallback;
+}
+
+async function parsePiResponse(response: Response) {
+  const raw = await response.text().catch(() => "");
+  try { return raw ? JSON.parse(raw) : {}; } catch { return { message: raw }; }
+}
+
+async function createA2UPayment(apiKey: string, payment: { amount: number; memo: string; metadata: Record<string, unknown>; uid: string }) {
+  return fetch("https://api.minepi.com/v2/payments", {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    // Pi's A2U API expects the payment fields at the top level.
+    body: JSON.stringify(payment),
+  });
+}
+
+async function submitPayment(apiKey: string, paymentId: string) {
+  return fetch(`https://api.minepi.com/v2/payments/${encodeURIComponent(paymentId)}/submit`, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+async function completePayment(apiKey: string, paymentId: string, txid: string) {
+  return fetch(`https://api.minepi.com/v2/payments/${encodeURIComponent(paymentId)}/complete`, {
+    method: "POST",
+    headers: {
+      Authorization: `Key ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ txid }),
+  });
+}
+
+async function executeA2UPayout({
+  apiKey,
+  bookingId,
+  amountPi,
+  recipientUid,
+  memo,
+  type,
+  log,
+}: {
+  apiKey: string;
+  bookingId: string;
+  amountPi: number;
+  recipientUid: string;
+  memo: string;
+  type: "payout" | "refund";
+  log: any;
+}) {
+  const paymentData = {
+    amount: Number(amountPi),
+    memo,
+    metadata: { bookingId, type },
+    uid: recipientUid.trim().replace(/^@+/, ""),
+  };
+
+  log.info({ bookingId, recipientUid: paymentData.uid, amountPi, type }, "Initiating Pi A2U payment");
+
+  const createRes = await createA2UPayment(apiKey, paymentData);
+  const createData = await parsePiResponse(createRes);
+  if (!createRes.ok) {
+    log.error({ status: createRes.status, createData, type }, "Failed to create Pi A2U payment");
+    throw Object.assign(new Error(getPiError(createData, `Failed to create A2U ${type} payment with Pi Network.`)), { statusCode: createRes.status });
+  }
+
+  const paymentId = createData.identifier || createData.id;
+  if (!paymentId) throw Object.assign(new Error("Pi Network did not return a payment identifier."), { statusCode: 502 });
+
+  const submitRes = await submitPayment(apiKey, paymentId);
+  const submitData = await parsePiResponse(submitRes);
+  if (!submitRes.ok) {
+    log.error({ status: submitRes.status, submitData, paymentId, type }, "Failed to submit Pi A2U payment");
+    throw Object.assign(new Error(getPiError(submitData, `Failed to submit A2U ${type} payment with Pi Network.`)), { statusCode: submitRes.status });
+  }
+
+  const txid = submitData.txid || submitData.transaction?.txid || paymentId;
+
+  const completeRes = await completePayment(apiKey, paymentId, txid);
+  const completeData = await parsePiResponse(completeRes);
+  if (!completeRes.ok) {
+    log.error({ status: completeRes.status, completeData, paymentId, txid, type }, "Failed to complete Pi A2U payment");
+    throw Object.assign(new Error(getPiError(completeData, `Failed to complete A2U ${type} payment with Pi Network.`)), { statusCode: completeRes.status });
+  }
+
+  return { paymentId, txid };
+}
+
 router.post("/pi/payouts/release", async (req, res) => {
-  const { bookingId, amountPi, providerPiUid, providerWalletAddress } = req.body as {
+  const { bookingId, amountPi, providerPiUid } = req.body as {
     bookingId?: string;
     amountPi?: number;
     providerPiUid?: string;
-    providerWalletAddress?: string;
   };
 
-  if (!bookingId || typeof bookingId !== "string" || bookingId.trim() === "") {
-    res.status(400).json({ error: "bookingId is required." });
-    return;
-  }
+  if (!bookingId || typeof bookingId !== "string" || bookingId.trim() === "") return void res.status(400).json({ error: "bookingId is required." });
+  if (amountPi === undefined || typeof amountPi !== "number" || amountPi <= 0) return void res.status(400).json({ error: "amountPi must be a positive number." });
+  if (!providerPiUid || typeof providerPiUid !== "string" || providerPiUid.trim() === "") return void res.status(400).json({ error: "providerPiUid is required." });
 
-  if (amountPi === undefined || typeof amountPi !== "number" || amountPi <= 0) {
-    res.status(400).json({ error: "amountPi must be a positive number." });
-    return;
-  }
-
-  if (!providerPiUid || typeof providerPiUid !== "string" || providerPiUid.trim() === "") {
-    res.status(400).json({ error: "providerPiUid is required." });
-    return;
-  }
-
-  const apiKey = process.env.PI_API_KEY;
+  const apiKey = getPiApiKey();
   if (!apiKey) {
     req.log.error("PI_API_KEY environment variable is not set on the server.");
-    res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
-    return;
+    return void res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
   }
 
-  const walletPrivateSeed = process.env.PI_WALLET_PRIVATE_SEED || "";
-
   try {
-    let piBackendSDK: any;
-    try {
-      const PiBackendModule = await import("pi-backend");
-      const PiNetworkClass = (PiBackendModule as any).default || PiBackendModule;
-      piBackendSDK = new PiNetworkClass(apiKey.trim(), walletPrivateSeed.trim());
-    } catch (importErr) {
-      req.log.info("pi-backend package dynamic import failed, falling back to direct Pi REST API calls.");
-    }
-
-    let paymentId = "";
-    let txid = "";
-
-    if (piBackendSDK && typeof piBackendSDK.createPayment === "function") {
-      req.log.info({ bookingId, providerPiUid, amountPi }, "Initiating A2U payout via pi-backend SDK");
-      const paymentData = {
-        amount: Number(amountPi),
-        memo: `Escrow payout for booking ${bookingId}`,
-        metadata: { bookingId, type: "payout" },
-        uid: providerPiUid.trim(),
-      };
-
-      const payment = await piBackendSDK.createPayment(paymentData);
-      paymentId = payment.identifier || payment.id || payment.paymentId;
-
-      const submitted = await piBackendSDK.submitPayment(paymentId);
-      txid = submitted.transaction?.txid || submitted.txid || paymentId;
-
-      await piBackendSDK.completePayment(paymentId, txid);
-    } else {
-      req.log.info({ bookingId, providerPiUid, amountPi }, "Initiating A2U payout via Pi REST API v2");
-      // 1. Create Payment
-      const createRes = await fetch("https://api.minepi.com/v2/payments", {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${apiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          payment: {
-            amount: Number(amountPi),
-            memo: `Escrow payout for booking ${bookingId}`,
-            metadata: { bookingId, type: "payout" },
-            uid: providerPiUid.trim(),
-          },
-        }),
-      });
-
-      const createRaw = await createRes.text().catch(() => "");
-      let createData: any = {};
-      try { createData = JSON.parse(createRaw); } catch { createData = { message: createRaw }; }
-
-      if (!createRes.ok) {
-        req.log.error({ status: createRes.status, createData }, "Failed to create Pi A2U payment");
-        res.status(createRes.status).json({
-          error: createData.error || createData.message || "Failed to create A2U payment with Pi Network."
-        });
-        return;
-      }
-
-      paymentId = createData.identifier || createData.id;
-
-      // 2. Submit Payment
-      const submitRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/submit`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${apiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const submitRaw = await submitRes.text().catch(() => "");
-      let submitData: any = {};
-      try { submitData = JSON.parse(submitRaw); } catch { submitData = { message: submitRaw }; }
-
-      if (!submitRes.ok) {
-        req.log.error({ status: submitRes.status, submitData }, "Failed to submit Pi A2U payment");
-        res.status(submitRes.status).json({
-          error: submitData.error || submitData.message || "Failed to submit A2U payment with Pi Network."
-        });
-        return;
-      }
-
-      txid = submitData.txid || submitData.transaction?.txid || paymentId;
-
-      // 3. Complete Payment
-      const completeRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/complete`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${apiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ txid }),
-      });
-
-      const completeRaw = await completeRes.text().catch(() => "");
-      let completeData: any = {};
-      try { completeData = JSON.parse(completeRaw); } catch { completeData = { message: completeRaw }; }
-
-      if (!completeRes.ok) {
-        req.log.error({ status: completeRes.status, completeData }, "Failed to complete Pi A2U payment");
-        res.status(completeRes.status).json({
-          error: completeData.error || completeData.message || "Failed to complete A2U payment with Pi Network."
-        });
-        return;
-      }
-    }
-
-    req.log.info({ bookingId, paymentId, txid }, "A2U payout released successfully");
-    res.status(200).json({ success: true, txid, paymentId });
+    const result = await executeA2UPayout({
+      apiKey,
+      bookingId,
+      amountPi,
+      recipientUid: providerPiUid,
+      memo: `Escrow payout for booking ${bookingId}`,
+      type: "payout",
+      log: req.log,
+    });
+    req.log.info({ bookingId, ...result }, "A2U payout released successfully");
+    return void res.status(200).json({ success: true, ...result });
   } catch (err: any) {
-    req.log.error({ err, bookingId }, "A2U payout execution threw an error");
-    res.status(500).json({ error: err?.message || "Failed to process Pi A2U payout." });
+    req.log.error({ err, bookingId }, "A2U payout execution failed");
+    return void res.status(err?.statusCode || 500).json({ error: err?.message || "Failed to process Pi A2U payout." });
   }
 });
 
-/**
- * POST /api/pi/payouts/refund
- *
- * Executes a Pi Network App-to-User (A2U) refund using pi-backend SDK / Pi Network API v2.
- * Body: { bookingId: string, amountPi: number, clientPiUid: string }
- */
 router.post("/pi/payouts/refund", async (req, res) => {
   const { bookingId, amountPi, clientPiUid } = req.body as {
     bookingId?: string;
@@ -169,144 +148,31 @@ router.post("/pi/payouts/refund", async (req, res) => {
     clientPiUid?: string;
   };
 
-  if (!bookingId || typeof bookingId !== "string" || bookingId.trim() === "") {
-    res.status(400).json({ error: "bookingId is required." });
-    return;
-  }
+  if (!bookingId || typeof bookingId !== "string" || bookingId.trim() === "") return void res.status(400).json({ error: "bookingId is required." });
+  if (amountPi === undefined || typeof amountPi !== "number" || amountPi <= 0) return void res.status(400).json({ error: "amountPi must be a positive number." });
+  if (!clientPiUid || typeof clientPiUid !== "string" || clientPiUid.trim() === "") return void res.status(400).json({ error: "clientPiUid is required." });
 
-  if (amountPi === undefined || typeof amountPi !== "number" || amountPi <= 0) {
-    res.status(400).json({ error: "amountPi must be a positive number." });
-    return;
-  }
-
-  if (!clientPiUid || typeof clientPiUid !== "string" || clientPiUid.trim() === "") {
-    res.status(400).json({ error: "clientPiUid is required." });
-    return;
-  }
-
-  const apiKey = process.env.PI_API_KEY;
+  const apiKey = getPiApiKey();
   if (!apiKey) {
     req.log.error("PI_API_KEY environment variable is not set on the server.");
-    res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
-    return;
+    return void res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
   }
 
-  const walletPrivateSeed = process.env.PI_WALLET_PRIVATE_SEED || "";
-  const cleanUid = clientPiUid.trim().replace(/^@/, "");
-
   try {
-    let piBackendSDK: any;
-    try {
-      const PiBackendModule = await import("pi-backend");
-      const PiNetworkClass = (PiBackendModule as any).default || PiBackendModule;
-      piBackendSDK = new PiNetworkClass(apiKey.trim(), walletPrivateSeed.trim());
-    } catch (importErr) {
-      req.log.info("pi-backend package dynamic import failed, falling back to direct Pi REST API calls.");
-    }
-
-    let paymentId = "";
-    let txid = "";
-
-    if (piBackendSDK && typeof piBackendSDK.createPayment === "function") {
-      req.log.info({ bookingId, cleanUid, amountPi }, "Initiating A2U refund via pi-backend SDK");
-      const paymentData = {
-        amount: Number(amountPi),
-        memo: `Refund for booking ${bookingId}`,
-        metadata: { bookingId, type: "refund" },
-        uid: cleanUid,
-      };
-
-      const payment = await piBackendSDK.createPayment(paymentData);
-      paymentId = payment.identifier || payment.id || payment.paymentId;
-
-      const submitted = await piBackendSDK.submitPayment(paymentId);
-      txid = submitted.transaction?.txid || submitted.txid || paymentId;
-
-      await piBackendSDK.completePayment(paymentId, txid);
-    } else {
-      req.log.info({ bookingId, cleanUid, amountPi }, "Initiating A2U refund via Pi REST API v2");
-      // 1. Create Payment
-      const createRes = await fetch("https://api.minepi.com/v2/payments", {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${apiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          payment: {
-            amount: Number(amountPi),
-            memo: `Refund for booking ${bookingId}`,
-            metadata: { bookingId, type: "refund" },
-            uid: cleanUid,
-          },
-        }),
-      });
-
-      const createRaw = await createRes.text().catch(() => "");
-      let createData: any = {};
-      try { createData = JSON.parse(createRaw); } catch { createData = { message: createRaw }; }
-
-      if (!createRes.ok) {
-        req.log.error({ status: createRes.status, createData }, "Failed to create Pi A2U refund payment");
-        res.status(createRes.status).json({
-          error: createData.error || createData.message || "Failed to create A2U refund payment with Pi Network."
-        });
-        return;
-      }
-
-      paymentId = createData.identifier || createData.id;
-
-      // 2. Submit Payment
-      const submitRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/submit`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${apiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-      });
-
-      const submitRaw = await submitRes.text().catch(() => "");
-      let submitData: any = {};
-      try { submitData = JSON.parse(submitRaw); } catch { submitData = { message: submitRaw }; }
-
-      if (!submitRes.ok) {
-        req.log.error({ status: submitRes.status, submitData }, "Failed to submit Pi A2U refund payment");
-        res.status(submitRes.status).json({
-          error: submitData.error || submitData.message || "Failed to submit A2U refund payment with Pi Network."
-        });
-        return;
-      }
-
-      txid = submitData.txid || submitData.transaction?.txid || paymentId;
-
-      // 3. Complete Payment
-      const completeRes = await fetch(`https://api.minepi.com/v2/payments/${paymentId}/complete`, {
-        method: "POST",
-        headers: {
-          Authorization: `Key ${apiKey.trim()}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ txid }),
-      });
-
-      const completeRaw = await completeRes.text().catch(() => "");
-      let completeData: any = {};
-      try { completeData = JSON.parse(completeRaw); } catch { completeData = { message: completeRaw }; }
-
-      if (!completeRes.ok) {
-        req.log.error({ status: completeRes.status, completeData }, "Failed to complete Pi A2U refund payment");
-        res.status(completeRes.status).json({
-          error: completeData.error || completeData.message || "Failed to complete A2U refund payment with Pi Network."
-        });
-        return;
-      }
-    }
-
-    req.log.info({ bookingId, paymentId, txid }, "A2U refund processed successfully");
-    res.status(200).json({ success: true, txid, paymentId });
+    const result = await executeA2UPayout({
+      apiKey,
+      bookingId,
+      amountPi,
+      recipientUid: clientPiUid,
+      memo: `Refund for booking ${bookingId}`,
+      type: "refund",
+      log: req.log,
+    });
+    req.log.info({ bookingId, ...result }, "A2U refund processed successfully");
+    return void res.status(200).json({ success: true, ...result });
   } catch (err: any) {
-    req.log.error({ err, bookingId }, "A2U refund execution threw an error");
-    res.status(500).json({ error: err?.message || "Failed to process Pi A2U refund." });
+    req.log.error({ err, bookingId }, "A2U refund execution failed");
+    return void res.status(err?.statusCode || 500).json({ error: err?.message || "Failed to process Pi A2U refund." });
   }
 });
 
