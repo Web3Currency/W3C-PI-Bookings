@@ -44,6 +44,7 @@ export const bookingService = {
         timeSlot: row.booking_time || row.time_slot,
         clientName: row.customer_name || row.client_name,
         clientPiUsername: row.customer_pi_username || row.client_pi_username,
+        clientPiUid: row.client_pi_uid || undefined,
         clientPhone: row.customer_phone || row.client_phone || '',
         clientEmail: row.customer_email || row.client_email,
         notes: row.notes,
@@ -104,6 +105,7 @@ export const bookingService = {
           status: fullBooking.status,
           customer_name: fullBooking.clientName,
           customer_pi_username: fullBooking.clientPiUsername,
+          client_pi_uid: fullBooking.clientPiUid || null,
           customer_phone: fullBooking.clientPhone,
           customer_email: fullBooking.clientEmail,
           service_title: fullBooking.serviceName,
@@ -146,6 +148,23 @@ export const bookingService = {
     });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || 'Failed to accept booking.');
+    return await this.getBookingsAsync();
+  },
+
+  async rejectBookingAsync(bookingId: string, rejectionReason: string, payoutTxHash?: string): Promise<Booking[]> {
+    const piUser = piAuthService.getStoredUser();
+    if (!piUser?.accessToken) throw new Error('Please sign in with Pi before rejecting a booking.');
+    const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        accessToken: piUser.accessToken,
+        rejectionReason,
+        payoutTxHash,
+      }),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'Failed to reject booking.');
     return await this.getBookingsAsync();
   },
 
@@ -192,8 +211,8 @@ export const bookingService = {
   },
 
   async updateBookingStatusAsync(bookingId: string, newStatus: BookingStatus, rejectionReason?: string, payoutTxHash?: string): Promise<Booking[]> {
-    // Provider acceptance must go through the verified Pi backend route, not a public Supabase UPDATE.
     if (newStatus === 'In Progress') return this.acceptBookingAsync(bookingId);
+    if (newStatus === 'Cancelled' && rejectionReason) return this.rejectBookingAsync(bookingId, rejectionReason, payoutTxHash);
 
     const timestamp = new Date().toISOString();
     const updatePayload: Record<string, any> = { status: newStatus, updated_at: timestamp };
