@@ -193,6 +193,145 @@ function apiServerPlugin() {
           return;
         }
 
+        if ((req.url?.match(/^\/api\/pi\/bookings\/[^/]+\/complete$/)) && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', async () => {
+            try {
+              const match = req.url.match(/^\/api\/pi\/bookings\/([^/]+)\/complete$/);
+              const bookingId = match?.[1];
+              const { accessToken } = JSON.parse(body || '{}');
+
+              if (!bookingId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId)) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'A valid bookingId is required.' }));
+                return;
+              }
+              if (!accessToken || typeof accessToken !== 'string' || accessToken.trim() === '') {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Pi access token is required.' }));
+                return;
+              }
+
+              const piResponse = await fetch('https://api.minepi.com/v2/me', {
+                method: 'GET',
+                headers: { Authorization: `Bearer ${accessToken.trim()}` },
+              });
+              if (!piResponse.ok) {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Invalid or expired Pi access token.' }));
+                return;
+              }
+              const piUser = await piResponse.json();
+              if (!piUser.uid) {
+                res.statusCode = 401;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Incomplete user data from Pi Network.' }));
+                return;
+              }
+
+              const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+              const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+              if (!supabaseUrl || !supabaseKey) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Server configuration error: Supabase server credentials are missing.' }));
+                return;
+              }
+
+              const supabaseHeaders: Record<string, string> = {
+                apikey: supabaseKey,
+                'Content-Type': 'application/json',
+                Prefer: 'return=representation',
+              };
+              if (supabaseKey.startsWith('eyJ')) {
+                supabaseHeaders.Authorization = `Bearer ${supabaseKey}`;
+              }
+              const cleanUrl = supabaseUrl.replace(/\/$/, '');
+
+              const bookingResponse = await fetch(
+                `${cleanUrl}/rest/v1/bookings?id=eq.${encodeURIComponent(bookingId)}&status=eq.In%20Progress&escrow_status=eq.paid_escrowed&select=id,client_pi_uid,customer_pi_username,client_pi_username,status,escrow_status`,
+                { headers: supabaseHeaders },
+              );
+              if (!bookingResponse.ok) {
+                const bookingError = await bookingResponse.text().catch(() => '');
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: bookingError || `Supabase booking lookup failed (${bookingResponse.status}).` }));
+                return;
+              }
+
+              const rows = await bookingResponse.json();
+              if (!Array.isArray(rows) || rows.length === 0) {
+                res.statusCode = 409;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Booking is not in progress or escrow is not currently held.' }));
+                return;
+              }
+
+              const booking = rows[0];
+              const clientUid = piUser.uid;
+              const verifiedUsername = piUser.username || null;
+              const storedClientUid = booking.client_pi_uid || null;
+              const storedUsername = booking.customer_pi_username || booking.client_pi_username || null;
+
+              if (storedClientUid && storedClientUid !== clientUid) {
+                res.statusCode = 403;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'This booking belongs to a different Pi account.' }));
+                return;
+              }
+              if (!storedClientUid && storedUsername && verifiedUsername && storedUsername.toLowerCase() !== verifiedUsername.toLowerCase()) {
+                res.statusCode = 403;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'This booking belongs to a different Pi account.' }));
+                return;
+              }
+
+              const filters = storedClientUid
+                ? `id=eq.${encodeURIComponent(bookingId)}&client_pi_uid=eq.${encodeURIComponent(clientUid)}`
+                : `id=eq.${encodeURIComponent(bookingId)}`;
+              const patch = {
+                escrow_status: 'completion_confirmed',
+                confirmed_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                ...(storedClientUid ? {} : { client_pi_uid: clientUid }),
+              };
+
+              const updateResponse = await fetch(
+                `${cleanUrl}/rest/v1/bookings?${filters}&status=eq.In%20Progress&escrow_status=eq.paid_escrowed`,
+                { method: 'PATCH', headers: supabaseHeaders, body: JSON.stringify(patch) },
+              );
+              if (!updateResponse.ok) {
+                const updateError = await updateResponse.text().catch(() => '');
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: updateError || `Supabase booking completion update failed (${updateResponse.status}).` }));
+                return;
+              }
+
+              const updatedRows = await updateResponse.json();
+              if (!Array.isArray(updatedRows) || updatedRows.length === 0) {
+                res.statusCode = 409;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'Booking could not be confirmed. It may have changed state.' }));
+                return;
+              }
+
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, booking: updatedRows[0] }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: err?.message || 'Failed to confirm booking completion.' }));
+            }
+          });
+          return;
+        }
+
         if (req.url === '/api/pi/payouts/release' && req.method === 'POST') {
           let body = '';
           req.on('data', (chunk: any) => { body += chunk; });
