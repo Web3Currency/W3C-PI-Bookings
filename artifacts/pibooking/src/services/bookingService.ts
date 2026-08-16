@@ -13,6 +13,10 @@ function logRLSHint(tableName: string) {
   );
 }
 
+function normalizePiUsername(username?: string | null): string {
+  return String(username || '').trim().replace(/^@+/, '').toLowerCase();
+}
+
 export const bookingService = {
   getBookingsLocal(): Booking[] {
     const cached = localStorage.getItem(LOCAL_BOOKINGS_KEY);
@@ -81,10 +85,12 @@ export const bookingService = {
   async saveBookingAsync(newBooking: Omit<Booking, 'id'> & { id?: string }): Promise<Booking> {
     const id = newBooking.id || `bk_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     const verifiedClientPiUid = newBooking.clientPiUid || piAuthService.getStoredUser()?.uid;
+    const normalizedClientPiUsername = normalizePiUsername(newBooking.clientPiUsername);
     const fullBooking: Booking = {
       ...newBooking,
       id,
       clientPiUid: verifiedClientPiUid,
+      clientPiUsername: normalizedClientPiUsername || newBooking.clientPiUsername,
       basePrice: newBooking.basePrice || newBooking.priceNGN,
       priceNGN: newBooking.basePrice || newBooking.priceNGN,
       currency: newBooking.currency || 'NGN',
