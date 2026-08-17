@@ -400,7 +400,7 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
                 value={formBio}
                 onChange={(e) => setFormBio(e.target.value)}
                 placeholder="Describe your background, expertise, and service commitments..."
-                className="w-full px-3 py-2 text-xs bg-white border border-zinc-200 rounded-xl text-zinc-900 focus:outline-none focus:border-amber-500"
+                className="w-full px-3 py-2 text-xs bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500"
               />
             </div>
           </div>
