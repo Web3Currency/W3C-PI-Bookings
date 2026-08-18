@@ -4,8 +4,13 @@ import { providerMediaService } from './providerMediaService';
 
 const LOCAL_PROVIDERS_KEY = 'w3c_providers';
 
-function logRLSHint(tableName: string) {
-  console.warn(`[Supabase RLS Warning] Operation on table '${tableName}' was blocked by Row Level Security.`);
+function getPiAccessToken(): string | undefined {
+  try {
+    const raw = sessionStorage.getItem('pi_authenticated_user');
+    if (!raw) return undefined;
+    const user = JSON.parse(raw);
+    return typeof user?.accessToken === 'string' ? user.accessToken : undefined;
+  } catch { return undefined; }
 }
 
 async function invokeProviderProfile(action: 'create' | 'update', body: Record<string, any>, piAccessToken?: string) {
@@ -71,64 +76,48 @@ function providerPayload(provider: Provider) {
 
 export const providerService = {
   getProvidersLocal(): Provider[] { const cached = localStorage.getItem(LOCAL_PROVIDERS_KEY); if (!cached) return []; try { return JSON.parse(cached); } catch { return []; } },
-
   async getProvidersAsync(): Promise<Provider[]> {
-    const localProviders = this.getProvidersLocal();
-    if (!isSupabaseConfigured()) return localProviders;
+    const localProviders = this.getProvidersLocal(); if (!isSupabaseConfigured()) return localProviders;
     try {
       const { data, error } = await supabase.from('providers').select('*').order('created_at', { ascending: true });
-      if (error) { if (error.code === '42501') logRLSHint('providers'); return localProviders; }
+      if (error) return localProviders;
       if (!data || data.length === 0) { localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify([])); return []; }
-      const remoteProviders = data.map(mapProviderRow);
-      localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(remoteProviders));
-      return remoteProviders;
+      const remoteProviders = data.map(mapProviderRow); localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(remoteProviders)); return remoteProviders;
     } catch { return localProviders; }
   },
-
   async getProviderByPiUid(piUid: string): Promise<Provider | null> { const all = await this.getProvidersAsync(); return all.find((p) => p.piUid === piUid) || null; },
-
   async addProvider(provider: Omit<Provider, 'id'>, piAccessToken?: string): Promise<Provider> {
     const generatedUuid = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `prv_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const newProvider: Provider = { ...provider, id: (provider as any).id && (provider as any).id.length > 10 ? (provider as any).id : generatedUuid, status: provider.status || 'Approved', createdAt: new Date().toISOString() };
+    const token = piAccessToken || getPiAccessToken();
     if (isSupabaseConfigured()) {
       const payload = providerPayload(newProvider);
-      const remote = await invokeProviderProfile('create', { provider: payload }, piAccessToken);
-      if (remote) {
-        const saved = mapProviderRow(remote);
-        const current = this.getProvidersLocal().filter((p) => p.piUid !== saved.piUid);
-        localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify([...current, saved]));
-        return saved;
-      }
+      const remote = await invokeProviderProfile('create', { provider: payload }, token);
+      if (remote) { const saved = mapProviderRow(remote); const current = this.getProvidersLocal().filter((p) => p.piUid !== saved.piUid); localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify([...current, saved])); return saved; }
       const { data, error } = await safeSupabaseInsert('providers', payload);
       if (error) throw new Error(`Provider could not be saved: ${error.message}`);
       if (data?.[0]) newProvider.id = data[0].id;
     }
-    const currentProviders = this.getProvidersLocal();
-    localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify([...currentProviders, newProvider]));
-    return newProvider;
+    const currentProviders = this.getProvidersLocal(); localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify([...currentProviders, newProvider])); return newProvider;
   },
-
   async updateProvider(providerId: string, updates: Partial<Provider>, piAccessToken?: string): Promise<void> {
     if (isSupabaseConfigured()) {
       const payload: Record<string, any> = { updated_at: new Date().toISOString() };
       const map: Record<string, string> = { fullName:'full_name', piUsername:'pi_username', piWalletAddress:'pi_wallet_address', roleTitle:'role_title', photoUrl:'photo_url', bio:'bio', contactEmail:'contact_email', contactPhone:'contact_phone', status:'status', usernameSlug:'username_slug', headline:'headline', specialties:'specialties', skills:'skills', experienceLevel:'experience_level', yearsExperience:'years_experience', availabilityStatus:'availability_status', responseTime:'response_time', languages:'languages', serviceMode:'service_mode', profileVerified:'profile_verified', piVerified:'pi_verified', location:'location', website:'website', socialLinks:'social_links', profileVisibility:'profile_visibility', portfolioImages:'portfolio_images', portfolioItems:'portfolio_items' };
       Object.entries(updates).forEach(([key, value]) => { if (map[key] && value !== undefined) payload[map[key]] = value; });
-      if (piAccessToken) {
-        const remote = await invokeProviderProfile('update', { providerId, updates: payload }, piAccessToken);
-        if (remote) {
-          const saved = mapProviderRow(remote); const locals = this.getProvidersLocal().map((p) => p.id === providerId ? saved : p); localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(locals)); return;
-        }
-      } else {
-        const { error } = await safeSupabaseUpdate('providers', payload, 'id', providerId);
-        if (error) throw new Error(`Provider could not be updated: ${error.message}`);
+      const token = piAccessToken || getPiAccessToken();
+      if (token) {
+        const remote = await invokeProviderProfile('update', { providerId, updates: payload }, token);
+        if (remote) { const saved = mapProviderRow(remote); localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(this.getProvidersLocal().map((p) => p.id === providerId ? saved : p))); return; }
       }
+      const { error } = await safeSupabaseUpdate('providers', payload, 'id', providerId);
+      if (error) throw new Error(`Provider could not be updated: ${error.message}`);
     }
-    const currentProviders = this.getProvidersLocal();
-    localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(currentProviders.map((p) => p.id === providerId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p)));
+    const currentProviders = this.getProvidersLocal(); localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(currentProviders.map((p) => p.id === providerId ? { ...p, ...updates, updatedAt: new Date().toISOString() } : p)));
   },
-
   async uploadProviderPhoto(providerId: string, file: File): Promise<string | null> {
-    const result = await providerMediaService.uploadProfilePhoto(file, { providerIdentifier: providerId });
+    const token = getPiAccessToken();
+    const result = await providerMediaService.uploadProfilePhoto(file, { providerIdentifier: providerId, piAccessToken: token });
     return result.path || result.publicUrl;
   }
 };
