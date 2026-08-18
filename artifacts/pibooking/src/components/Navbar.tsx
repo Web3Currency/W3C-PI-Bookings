@@ -102,7 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   src={appLogoUrl}
                   alt={currentBusiness.name}
                   onError={() => setLogoImgError(true)}
-                  className="w-8 h-8 rounded-full object-cover shadow-xs border border-zinc-100"
+                  className="w-8 h-8 rounded-full object-cover"
                 />
               ) : (
                 <div className="w-8 h-8 rounded-full bg-orange-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
@@ -189,7 +189,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 src={appLogoUrl}
                 alt={currentBusiness.name}
                 onError={() => setLogoImgError(true)}
-                className="w-8 h-8 rounded-full object-cover shrink-0 shadow-xs border border-zinc-100"
+                className="w-8 h-8 rounded-full object-cover shrink-0"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-orange-600 text-white font-black text-xs flex items-center justify-center shrink-0">
