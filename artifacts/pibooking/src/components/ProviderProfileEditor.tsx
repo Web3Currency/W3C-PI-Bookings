@@ -16,6 +16,7 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
   const [form, setForm] = useState<Provider>(provider);
   const [saving, setSaving] = useState(false);
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(provider.socialLinks || []);
+  const token = piAuthService.getStoredUser()?.accessToken;
 
   useEffect(() => {
     setForm(provider);
@@ -29,11 +30,7 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
     e.preventDefault();
     setSaving(true);
     try {
-      const token = piAuthService.getStoredUser()?.accessToken;
-      await providerService.updateProvider(form.id, {
-        ...form,
-        socialLinks: socialLinks.filter((s) => s.url.trim()),
-      }, token);
+      await providerService.updateProvider(form.id, { ...form, socialLinks: socialLinks.filter((s) => s.url.trim()) }, token);
       const refreshed = await providerService.getProviderByPiUid(form.piUid || '');
       const saved = refreshed || { ...form, socialLinks };
       setForm(saved);
@@ -48,17 +45,15 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
 
   return (
     <form onSubmit={save} className="space-y-4">
-      <ProfilePhotoUploader
-        currentImage={form.photoUrl || ''}
-        onUpload={(url) => set('photoUrl', url)}
-        providerIdentifier={form.id}
-      />
+      <section className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+        <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Profile Photo</h3>
+        <ProfilePhotoUploader value={form.photoUrl || ''} onChange={(value) => set('photoUrl', value)} providerIdentifier={form.id} piAccessToken={token} />
+      </section>
 
-      <PortfolioUploader
-        items={form.portfolioItems || []}
-        onChange={(items) => set('portfolioItems', items)}
-        providerIdentifier={form.id}
-      />
+      <section className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+        <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Portfolio</h3>
+        <PortfolioUploader items={form.portfolioItems || []} onChange={(items) => set('portfolioItems', items)} providerIdentifier={form.id} piAccessToken={token} />
+      </section>
 
       <section className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
         <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Identity & Bio</h3>
@@ -80,9 +75,7 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
           <input value={form.serviceMode || ''} onChange={(e) => set('serviceMode', e.target.value)} placeholder="Service Mode" className="w-full px-3 py-2 text-xs bg-white border border-zinc-200 rounded-xl" />
           <input value={form.responseTime || ''} onChange={(e) => set('responseTime', e.target.value)} placeholder="Response Time" className="w-full px-3 py-2 text-xs bg-white border border-zinc-200 rounded-xl" />
         </div>
-        <select value={form.availabilityStatus || 'available'} onChange={(e) => set('availabilityStatus', e.target.value)} className="w-full px-3 py-2 text-xs bg-white border border-zinc-200 rounded-xl">
-          <option value="available">Available Now</option><option value="busy">Busy / Limited</option><option value="away">Away</option>
-        </select>
+        <select value={form.availabilityStatus || 'available'} onChange={(e) => set('availabilityStatus', e.target.value)} className="w-full px-3 py-2 text-xs bg-white border border-zinc-200 rounded-xl"><option value="available">Available Now</option><option value="busy">Busy / Limited</option><option value="away">Away</option></select>
       </section>
 
       <section className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
@@ -99,9 +92,7 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
         </div>
       </section>
 
-      <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50">
-        {saving ? 'Saving Profile...' : <><Save className="w-4 h-4" />Save Public Profile</>}
-      </button>
+      <button type="submit" disabled={saving} className="w-full py-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 disabled:opacity-50">{saving ? 'Saving Profile...' : <><Save className="w-4 h-4" />Save Public Profile</>}</button>
     </form>
   );
 };
