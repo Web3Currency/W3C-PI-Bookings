@@ -1,6 +1,7 @@
 import { BusinessProfile } from '../types';
 import { supabase, isSupabaseConfigured, safeSupabaseUpsert } from '../lib/supabase';
 import { EMPTY_BUSINESS_PROFILE } from '../config/business';
+import { appBrandingService } from './appBrandingService';
 
 const LOCAL_BUSINESS_KEY = 'w3c_business_profile';
 
@@ -33,11 +34,14 @@ export const businessService = {
     console.log('[Supabase Request] Fetching business profile from "business_profile"...');
 
     try {
-      const { data, error } = await supabase
-        .from('business_profile')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
+      const [{ data, error }, dynamicLogoUrl] = await Promise.all([
+        supabase
+          .from('business_profile')
+          .select('*')
+          .limit(1)
+          .maybeSingle(),
+        appBrandingService.getLogoUrl(),
+      ]);
 
       if (error) {
         console.warn('[Supabase Note] Business profile fetch response:', error.message);
@@ -46,12 +50,15 @@ export const businessService = {
       }
 
       if (!data) {
-        return localProfile;
+        return dynamicLogoUrl
+          ? { ...localProfile, avatarUrl: dynamicLogoUrl, logoUrl: dynamicLogoUrl }
+          : localProfile;
       }
 
       console.log('[Supabase Success] Business profile loaded from database:', data.name);
 
       const fetchedLogo =
+        dynamicLogoUrl ||
         data.logo_url ||
         data.logo ||
         data.app_logo ||
