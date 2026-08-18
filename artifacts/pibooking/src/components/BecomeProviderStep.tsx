@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { PiUser } from '../types';
+import { PiUser, PortfolioItem } from '../types';
 import {
   ArrowLeft,
   User,
   Briefcase,
   FileText,
-  Image as ImageIcon,
   ArrowRight,
   ShieldCheck,
   Wallet,
@@ -15,8 +14,11 @@ import {
   Clock,
   Award,
   Sparkles,
-  CheckCircle2,
+  Camera,
+  ImageIcon,
 } from 'lucide-react';
+import { ProfilePhotoUploader } from './media/ProfilePhotoUploader';
+import { PortfolioUploader } from './media/PortfolioUploader';
 
 export interface BecomeProviderDetails {
   fullName: string;
@@ -37,6 +39,7 @@ export interface BecomeProviderDetails {
   serviceMode?: string;
   website?: string;
   portfolioImages?: string[];
+  portfolioItems?: PortfolioItem[];
 }
 
 interface BecomeProviderStepProps {
@@ -72,7 +75,7 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
   const [responseTime, setResponseTime] = useState('Within 1 hour');
 
   const [website, setWebsite] = useState('');
-  const [portfolioImagesText, setPortfolioImagesText] = useState('');
+  const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,11 +95,9 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
 
-    const portfolioImages = portfolioImagesText
-      .split('\n')
-      .flatMap((line) => line.split(','))
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0 && url.startsWith('http'));
+    const portfolioImages = portfolioItems
+      .map((item) => item.imageUrl || item.path || '')
+      .filter((url) => url.length > 0);
 
     onSubmit({
       fullName,
@@ -117,8 +118,12 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
       serviceMode,
       website: website || undefined,
       portfolioImages,
+      portfolioItems,
     });
   };
+
+  const providerIdentifier = piUser?.uid || piUsername || 'provider';
+  const piAccessToken = piUser?.accessToken;
 
   return (
     <div className="space-y-4 pb-28 animate-in fade-in slide-in-from-right-4 duration-200">
@@ -139,58 +144,69 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
         <div className="flex items-center gap-1.5">
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-extrabold uppercase tracking-wider shadow-2xs">
             <Sparkles className="w-3 h-3 text-amber-600" />
-            <span>Become a Provider</span>
+            W3C Provider Registration
           </span>
         </div>
-        <h2 className="text-base font-black text-zinc-900 tracking-tight">
-          Complete Your Service Merchant Profile
+        <h2 className="text-xl font-black text-zinc-900 tracking-tight">
+          Become a Service Provider
         </h2>
-        <p className="text-xs text-zinc-500 leading-relaxed">
-          Provide your details to stand out to Pioneers and receive booking requests on the Pi Network.
+        <p className="text-xs text-zinc-600 font-normal leading-relaxed">
+          Create your professional provider profile, showcase your portfolio works, and offer services across the Pi Network ecosystem.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Section 1: Provider Identity */}
-        <div className="p-5 rounded-2xl bg-white space-y-3.5 shadow-md">
+        {/* Section 1: Identity & Profile Photo */}
+        <div className="p-5 rounded-2xl bg-white space-y-4 shadow-md">
           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-wider flex items-center gap-2">
             <User className="w-4 h-4 text-amber-600" />
             <span>1. Identity & Contact Information</span>
           </h3>
 
-          <div className="space-y-3">
-            {/* Display Name */}
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                Display Name <span className="text-amber-600">*</span>
+          <div className="space-y-4">
+            {/* Profile Photo Upload Component */}
+            <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+              <label className="block text-[11px] font-extrabold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Camera className="w-3.5 h-3.5 text-amber-600" />
+                <span>Profile Photo</span>
               </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Adeyemo Jibola"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition"
-                />
-              </div>
+              <ProfilePhotoUploader
+                value={photoUrl}
+                onChange={(newPhoto) => setPhotoUrl(newPhoto)}
+                providerIdentifier={providerIdentifier}
+                piAccessToken={piAccessToken}
+              />
             </div>
 
-            {/* Pi Username */}
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                Pi Username <span className="text-amber-600">*</span>
-              </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+            {/* Full Name & Pi Username */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                  Full Name / Display Name <span className="text-amber-600">*</span>
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    required
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="e.g. Alex Johnson"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                  Pi Username
+                </label>
                 <input
                   type="text"
-                  required
                   value={piUsername}
                   onChange={(e) => setPiUsername(e.target.value)}
-                  placeholder="@your_pi_username"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition"
+                  placeholder="@username"
+                  className="w-full px-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition font-mono"
                 />
               </div>
             </div>
@@ -199,7 +215,7 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                  Primary Role / Title <span className="text-amber-600">*</span>
+                  Professional Role / Title <span className="text-amber-600">*</span>
                 </label>
                 <div className="relative">
                   <Briefcase className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
@@ -208,7 +224,7 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
                     required
                     value={roleTitle}
                     onChange={(e) => setRoleTitle(e.target.value)}
-                    placeholder="e.g. Graphic Designer, Web Developer"
+                    placeholder="e.g. Fullstack Web Developer"
                     className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition"
                   />
                 </div>
@@ -216,7 +232,7 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
 
               <div>
                 <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                  Professional Tagline / Headline
+                  Professional Headline
                 </label>
                 <div className="relative">
                   <Award className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
@@ -231,24 +247,8 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
               </div>
             </div>
 
-            {/* Photo URL & Location */}
+            {/* Location & Pi Wallet Address */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                  Profile Photo URL
-                </label>
-                <div className="relative">
-                  <ImageIcon className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
-                  <input
-                    type="url"
-                    value={photoUrl}
-                    onChange={(e) => setPhotoUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition"
-                  />
-                </div>
-              </div>
-
               <div>
                 <label className="block text-[11px] font-bold text-zinc-700 mb-1">
                   Location / Base City
@@ -264,28 +264,27 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
                   />
                 </div>
               </div>
-            </div>
 
-            {/* Pi Wallet Address */}
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                Pi Wallet Address (for Escrow Payouts)
-              </label>
-              <div className="relative">
-                <Wallet className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  value={piWalletAddress}
-                  onChange={(e) => setPiWalletAddress(e.target.value)}
-                  placeholder="Enter your Pi wallet public key"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition font-mono"
-                />
+              <div>
+                <label className="block text-[11px] font-bold text-zinc-700 mb-1">
+                  Pi Wallet Address (for Escrow Payouts)
+                </label>
+                <div className="relative">
+                  <Wallet className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    value={piWalletAddress}
+                    onChange={(e) => setPiWalletAddress(e.target.value)}
+                    placeholder="Enter your Pi wallet public key"
+                    className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition font-mono"
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Section 2: Experience & Specialties */}
+        {/* Section 2: Skills & Experience */}
         <div className="p-5 rounded-2xl bg-white space-y-3.5 shadow-md">
           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-wider flex items-center gap-2">
             <Award className="w-4 h-4 text-amber-600" />
@@ -446,14 +445,14 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
           </div>
         </div>
 
-        {/* Section 4: External Links & Portfolio */}
-        <div className="p-5 rounded-2xl bg-white space-y-3.5 shadow-md">
+        {/* Section 4: External Links & Portfolio Showcase */}
+        <div className="p-5 rounded-2xl bg-white space-y-4 shadow-md">
           <h3 className="text-xs font-black text-zinc-900 uppercase tracking-wider flex items-center gap-2">
             <Globe className="w-4 h-4 text-amber-600" />
             <span>4. Portfolio & External Links</span>
           </h3>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
               <label className="block text-[11px] font-bold text-zinc-700 mb-1">
                 Website / Portfolio Link
@@ -470,16 +469,17 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-[11px] font-bold text-zinc-700 mb-1">
-                Portfolio Showcase Images (URLs, 1 per line)
+            {/* Portfolio Showcase Uploader */}
+            <div className="space-y-2">
+              <label className="block text-[11px] font-extrabold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                <span>Portfolio Showcase Images</span>
               </label>
-              <textarea
-                rows={3}
-                value={portfolioImagesText}
-                onChange={(e) => setPortfolioImagesText(e.target.value)}
-                placeholder="https://image1.jpg&#10;https://image2.jpg"
-                className="w-full p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500 focus:bg-white transition font-mono"
+              <PortfolioUploader
+                items={portfolioItems}
+                onChange={(newItems) => setPortfolioItems(newItems)}
+                providerIdentifier={providerIdentifier}
+                piAccessToken={piAccessToken}
               />
             </div>
           </div>

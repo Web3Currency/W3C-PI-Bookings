@@ -8,6 +8,8 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
   const [showSafetyNotice, setShowSafetyNotice] = useState(false);
+  const [logoImgError, setLogoImgError] = useState(false);
+  const appLogoUrl = currentBusiness?.logoUrl || currentBusiness?.avatarUrl || 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled%20%284%29-ie2R59jxk6ypBF6z9h8b2PGAo71RHQ.png';
   const socials = (currentBusiness?.socials || currentBusiness?.socialLinks || []).filter(
     (s) => s && s.url && s.url.trim().length > 0
   );
@@ -60,15 +62,19 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
       <div className="max-w-6xl mx-auto flex flex-col items-center text-center space-y-6">
         {/* Brand Header */}
         <div className="flex items-center justify-center">
-          <span className="text-4xl sm:text-5xl font-black text-white tracking-tight">
-            W3C
-          </span>
+          {!logoImgError && appLogoUrl ? (
+            <img
+              src={appLogoUrl}
+              alt={currentBusiness?.name || 'W3C Logo'}
+              onError={() => setLogoImgError(true)}
+              className="h-24 w-24 sm:h-28 sm:w-28 rounded-3xl object-cover shadow-xl"
+            />
+          ) : (
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-orange-600 text-white font-black text-2xl flex items-center justify-center shadow-xl">
+              W3C
+            </div>
+          )}
         </div>
-
-        {/* Copyright */}
-        <p className="text-xs text-zinc-400 font-medium">
-          © W3C Digital Network Ltd. {new Date().getFullYear()}
-        </p>
 
         {/* Social Icons (Only render social media in business profile) */}
         {socials.length > 0 && (

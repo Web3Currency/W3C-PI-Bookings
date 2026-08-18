@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { BusinessProfile, Provider, Service, SocialLink } from '../types';
-import { X } from 'lucide-react';
+import { BusinessProfile, Provider, Service, SocialLink, PortfolioItem } from '../types';
+import { X, MessageSquare } from 'lucide-react';
+import { providerMediaService } from '../services/providerMediaService';
 
 interface PublicProfileViewProps {
   merchant: BusinessProfile | Provider;
@@ -9,13 +10,18 @@ interface PublicProfileViewProps {
   onSelectService: (service: Service) => void;
 }
 
+interface DisplayPortfolioItem {
+  url: string;
+  caption?: string;
+}
+
 export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   merchant,
   services,
   onBack,
   onSelectService,
 }) => {
-  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null);
+  const [selectedGalleryItem, setSelectedGalleryItem] = useState<DisplayPortfolioItem | null>(null);
 
   const isBusiness = 'avatarUrl' in merchant;
   const isProvider = 'fullName' in merchant;
@@ -25,9 +31,11 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     ? (merchant as BusinessProfile).name
     : (merchant as Provider).fullName;
 
-  const photoUrl = isBusiness
+  const rawPhotoUrl = isBusiness
     ? (merchant as BusinessProfile).avatarUrl
     : (merchant as Provider).photoUrl;
+
+  const photoUrl = providerMediaService.getMediaUrl(rawPhotoUrl);
 
   const fallbackAvatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
     name
@@ -89,10 +97,30 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     return false;
   });
 
-  // Portfolio Images (For Providers)
-  const portfolioList: string[] = isProvider
+  // Portfolio Items & Images (For Providers)
+  const rawPortfolioItems = isProvider
+    ? (merchant as Provider).portfolioItems || []
+    : [];
+  const rawPortfolioImages = isProvider
     ? (merchant as Provider).portfolioImages || []
     : [];
+
+  const portfolioList: DisplayPortfolioItem[] = [];
+  if (rawPortfolioItems.length > 0) {
+    rawPortfolioItems.forEach((item) => {
+      const u = providerMediaService.getMediaUrl(item.imageUrl || item.path);
+      if (u) {
+        portfolioList.push({ url: u, caption: item.caption });
+      }
+    });
+  } else if (rawPortfolioImages.length > 0) {
+    rawPortfolioImages.forEach((img) => {
+      const u = providerMediaService.getMediaUrl(img);
+      if (u) {
+        portfolioList.push({ url: u, caption: '' });
+      }
+    });
+  }
 
   return (
     <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-right-4 duration-200">
@@ -359,18 +387,30 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
           </div>
 
           {portfolioList.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {portfolioList.map((imgUrl, idx) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+              {portfolioList.map((item, idx) => (
                 <div
                   key={idx}
-                  onClick={() => setSelectedGalleryImage(imgUrl)}
-                  className="group relative rounded-2xl overflow-hidden bg-zinc-100 aspect-4/3 cursor-pointer hover:shadow-md transition shadow-xs"
+                  onClick={() => setSelectedGalleryItem(item)}
+                  className="group relative rounded-2xl overflow-hidden bg-white border border-zinc-200/80 shadow-2xs hover:shadow-md hover:border-amber-400/80 transition-all duration-200 cursor-pointer flex flex-col justify-between"
                 >
-                  <img
-                    src={imgUrl}
-                    alt={`Portfolio sample ${idx + 1}`}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                  />
+                  <div className="relative aspect-4/3 overflow-hidden bg-zinc-900">
+                    <img
+                      src={item.url}
+                      alt={item.caption || `Portfolio work ${idx + 1}`}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-sm text-[10px] font-extrabold text-white">
+                      #{idx + 1}
+                    </span>
+                  </div>
+
+                  {item.caption && item.caption.trim().length > 0 && (
+                    <div className="p-3 bg-white border-t border-zinc-100 flex items-start gap-1.5 text-xs text-zinc-800 font-medium leading-relaxed">
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                      <p className="line-clamp-2">{item.caption}</p>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -385,24 +425,30 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
       )}
 
       {/* Lightbox Modal for Portfolio */}
-      {selectedGalleryImage && (
-        <div className="fixed inset-0 z-50 bg-zinc-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+      {selectedGalleryItem && (
+        <div className="fixed inset-0 z-50 bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="relative max-w-lg w-full rounded-3xl bg-zinc-900 overflow-hidden shadow-2xl space-y-0">
             <button
-              onClick={() => setSelectedGalleryImage(null)}
+              onClick={() => setSelectedGalleryItem(null)}
               className="absolute top-4 right-4 z-10 p-2 rounded-full bg-zinc-950/80 text-white hover:bg-zinc-800 transition cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
             <img
-              src={selectedGalleryImage}
-              alt="Portfolio Preview"
-              className="w-full h-auto max-h-[70vh] object-contain bg-zinc-950"
+              src={selectedGalleryItem.url}
+              alt={selectedGalleryItem.caption || 'Portfolio Preview'}
+              className="w-full h-auto max-h-[65vh] object-contain bg-zinc-950"
             />
-            <div className="p-4 bg-zinc-900 text-center space-y-2">
+            <div className="p-4 bg-zinc-900 space-y-3">
+              {selectedGalleryItem.caption && selectedGalleryItem.caption.trim().length > 0 && (
+                <div className="p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/60 text-xs text-zinc-200 flex items-start gap-2">
+                  <MessageSquare className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <p className="leading-relaxed">{selectedGalleryItem.caption}</p>
+                </div>
+              )}
               <button
-                onClick={() => setSelectedGalleryImage(null)}
-                className="w-full py-2.5 rounded-xl bg-orange-600 text-white font-bold text-xs cursor-pointer"
+                onClick={() => setSelectedGalleryItem(null)}
+                className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-white font-bold text-xs cursor-pointer transition"
               >
                 Close Preview
               </button>

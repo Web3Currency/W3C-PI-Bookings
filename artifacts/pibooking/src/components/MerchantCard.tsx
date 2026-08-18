@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { BusinessProfile, Provider, Service } from '../types';
+import { providerMediaService } from '../services/providerMediaService';
 
 export interface MerchantCardProps {
   /** Accepts either a BusinessProfile or a Provider object from database */
@@ -51,7 +52,8 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
     name
   )}&backgroundColor=ea580c,f97316&textColor=ffffff`;
 
-  const avatarUrl = !imgError && rawPhoto && rawPhoto.trim().length > 0 ? rawPhoto.trim() : fallbackAvatar;
+  const resolvedPhoto = providerMediaService.getMediaUrl(rawPhoto);
+  const avatarUrl = !imgError && resolvedPhoto && resolvedPhoto.trim().length > 0 ? resolvedPhoto.trim() : fallbackAvatar;
 
   // 3. Headline / Role
   const headline =

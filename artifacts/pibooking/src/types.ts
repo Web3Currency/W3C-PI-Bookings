@@ -3,6 +3,13 @@ export type CategoryId = ServiceCategory | string;
 
 export type ServiceStatus = 'Draft' | 'Published' | 'Archived';
 
+export interface PortfolioItem {
+  id?: string;
+  imageUrl: string;
+  path?: string;
+  caption?: string;
+}
+
 export interface Provider {
   id: string;
   fullName: string;
@@ -13,6 +20,7 @@ export interface Provider {
   bio?: string;
   photoUrl?: string;
   portfolioImages?: string[];
+  portfolioItems?: PortfolioItem[];
   rating?: number;
   reviewsCount?: number;
   contactEmail?: string;

@@ -113,9 +113,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <span className="font-black text-sm text-zinc-900 tracking-tight block">
                   {currentBusiness.name}
                 </span>
-                <span className="text-[10px] text-zinc-500 font-semibold block">
-                  Digital Service Network
-                </span>
               </div>
             </button>
           </div>
@@ -199,9 +196,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div>
               <span className="font-black text-sm text-zinc-900 tracking-tight block">
                 {currentBusiness.name}
-              </span>
-              <span className="text-[10px] text-zinc-500 font-semibold block">
-                Pi Network Marketplace
               </span>
             </div>
           </button>

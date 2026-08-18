@@ -101,6 +101,27 @@ export default function App() {
     ThemeService.initTheme();
   }, []);
 
+  // Global automatic scroll reset to top on all page / view transitions
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+      const mainEl = document.querySelector('main');
+      if (mainEl) {
+        mainEl.scrollTop = 0;
+      }
+    };
+
+    scrollToTop();
+    const frameId = requestAnimationFrame(scrollToTop);
+    return () => cancelAnimationFrame(frameId);
+  }, [activeTab, currentFlow, selectedService?.id, (selectedProfile as any)?.id]);
+
   // Pre-fill booking form handle with Pi identity when authenticated
   useEffect(() => {
     if (!piUser) return;
@@ -180,6 +201,7 @@ export default function App() {
         serviceMode: details.serviceMode || undefined,
         website: details.website || undefined,
         portfolioImages: details.portfolioImages || [],
+        portfolioItems: details.portfolioItems || [],
         status: 'Approved',
       });
       setMyProviderId(created.id);

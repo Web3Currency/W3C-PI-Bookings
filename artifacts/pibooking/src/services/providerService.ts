@@ -1,6 +1,6 @@
-import { Provider } from '../types';
+import { Provider, PortfolioItem } from '../types';
 import { supabase, isSupabaseConfigured, safeSupabaseInsert, safeSupabaseUpdate } from '../lib/supabase';
-import { storageService } from './storageService';
+import { providerMediaService } from './providerMediaService';
 
 const LOCAL_PROVIDERS_KEY = 'w3c_providers';
 
@@ -51,42 +51,87 @@ export const providerService = {
 
       console.log(`[Supabase Success] Received ${data.length} providers from database.`);
 
-      const remoteProviders: Provider[] = data.map((row: any) => ({
-        id: row.id,
-        fullName: row.full_name || '',
-        piUsername: row.pi_username || undefined,
-        piUid: row.pi_uid || undefined,
-        piWalletAddress: row.pi_wallet_address || undefined,
-        roleTitle: row.role_title || '',
-        bio: row.bio || undefined,
-        photoUrl: row.photo_url || undefined,
-        portfolioImages: Array.isArray(row.portfolio_images) ? row.portfolio_images : [],
-        rating: row.rating !== undefined && row.rating !== null ? Number(row.rating) : undefined,
-        reviewsCount: row.reviews_count !== undefined && row.reviews_count !== null ? Number(row.reviews_count) : undefined,
-        contactEmail: row.contact_email || undefined,
-        contactPhone: row.contact_phone || undefined,
-        status: row.status || 'Approved',
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+      const remoteProviders: Provider[] = data.map((row: any) => {
+        const rawPortfolio = row.portfolio_items || row.portfolio_images || [];
+        const portfolioItems: PortfolioItem[] = [];
+        const portfolioImages: string[] = [];
 
-        // Public Profile Fields
-        usernameSlug: row.username_slug || undefined,
-        headline: row.headline || undefined,
-        specialties: Array.isArray(row.specialties) ? row.specialties : [],
-        skills: Array.isArray(row.skills) ? row.skills : [],
-        experienceLevel: row.experience_level || undefined,
-        yearsExperience: row.years_experience !== undefined && row.years_experience !== null ? Number(row.years_experience) : undefined,
-        availabilityStatus: row.availability_status || undefined,
-        responseTime: row.response_time || undefined,
-        languages: Array.isArray(row.languages) ? row.languages : [],
-        serviceMode: row.service_mode || undefined,
-        profileVerified: row.profile_verified ?? undefined,
-        piVerified: row.pi_verified ?? undefined,
-        location: row.location || undefined,
-        website: row.website || undefined,
-        socialLinks: Array.isArray(row.social_links) ? row.social_links : [],
-        profileVisibility: row.profile_visibility || 'public',
-      }));
+        if (Array.isArray(rawPortfolio)) {
+          rawPortfolio.forEach((item: any, idx: number) => {
+            if (typeof item === 'string') {
+              try {
+                const parsed = JSON.parse(item);
+                if (parsed && typeof parsed === 'object' && (parsed.imageUrl || parsed.path || parsed.url)) {
+                  const img = parsed.imageUrl || parsed.path || parsed.url;
+                  portfolioItems.push({
+                    id: parsed.id || `port_${idx}`,
+                    imageUrl: img,
+                    path: parsed.path,
+                    caption: parsed.caption || '',
+                  });
+                  portfolioImages.push(img);
+                  return;
+                }
+              } catch {
+                // simple string URL or path
+              }
+              portfolioImages.push(item);
+              portfolioItems.push({
+                id: `port_${idx}`,
+                imageUrl: item,
+                caption: '',
+              });
+            } else if (item && typeof item === 'object') {
+              const img = item.imageUrl || item.path || item.url || item.image || '';
+              portfolioItems.push({
+                id: item.id || `port_${idx}`,
+                imageUrl: img,
+                path: item.path,
+                caption: item.caption || '',
+              });
+              if (img) portfolioImages.push(img);
+            }
+          });
+        }
+
+        return {
+          id: row.id,
+          fullName: row.full_name || '',
+          piUsername: row.pi_username || undefined,
+          piUid: row.pi_uid || undefined,
+          piWalletAddress: row.pi_wallet_address || undefined,
+          roleTitle: row.role_title || '',
+          bio: row.bio || undefined,
+          photoUrl: row.photo_url || undefined,
+          portfolioImages,
+          portfolioItems,
+          rating: row.rating !== undefined && row.rating !== null ? Number(row.rating) : undefined,
+          reviewsCount: row.reviews_count !== undefined && row.reviews_count !== null ? Number(row.reviews_count) : undefined,
+          contactEmail: row.contact_email || undefined,
+          contactPhone: row.contact_phone || undefined,
+          status: row.status || 'Approved',
+          createdAt: row.created_at,
+          updatedAt: row.updated_at,
+
+          // Public Profile Fields
+          usernameSlug: row.username_slug || undefined,
+          headline: row.headline || undefined,
+          specialties: Array.isArray(row.specialties) ? row.specialties : [],
+          skills: Array.isArray(row.skills) ? row.skills : [],
+          experienceLevel: row.experience_level || undefined,
+          yearsExperience: row.years_experience !== undefined && row.years_experience !== null ? Number(row.years_experience) : undefined,
+          availabilityStatus: row.availability_status || undefined,
+          responseTime: row.response_time || undefined,
+          languages: Array.isArray(row.languages) ? row.languages : [],
+          serviceMode: row.service_mode || undefined,
+          profileVerified: row.profile_verified ?? undefined,
+          piVerified: row.pi_verified ?? undefined,
+          location: row.location || undefined,
+          website: row.website || undefined,
+          socialLinks: Array.isArray(row.social_links) ? row.social_links : [],
+          profileVisibility: row.profile_visibility || 'public',
+        };
+      });
 
       localStorage.setItem(LOCAL_PROVIDERS_KEY, JSON.stringify(remoteProviders));
       return remoteProviders;
@@ -125,7 +170,10 @@ export const providerService = {
           role_title: newProvider.roleTitle,
           bio: newProvider.bio || null,
           photo_url: newProvider.photoUrl || null,
-          portfolio_images: newProvider.portfolioImages || [],
+          portfolio_images: newProvider.portfolioItems && newProvider.portfolioItems.length > 0
+            ? newProvider.portfolioItems
+            : newProvider.portfolioImages || [],
+          portfolio_items: newProvider.portfolioItems || [],
           contact_email: newProvider.contactEmail || null,
           contact_phone: newProvider.contactPhone || null,
           status: newProvider.status || 'Approved',
@@ -180,7 +228,12 @@ export const providerService = {
         if (updates.roleTitle !== undefined) payload.role_title = updates.roleTitle;
         if (updates.photoUrl !== undefined) payload.photo_url = updates.photoUrl;
         if (updates.bio !== undefined) payload.bio = updates.bio;
-        if (updates.portfolioImages !== undefined) payload.portfolio_images = updates.portfolioImages;
+        if (updates.portfolioItems !== undefined) {
+          payload.portfolio_items = updates.portfolioItems;
+          payload.portfolio_images = updates.portfolioItems;
+        } else if (updates.portfolioImages !== undefined) {
+          payload.portfolio_images = updates.portfolioImages;
+        }
         if (updates.contactEmail !== undefined) payload.contact_email = updates.contactEmail;
         if (updates.contactPhone !== undefined) payload.contact_phone = updates.contactPhone;
         if (updates.status !== undefined) payload.status = updates.status;
@@ -231,7 +284,14 @@ export const providerService = {
   },
 
   async uploadProviderPhoto(providerId: string, file: File): Promise<string | null> {
-    const customPath = `${providerId}/${Date.now()}_${file.name}`;
-    return await storageService.uploadFile('providerPhotos', customPath, file);
+    try {
+      const result = await providerMediaService.uploadProfilePhoto(file, {
+        providerIdentifier: providerId,
+      });
+      return result.path || result.publicUrl;
+    } catch (err) {
+      console.error('[providerService] providerMediaService upload failed:', err);
+      throw err;
+    }
   }
 };
