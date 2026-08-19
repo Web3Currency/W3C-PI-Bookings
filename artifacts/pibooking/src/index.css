@@ -110,4 +110,8 @@
   scrollbar-width: none;
 }
 
-
+/* Success feedback is handled by the global floating toast system.
+   Prevent legacy inline success banners from remaining embedded in page layouts. */
+.bg-emerald-50.border-emerald-200.text-emerald-800 {
+  display: none !important;
+}
