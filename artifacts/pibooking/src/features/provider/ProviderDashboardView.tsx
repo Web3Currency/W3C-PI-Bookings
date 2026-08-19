@@ -1,10 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Booking, PiUser, Provider, Service, SocialLink } from '../../types';
-import { ArrowLeft, Clock, CheckCircle2, AlertCircle, TrendingUp, DollarSign, Briefcase, User, Eye, Save, Plus, Trash2, Camera, Globe, Mail, Phone, MapPin, Sparkles } from 'lucide-react';
+import { Booking, PiUser, Provider, Service, SocialLink, PortfolioItem } from '../../types';
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, TrendingUp, DollarSign, Briefcase, User, Eye, Save, Plus, Trash2, Camera, Globe, Mail, Phone, MapPin, Sparkles, Image as ImageIcon } from 'lucide-react';
 import { toast } from '../../hooks/use-toast';
 import { providerService } from '../../services/providerService';
 import { serviceService } from '../../services/serviceService';
 import { PublicProfileView } from '../../components/PublicProfileView';
+import { ProfilePhotoUploader } from '../../components/media/ProfilePhotoUploader';
+import { PortfolioUploader } from '../../components/media/PortfolioUploader';
 
 interface ProviderDashboardViewProps {
   piUser: PiUser | null;
@@ -31,7 +33,6 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
   const [provider, setProvider] = useState<Provider | null>(null);
   const [providerServices, setProviderServices] = useState<Service[]>([]);
   const [isSavingProfile, setIsSavingProfile] = useState<boolean>(false);
-  const [isUploadingPhoto, setIsUploadingPhoto] = useState<boolean>(false);
 
   // Profile Form States
   const [formFullName, setFormFullName] = useState<string>('');
@@ -39,6 +40,7 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
   const [formHeadline, setFormHeadline] = useState<string>('');
   const [formBio, setFormBio] = useState<string>('');
   const [formPhotoUrl, setFormPhotoUrl] = useState<string>('');
+  const [formPortfolioItems, setFormPortfolioItems] = useState<PortfolioItem[]>([]);
   const [formLocation, setFormLocation] = useState<string>('');
   const [formWebsite, setFormWebsite] = useState<string>('');
   const [formContactEmail, setFormContactEmail] = useState<string>('');
@@ -79,6 +81,12 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
         setFormHeadline(p.headline || '');
         setFormBio(p.bio || '');
         setFormPhotoUrl(p.photoUrl || '');
+        const initialPortfolio: PortfolioItem[] = Array.isArray(p.portfolioItems) && p.portfolioItems.length > 0
+          ? p.portfolioItems
+          : Array.isArray(p.portfolioImages)
+            ? p.portfolioImages.map((img, idx) => ({ id: `port_${idx}`, imageUrl: img, caption: '' }))
+            : [];
+        setFormPortfolioItems(initialPortfolio);
         setFormLocation(p.location || '');
         setFormWebsite(p.website || '');
         setFormContactEmail(p.contactEmail || '');
@@ -143,6 +151,8 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
         headline: formHeadline.trim() || undefined,
         bio: formBio.trim() || undefined,
         photoUrl: formPhotoUrl.trim() || undefined,
+        portfolioItems: formPortfolioItems,
+        portfolioImages: formPortfolioItems.map((item) => item.imageUrl || item.path || '').filter(Boolean),
         location: formLocation.trim() || undefined,
         website: formWebsite.trim() || undefined,
         contactEmail: formContactEmail.trim() || undefined,
@@ -157,7 +167,7 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
         socialLinks: formSocialLinks.filter((s) => s.url.trim()),
       };
 
-      await providerService.updateProvider(pId, updates);
+      await providerService.updateProvider(pId, updates, piUser?.accessToken);
 
       const refreshed = await providerService.getProvidersAsync();
       const updatedProvider = refreshed.find((p) => p.id === pId) || null;
@@ -184,36 +194,6 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
     }
   };
 
-  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const pId = provider?.id || providerId;
-    if (!pId) return;
-
-    setIsUploadingPhoto(true);
-    try {
-      const photoUrl = await providerService.uploadProviderPhoto(pId, file);
-      if (photoUrl) {
-        setFormPhotoUrl(photoUrl);
-        toast({
-          title: 'Photo Uploaded',
-          description: 'Profile photo uploaded. Click Save Changes to apply.',
-        });
-      } else {
-        throw new Error('Photo upload failed.');
-      }
-    } catch (err: any) {
-      toast({
-        title: 'Upload Failed',
-        description: err?.message || 'Could not upload profile photo.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploadingPhoto(false);
-    }
-  };
-
   const addSocialLink = () => {
     setFormSocialLinks([...formSocialLinks, { platform: 'Twitter / X', url: '' }]);
   };
@@ -230,13 +210,16 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
 
   // Preview Mode
   if (activeTab === 'preview_profile') {
-    const previewMerchant: Provider = provider || {
-      id: providerId || 'preview',
-      fullName: formFullName || 'Your Name',
-      roleTitle: formRoleTitle || 'Service Provider',
+    const previewMerchant: Provider = {
+      ...(provider || {}),
+      id: provider?.id || providerId || 'preview',
+      fullName: formFullName || provider?.fullName || 'Your Name',
+      roleTitle: formRoleTitle || provider?.roleTitle || 'Service Provider',
       headline: formHeadline,
       bio: formBio,
       photoUrl: formPhotoUrl,
+      portfolioItems: formPortfolioItems,
+      portfolioImages: formPortfolioItems.map((item) => item.imageUrl || item.path || '').filter(Boolean),
       location: formLocation,
       website: formWebsite,
       contactEmail: formContactEmail,
@@ -249,7 +232,7 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
       languages: formLanguages ? formLanguages.split(',').map((s) => s.trim()).filter(Boolean) : [],
       serviceMode: formServiceMode,
       socialLinks: formSocialLinks,
-      status: 'Approved',
+      status: provider?.status || 'Approved',
     };
 
     return (
@@ -321,37 +304,17 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
       {activeTab === 'edit_profile' && (
         <form onSubmit={handleSaveProfile} className="space-y-4 animate-in fade-in duration-150">
           {/* Profile Photo */}
-          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
-            <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Profile Photo</h3>
-            <div className="flex items-center gap-4">
-              <div className="relative w-16 h-16 rounded-2xl overflow-hidden bg-amber-100 border border-amber-300 shrink-0 flex items-center justify-center">
-                {formPhotoUrl ? (
-                  <img src={formPhotoUrl} alt="Profile" className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-8 h-8 text-amber-600" />
-                )}
-                {isUploadingPhoto && (
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1.5 flex-1">
-                <label className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold cursor-pointer transition shadow-xs">
-                  <Camera className="w-3.5 h-3.5" />
-                  <span>Upload Image</span>
-                  <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={isUploadingPhoto} className="hidden" />
-                </label>
-                <p className="text-[10px] text-zinc-500">Or enter an image URL below:</p>
-                <input
-                  type="url"
-                  value={formPhotoUrl}
-                  onChange={(e) => setFormPhotoUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="w-full px-3 py-1.5 text-xs bg-white border border-zinc-200 rounded-xl text-zinc-900 placeholder-zinc-400 focus:outline-none focus:border-amber-500"
-                />
-              </div>
-            </div>
+          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-2">
+            <label className="block text-[11px] font-extrabold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+              <Camera className="w-3.5 h-3.5 text-amber-600" />
+              <span>Profile Photo</span>
+            </label>
+            <ProfilePhotoUploader
+              value={formPhotoUrl}
+              onChange={(newPhoto) => setFormPhotoUrl(newPhoto)}
+              providerIdentifier={provider?.id || providerId || piUser?.uid || 'provider'}
+              piAccessToken={piUser?.accessToken}
+            />
           </div>
 
           {/* Basic Identity */}
@@ -577,6 +540,25 @@ export const ProviderDashboardView: React.FC<ProviderDashboardViewProps> = ({
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Section: Portfolio & Showcase */}
+          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+            <div className="space-y-1">
+              <label className="block text-[11px] font-extrabold text-zinc-700 uppercase tracking-wider flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-600" />
+                <span>Portfolio Showcase Images</span>
+              </label>
+              <p className="text-[11px] text-zinc-500 font-normal">
+                Showcase your past projects and creative work. Add captions to describe each piece to prospective clients.
+              </p>
+            </div>
+            <PortfolioUploader
+              items={formPortfolioItems}
+              onChange={(newItems) => setFormPortfolioItems(newItems)}
+              providerIdentifier={provider?.id || providerId || piUser?.uid || 'provider'}
+              piAccessToken={piUser?.accessToken}
+            />
           </div>
 
           <button

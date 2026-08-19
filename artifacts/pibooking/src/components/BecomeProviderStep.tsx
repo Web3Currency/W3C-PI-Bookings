@@ -13,7 +13,6 @@ import {
   Globe,
   Clock,
   Award,
-  Sparkles,
   Camera,
   ImageIcon,
 } from 'lucide-react';
@@ -141,12 +140,6 @@ export const BecomeProviderStep: React.FC<BecomeProviderStepProps> = ({
 
       {/* Intro Header */}
       <div className="p-5 rounded-2xl bg-white space-y-1 shadow-md">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-extrabold uppercase tracking-wider shadow-2xs">
-            <Sparkles className="w-3 h-3 text-amber-600" />
-            W3C Provider Registration
-          </span>
-        </div>
         <h2 className="text-xl font-black text-zinc-900 tracking-tight">
           Become a Service Provider
         </h2>
