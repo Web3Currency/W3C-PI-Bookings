@@ -1,0 +1,145 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, Check, Edit3, Eye, Plus, Save, X } from 'lucide-react';
+import { Service } from '../../types';
+import { providerServiceService, ProviderServiceInput } from '../../services/providerServiceService';
+
+interface ProviderServicesViewProps {
+  onBack: () => void;
+}
+
+type ServiceDraft = ProviderServiceInput;
+
+const DEFAULT_DRAFT: ServiceDraft = {
+  title: '', shortDescription: '', fullDescription: '', coverImage: '', deliverables: [], duration: 60,
+  basePriceNgn: 0, category: 'web_dev', locationType: 'Online / Remote', status: 'Draft',
+};
+
+const categoryOptions = [
+  ['web_dev', 'Web Development'],
+  ['landing_page', 'Landing Pages'],
+  ['ux_design', 'UX / UI Design'],
+  ['pi_sdk', 'Pi SDK'],
+  ['consulting', 'Consulting'],
+];
+
+const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition';
+const labelClass = 'block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5';
+
+export const ProviderServicesView: React.FC<ProviderServicesViewProps> = ({ onBack }) => {
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [draft, setDraft] = useState<ServiceDraft>(DEFAULT_DRAFT);
+  const [deliverablesText, setDeliverablesText] = useState('');
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [preview, setPreview] = useState<Service | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try { setServices(await providerServiceService.list()); }
+    catch (e: any) { setError(e?.message || 'Unable to load your services.'); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const editingService = useMemo(() => services.find((service) => service.id === editingId) || null, [services, editingId]);
+
+  const startCreate = () => {
+    setEditingId(null); setDraft(DEFAULT_DRAFT); setDeliverablesText(''); setError(''); setNotice(''); setIsCreating(true);
+  };
+
+  const startEdit = (service: Service) => {
+    setEditingId(service.id);
+    setDraft({ title: service.name, shortDescription: service.description, fullDescription: service.fullDescription || '', coverImage: service.coverImageUrl || '', deliverables: service.included || [], duration: service.durationMinutes, basePriceNgn: service.priceNGN, category: service.category, locationType: service.locationType, status: service.status });
+    setDeliverablesText((service.included || []).join('\n'));
+    setError(''); setNotice(''); setIsCreating(false);
+  };
+
+  const closeEditor = () => { setEditingId(null); setIsCreating(false); setError(''); setNotice(''); };
+
+  const update = <K extends keyof ServiceDraft>(key: K, value: ServiceDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
+
+  const save = async () => {
+    setSaving(true); setError(''); setNotice('');
+    const payload: ServiceDraft = { ...draft, title: draft.title.trim(), shortDescription: draft.shortDescription.trim(), fullDescription: draft.fullDescription.trim(), coverImage: draft.coverImage.trim(), deliverables: deliverablesText.split('\n').map((item) => item.trim()).filter(Boolean) };
+    try {
+      if (!payload.title || !payload.shortDescription || !payload.basePriceNgn || payload.basePriceNgn <= 0) throw new Error('Title, short description and a valid base price are required.');
+      if (editingService) {
+        const saved = await providerServiceService.update(editingService.id, payload);
+        setServices((current) => current.map((item) => item.id === saved.id ? saved : item));
+        setNotice('Service updated successfully.');
+      } else {
+        const saved = await providerServiceService.create(payload);
+        setServices((current) => [saved, ...current]);
+        setNotice('Service created successfully.');
+      }
+      setEditingId(null); setIsCreating(false);
+    } catch (e: any) { setError(e?.message || 'Unable to save service.'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+      <div className="flex items-center justify-between gap-3">
+        <button onClick={onBack} className="px-3.5 py-2 rounded-full bg-zinc-100 text-zinc-800 text-xs font-bold hover:bg-zinc-200 transition cursor-pointer"><ArrowLeft className="inline w-4 h-4 mr-1" />Back</button>
+        <button onClick={startCreate} className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black transition cursor-pointer"><Plus className="w-4 h-4" />Create Service</button>
+      </div>
+
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">Provider Services</p>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 mt-1">Create and manage your services</h1>
+        <p className="text-sm text-zinc-500 mt-2 max-w-2xl">Publish the services you offer on W3C Pi Bookings. Your provider profile is automatically attached to every service.</p>
+      </div>
+
+      {error && <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700">{error}</div>}
+      {notice && <div className="px-4 py-3 rounded-xl bg-green-50 border border-green-100 text-xs font-semibold text-green-700">{notice}</div>}
+
+      {(isCreating || editingId) && (
+        <section className="border-y border-zinc-200 py-6 space-y-5">
+          <div className="flex items-center justify-between gap-3">
+            <div><h2 className="text-lg font-black text-zinc-950">{editingService ? 'Edit Service' : 'Create Service'}</h2><p className="text-xs text-zinc-500 mt-1">Keep the information clear and accurate for clients.</p></div>
+            <button onClick={closeEditor} className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 cursor-pointer" aria-label="Close editor"><X className="w-5 h-5" /></button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div><label className={labelClass}>Service Title</label><input className={inputClass} value={draft.title} onChange={(e) => update('title', e.target.value)} placeholder="e.g. Business Website Development" /></div>
+            <div><label className={labelClass}>Category</label><select className={inputClass} value={draft.category} onChange={(e) => update('category', e.target.value)}>{categoryOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+            <div className="lg:col-span-2"><label className={labelClass}>Short Description</label><textarea className={`${inputClass} min-h-24 resize-y`} value={draft.shortDescription} onChange={(e) => update('shortDescription', e.target.value)} placeholder="Briefly explain what the client receives." /></div>
+            <div className="lg:col-span-2"><label className={labelClass}>Full Description</label><textarea className={`${inputClass} min-h-32 resize-y`} value={draft.fullDescription} onChange={(e) => update('fullDescription', e.target.value)} placeholder="Give clients the complete service description, scope and expectations." /></div>
+            <div className="lg:col-span-2"><label className={labelClass}>Cover Image URL</label><input className={inputClass} value={draft.coverImage} onChange={(e) => update('coverImage', e.target.value)} placeholder="https://..." /></div>
+            <div className="lg:col-span-2"><label className={labelClass}>Deliverables / Inclusions</label><textarea className={`${inputClass} min-h-32 resize-y`} value={deliverablesText} onChange={(e) => setDeliverablesText(e.target.value)} placeholder="One deliverable per line" /></div>
+            <div><label className={labelClass}>Duration (minutes)</label><input type="number" min={1} className={inputClass} value={draft.duration} onChange={(e) => update('duration', Number(e.target.value))} /></div>
+            <div><label className={labelClass}>Base Price (NGN)</label><input type="number" min={1} className={inputClass} value={draft.basePriceNgn || ''} onChange={(e) => update('basePriceNgn', Number(e.target.value))} placeholder="50000" /></div>
+            <div><label className={labelClass}>Service Mode</label><select className={inputClass} value={draft.locationType} onChange={(e) => update('locationType', e.target.value)}><option>Online / Remote</option><option>On-site</option><option>Hybrid</option></select></div>
+            <div><label className={labelClass}>Status</label><select className={inputClass} value={draft.status} onChange={(e) => update('status', e.target.value as ServiceDraft['status'])}><option value="Draft">Draft</option><option value="Published">Published</option><option value="Archived">Archived</option></select></div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-zinc-100">
+            <button onClick={closeEditor} className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 cursor-pointer">Cancel</button>
+            <button onClick={save} disabled={saving} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-xs font-black cursor-pointer"><Save className="w-4 h-4" />{saving ? 'Saving…' : editingService ? 'Save Changes' : 'Create Service'}</button>
+          </div>
+        </section>
+      )}
+
+      <section>
+        <div className="flex items-center justify-between mb-3"><h2 className="text-sm font-black text-zinc-900">Your Services</h2><span className="text-[11px] font-bold text-zinc-400">{services.length} {services.length === 1 ? 'service' : 'services'}</span></div>
+        {loading ? <div className="py-12 text-center text-xs font-semibold text-zinc-400">Loading your services…</div> : services.length === 0 ? <div className="py-12 border-y border-zinc-200 text-center"><p className="text-sm font-bold text-zinc-700">No services yet.</p><p className="text-xs text-zinc-400 mt-1">Create your first service to start offering it to clients.</p></div> : <div className="divide-y divide-zinc-200 border-y border-zinc-200">{services.map((service) => <div key={service.id} className="py-5 flex flex-col sm:flex-row gap-4 sm:items-center">
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-100 shrink-0">{service.coverImageUrl ? <img src={service.coverImageUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-400">No image</div>}</div>
+          <div className="flex-1 min-w-0"><div className="flex items-center gap-2 flex-wrap"><h3 className="font-black text-sm text-zinc-900 truncate">{service.name}</h3><span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${service.status === 'Published' ? 'bg-green-50 text-green-700' : service.status === 'Archived' ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-50 text-amber-700'}`}>{service.status}</span></div><p className="text-xs text-zinc-500 mt-1 line-clamp-2">{service.description}</p><div className="text-[11px] text-zinc-400 font-semibold mt-1">₦{service.priceNGN.toLocaleString()} · {service.durationMinutes} min · {service.pricePi || 0} π</div></div>
+          <div className="flex items-center gap-2 shrink-0"><button onClick={() => setPreview(service)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold hover:bg-zinc-200 cursor-pointer"><Eye className="w-3.5 h-3.5" />Preview</button><button onClick={() => startEdit(service)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 text-[11px] font-bold hover:bg-orange-100 cursor-pointer"><Edit3 className="w-3.5 h-3.5" />Edit</button></div>
+        </div>)}</div>}
+      </section>
+
+      {preview && <div className="fixed inset-0 z-50 bg-zinc-950/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-5" onClick={() => setPreview(null)}><div className="bg-white w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-zinc-100"><div><p className="text-[10px] font-black uppercase tracking-wider text-orange-600">Client Preview</p><h2 className="font-black text-zinc-950">{preview.name}</h2></div><button onClick={() => setPreview(null)} className="p-2 rounded-full hover:bg-zinc-100 cursor-pointer"><X className="w-5 h-5" /></button></div>
+        {preview.coverImageUrl && <img src={preview.coverImageUrl} alt={preview.name} className="w-full h-52 object-cover" />}
+        <div className="p-5 space-y-5"><div><span className="text-[10px] font-black uppercase tracking-wider text-orange-600">{preview.category.replace('_', ' ')}</span><h3 className="text-xl font-black mt-1">{preview.name}</h3><p className="text-sm text-zinc-600 mt-2">{preview.fullDescription || preview.description}</p></div><div className="grid grid-cols-2 gap-3 text-xs"><div className="p-3 bg-zinc-50 rounded-xl"><span className="block text-zinc-400 font-bold">Price</span><span className="font-black">{preview.pricePi} π</span></div><div className="p-3 bg-zinc-50 rounded-xl"><span className="block text-zinc-400 font-bold">Duration</span><span className="font-black">{preview.durationMinutes} minutes</span></div></div><div><h4 className="text-xs font-black uppercase tracking-wider text-zinc-500 mb-2">Deliverables</h4><ul className="space-y-2">{preview.included.map((item, index) => <li key={index} className="flex gap-2 text-xs text-zinc-700"><Check className="w-3.5 h-3.5 text-orange-600 shrink-0" />{item}</li>)}</ul></div></div>
+      </div></div>}
+    </div>
+  );
+};
