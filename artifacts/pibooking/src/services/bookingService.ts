@@ -6,11 +6,7 @@ import { piAuthService } from './piAuthService';
 const LOCAL_BOOKINGS_KEY = 'w3c_bookings';
 
 function logRLSHint(tableName: string) {
-  console.warn(
-    `[Supabase RLS Warning] Operation on table '${tableName}' was blocked by Row Level Security.\n` +
-    `To allow public read/write or authenticated admin access, execute this SQL in your Supabase SQL Editor:\n` +
-    `CREATE POLICY "Allow public all" ON public.${tableName} FOR ALL USING (true) WITH CHECK (true);`
-  );
+  console.warn(`[Supabase RLS Warning] Operation on table '${tableName}' was blocked by Row Level Security.`);
 }
 
 function normalizePiUsername(username?: string | null): string {
@@ -28,10 +24,7 @@ export const bookingService = {
     const localBookings = this.getBookingsLocal();
     if (!isSupabaseConfigured()) return localBookings;
     try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('*, provider:providers(full_name, pi_username, photo_url)')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('bookings').select('*, provider:providers(full_name, pi_username, photo_url)').order('created_at', { ascending: false });
       if (error) {
         console.warn('[Supabase Note] Failed to fetch bookings from database:', error.message);
         if (error.code === '42501') logRLSHint('bookings');
@@ -63,6 +56,7 @@ export const bookingService = {
         confirmed_at: row.confirmed_at,
         released_at: row.released_at,
         refunded_at: row.refunded_at,
+        cancelled_at: row.cancelled_at,
         platform_fee_pi: row.platform_fee_pi,
         provider_payout_pi: row.provider_payout_pi,
         rejection_reason: row.rejection_reason,
@@ -90,59 +84,16 @@ export const bookingService = {
     const id = newBooking.id || `bk_${Date.now()}_${Math.floor(1000 + Math.random() * 9000)}`;
     const verifiedClientPiUid = newBooking.clientPiUid || piAuthService.getStoredUser()?.uid;
     const normalizedClientPiUsername = normalizePiUsername(newBooking.clientPiUsername);
-    const fullBooking: Booking = {
-      ...newBooking,
-      id,
-      clientPiUid: verifiedClientPiUid,
-      clientPiUsername: normalizedClientPiUsername || newBooking.clientPiUsername,
-      basePrice: newBooking.basePrice || newBooking.priceNGN,
-      priceNGN: newBooking.basePrice || newBooking.priceNGN,
-      currency: newBooking.currency || 'NGN',
-      paymentStatus: newBooking.paymentStatus || 'Paid',
-      status: newBooking.status || 'Confirmed',
-      createdAt: newBooking.createdAt || new Date().toISOString(),
-    };
-    await customerService.trackCustomerActivityAsync({
-      name: fullBooking.clientName,
-      piUsername: fullBooking.clientPiUsername,
-      phone: fullBooking.clientPhone,
-      email: fullBooking.clientEmail,
-      spendBase: fullBooking.basePrice,
-      spendPi: fullBooking.pricePi,
-      currency: fullBooking.currency,
-    });
+    const fullBooking: Booking = { ...newBooking, id, clientPiUid: verifiedClientPiUid, clientPiUsername: normalizedClientPiUsername || newBooking.clientPiUsername, basePrice: newBooking.basePrice || newBooking.priceNGN, priceNGN: newBooking.basePrice || newBooking.priceNGN, currency: newBooking.currency || 'NGN', paymentStatus: newBooking.paymentStatus || 'Paid', status: newBooking.status || 'Confirmed', createdAt: newBooking.createdAt || new Date().toISOString() };
+    await customerService.trackCustomerActivityAsync({ name: fullBooking.clientName, piUsername: fullBooking.clientPiUsername, phone: fullBooking.clientPhone, email: fullBooking.clientEmail, spendBase: fullBooking.basePrice, spendPi: fullBooking.pricePi, currency: fullBooking.currency });
     if (isSupabaseConfigured()) {
       try {
-        const payload: Record<string, any> = {
-          status: fullBooking.status,
-          customer_name: fullBooking.clientName,
-          customer_pi_username: fullBooking.clientPiUsername,
-          client_pi_uid: fullBooking.clientPiUid || null,
-          customer_phone: fullBooking.clientPhone,
-          customer_email: fullBooking.clientEmail,
-          service_title: fullBooking.serviceName,
-          booking_date: fullBooking.date,
-          booking_time: fullBooking.timeSlot,
-          notes: fullBooking.notes || '',
-          attachments: fullBooking.attachments || [],
-          base_price: fullBooking.basePrice,
-          currency: fullBooking.currency || 'NGN',
-          price_pi: fullBooking.pricePi,
-          payment_status: fullBooking.paymentStatus,
-          escrow_status: fullBooking.escrow_status || 'pending_payment',
-          paid_at: fullBooking.paid_at || null,
-          platform_fee_pi: fullBooking.platform_fee_pi || null,
-          provider_payout_pi: fullBooking.provider_payout_pi || null,
-          provider_id: fullBooking.providerId || null,
-          created_at: fullBooking.createdAt,
-        };
+        const payload: Record<string, any> = { status: fullBooking.status, customer_name: fullBooking.clientName, customer_pi_username: fullBooking.clientPiUsername, client_pi_uid: fullBooking.clientPiUid || null, customer_phone: fullBooking.clientPhone, customer_email: fullBooking.clientEmail, service_title: fullBooking.serviceName, booking_date: fullBooking.date, booking_time: fullBooking.timeSlot, notes: fullBooking.notes || '', attachments: fullBooking.attachments || [], base_price: fullBooking.basePrice, currency: fullBooking.currency || 'NGN', price_pi: fullBooking.pricePi, payment_status: fullBooking.paymentStatus, escrow_status: fullBooking.escrow_status || 'pending_payment', paid_at: fullBooking.paid_at || null, platform_fee_pi: fullBooking.platform_fee_pi || null, provider_payout_pi: fullBooking.provider_payout_pi || null, provider_id: fullBooking.providerId || null, created_at: fullBooking.createdAt };
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(fullBooking.id);
         if (isUuid) payload.id = fullBooking.id;
         const { data, error } = await safeSupabaseInsert('bookings', payload);
-        if (error) {
-          console.warn('[Supabase Note] Failed to insert booking in database:', error.message);
-          if (error.code === '42501') logRLSHint('bookings');
-        } else if (data && data[0] && data[0].id) fullBooking.id = data[0].id;
+        if (error) console.warn('[Supabase Note] Failed to insert booking in database:', error.message);
+        else if (data?.[0]?.id) fullBooking.id = data[0].id;
       } catch (e: any) { console.error('[Supabase Exception] Booking insertion failed:', e?.message || e); }
     }
     const currentBookings = this.getBookingsLocal();
@@ -153,22 +104,18 @@ export const bookingService = {
   async acceptBookingAsync(bookingId: string): Promise<Booking[]> {
     const piUser = piAuthService.getStoredUser();
     if (!piUser?.accessToken) throw new Error('Please sign in with Pi before accepting a booking.');
-    const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/accept', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken: piUser.accessToken }),
-    });
+    const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/accept', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: piUser.accessToken }) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || 'Failed to accept booking.');
     return await this.getBookingsAsync();
   },
 
-  async rejectBookingAsync(bookingId: string, rejectionReason: string, payoutTxHash?: string): Promise<Booking[]> {
+  async rejectBookingAsync(bookingId: string, rejectionReason: string): Promise<Booking[]> {
     const piUser = piAuthService.getStoredUser();
     if (!piUser?.accessToken) throw new Error('Please sign in with Pi before rejecting a booking.');
-    const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/reject', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accessToken: piUser.accessToken, rejectionReason, payoutTxHash }),
-    });
+    const trimmedReason = rejectionReason.trim();
+    if (!trimmedReason) throw new Error('A rejection reason is required.');
+    const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/reject', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: piUser.accessToken, rejectionReason: trimmedReason }) });
     const body = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(body.error || 'Failed to reject booking.');
     return await this.getBookingsAsync();
@@ -178,15 +125,11 @@ export const bookingService = {
     if (escrow_status === 'completion_confirmed') {
       const piUser = piAuthService.getStoredUser();
       if (!piUser?.accessToken) throw new Error('Please sign in with Pi before confirming completion.');
-      const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/complete', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accessToken: piUser.accessToken }),
-      });
+      const response = await fetch('/api/pi/bookings/' + encodeURIComponent(bookingId) + '/complete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accessToken: piUser.accessToken }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Failed to confirm booking completion.');
       return await this.getBookingsAsync();
     }
-
     const timestamp = new Date().toISOString();
     const sourceBookings = isSupabaseConfigured() ? await this.getBookingsAsync() : this.getBookingsLocal();
     const currentBooking = sourceBookings.find((b) => b.id === bookingId);
@@ -195,58 +138,30 @@ export const bookingService = {
     if (escrow_status === 'completion_confirmed') updatePayload.confirmed_at = timestamp;
     else if (escrow_status === 'released') {
       updatePayload.status = 'Completed'; updatePayload.released_at = timestamp;
-      if (currentBooking) {
-        const pricePi = Number(currentBooking.pricePi || 0);
-        updatePayload.platform_fee_pi = Number((pricePi * 0.10).toFixed(7));
-        updatePayload.provider_payout_pi = Number((pricePi * 0.90).toFixed(7));
-      }
+      if (currentBooking) { const pricePi = Number(currentBooking.pricePi || 0); updatePayload.platform_fee_pi = Number((pricePi * 0.10).toFixed(7)); updatePayload.provider_payout_pi = Number((pricePi * 0.90).toFixed(7)); }
     } else if (escrow_status === 'refunded') updatePayload.refunded_at = timestamp;
     if (isSupabaseConfigured()) {
-      try {
-        const { data, error } = await safeSupabaseUpdate('bookings', updatePayload, 'id', bookingId);
-        if (error) console.warn('[Supabase Note] Failed to update booking escrow status in database:', error.message);
-        else console.log('[Supabase Success] Booking escrow status updated in database:', data);
-      } catch (e: any) { console.error('[Supabase Exception] Booking escrow status update failed:', e?.message || e); }
+      try { const { data, error } = await safeSupabaseUpdate('bookings', updatePayload, 'id', bookingId); if (error) console.warn('[Supabase Note] Failed to update booking escrow status in database:', error.message); else console.log('[Supabase Success] Booking escrow status updated in database:', data); } catch (e: any) { console.error('[Supabase Exception] Booking escrow status update failed:', e?.message || e); }
       return await this.getBookingsAsync();
     }
-    const updatedBookings = sourceBookings.map((b) => b.id !== bookingId ? b : {
-      ...b, escrow_status, status: escrow_status === 'released' ? 'Completed' : b.status,
-      payoutTxHash: payoutTxHash || b.payoutTxHash,
-      platform_fee_pi: escrow_status === 'released' ? Number((Number(b.pricePi || 0) * 0.10).toFixed(7)) : b.platform_fee_pi,
-      provider_payout_pi: escrow_status === 'released' ? Number((Number(b.pricePi || 0) * 0.90).toFixed(7)) : b.provider_payout_pi,
-      confirmed_at: escrow_status === 'completion_confirmed' ? timestamp : b.confirmed_at,
-      released_at: escrow_status === 'released' ? timestamp : b.released_at,
-      refunded_at: escrow_status === 'refunded' ? timestamp : b.refunded_at,
-      updatedAt: timestamp,
-    });
+    const updatedBookings = sourceBookings.map((b) => b.id !== bookingId ? b : { ...b, escrow_status, status: escrow_status === 'released' ? 'Completed' : b.status, payoutTxHash: payoutTxHash || b.payoutTxHash, platform_fee_pi: escrow_status === 'released' ? Number((Number(b.pricePi || 0) * 0.10).toFixed(7)) : b.platform_fee_pi, provider_payout_pi: escrow_status === 'released' ? Number((Number(b.pricePi || 0) * 0.90).toFixed(7)) : b.provider_payout_pi, confirmed_at: escrow_status === 'completion_confirmed' ? timestamp : b.confirmed_at, released_at: escrow_status === 'released' ? timestamp : b.released_at, refunded_at: escrow_status === 'refunded' ? timestamp : b.refunded_at, updatedAt: timestamp });
     localStorage.setItem(LOCAL_BOOKINGS_KEY, JSON.stringify(updatedBookings));
     return updatedBookings;
   },
 
   async updateBookingStatusAsync(bookingId: string, newStatus: BookingStatus, rejectionReason?: string, payoutTxHash?: string): Promise<Booking[]> {
     if (newStatus === 'In Progress') return this.acceptBookingAsync(bookingId);
-    if (newStatus === 'Cancelled' && rejectionReason) return this.rejectBookingAsync(bookingId, rejectionReason, payoutTxHash);
-
+    if (newStatus === 'Cancelled' && rejectionReason) return this.rejectBookingAsync(bookingId, rejectionReason);
     const timestamp = new Date().toISOString();
     const updatePayload: Record<string, any> = { status: newStatus, updated_at: timestamp };
     if (payoutTxHash) updatePayload.payout_tx_hash = payoutTxHash;
-    if (newStatus === 'Cancelled') {
-      updatePayload.escrow_status = 'refunded'; updatePayload.rejection_reason = rejectionReason || ''; updatePayload.refunded_at = timestamp;
-    }
+    if (newStatus === 'Cancelled') { updatePayload.rejection_reason = rejectionReason?.trim() || null; updatePayload.cancelled_at = timestamp; }
     if (isSupabaseConfigured()) {
-      try {
-        const { data, error } = await safeSupabaseUpdate('bookings', updatePayload, 'id', bookingId);
-        if (error) console.warn('[Supabase Note] Failed to update booking status:', error.message);
-        else console.log('[Supabase Success] Booking status updated:', data);
-      } catch (e: any) { console.error('[Supabase Exception] Booking status update failed:', e?.message || e); }
+      try { const { data, error } = await safeSupabaseUpdate('bookings', updatePayload, 'id', bookingId); if (error) throw new Error(error.message); else console.log('[Supabase Success] Booking status updated:', data); } catch (e: any) { throw new Error(e?.message || 'Failed to update booking status.'); }
       return await this.getBookingsAsync();
     }
     const currentBookings = this.getBookingsLocal();
-    const updatedBookings = currentBookings.map((b) => b.id === bookingId ? {
-      ...b, status: newStatus as BookingStatus, payoutTxHash: payoutTxHash || b.payoutTxHash,
-      ...(newStatus === 'Cancelled' ? { escrow_status: 'refunded', rejection_reason: rejectionReason || '', refunded_at: timestamp } : {}),
-      updatedAt: timestamp,
-    } : b);
+    const updatedBookings = currentBookings.map((b) => b.id === bookingId ? { ...b, status: newStatus as BookingStatus, payoutTxHash: payoutTxHash || b.payoutTxHash, ...(newStatus === 'Cancelled' ? { rejection_reason: rejectionReason?.trim() || undefined, cancelled_at: timestamp } : {}), updatedAt: timestamp } : b);
     localStorage.setItem(LOCAL_BOOKINGS_KEY, JSON.stringify(updatedBookings));
     return updatedBookings;
   },
@@ -254,11 +169,7 @@ export const bookingService = {
   async submitBookingReviewAsync(bookingId: string, rating: number, comment: string): Promise<Booking[]> {
     const reviewDate = new Date().toISOString();
     if (isSupabaseConfigured()) {
-      try {
-        const { data, error } = await safeSupabaseUpdate('bookings', { rating, review_comment: comment, review_date: reviewDate, updated_at: reviewDate }, 'id', bookingId);
-        if (error) console.warn('[Supabase Note] Failed to save booking review in database:', error.message);
-        else console.log('[Supabase Success] Booking review saved in database:', data);
-      } catch (e: any) { console.error('[Supabase Exception] Booking review submission failed:', e?.message || e); }
+      try { const { data, error } = await safeSupabaseUpdate('bookings', { rating, review_comment: comment, review_date: reviewDate, updated_at: reviewDate }, 'id', bookingId); if (error) throw new Error(error.message); else console.log('[Supabase Success] Booking review saved in database:', data); } catch (e: any) { throw new Error(e?.message || 'Failed to save booking review.'); }
       return await this.getBookingsAsync();
     }
     const currentBookings = this.getBookingsLocal();
