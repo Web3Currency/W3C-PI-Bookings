@@ -20,7 +20,8 @@ import {
   ExternalLink,
   Filter,
   ArrowUpDown,
-  AlertCircle
+  AlertCircle,
+  Search
 } from 'lucide-react';
 
 interface BookingStatusViewProps {
@@ -41,7 +42,8 @@ export const BookingStatusView: React.FC<BookingStatusViewProps> = ({
   onConfirmCompletion,
 }) => {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'cancelled'>('all');
+  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'price_high'>('newest');
   
   const [copiedTxHash, setCopiedTxHash] = useState(false);
@@ -54,11 +56,21 @@ export const BookingStatusView: React.FC<BookingStatusViewProps> = ({
 
   // Filtering Logic
   const filteredBookings = bookings.filter((b) => {
-    if (filter === 'all') return true;
-    if (filter === 'active') return b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Pending';
-    if (filter === 'completed') return b.status === 'Completed';
-    if (filter === 'cancelled') return b.status === 'Cancelled';
-    return true;
+    if (filter === 'active' && !(b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Pending')) return false;
+    if (filter === 'completed' && !(b.status === 'Completed' || b.status === 'Cancelled')) return false;
+
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+
+    return [
+      b.id,
+      b.serviceName,
+      b.date,
+      b.timeSlot,
+      b.status,
+      b.providerName,
+      b.businessName,
+    ].some((value) => String(value || '').toLowerCase().includes(query));
   });
 
   // Sorting Logic
@@ -558,8 +570,7 @@ END:VCALENDAR`;
                 label: 'Active',
                 count: bookings.filter((b) => b.status === 'Confirmed' || b.status === 'In Progress' || b.status === 'Pending').length
               },
-              { id: 'completed', label: 'Completed', count: bookings.filter((b) => b.status === 'Completed').length },
-              { id: 'cancelled', label: 'Cancelled', count: bookings.filter((b) => b.status === 'Cancelled').length }
+              { id: 'completed', label: 'Completed', count: bookings.filter((b) => b.status === 'Completed' || b.status === 'Cancelled').length }
             ] as const
           ).map((tab) => (
             <button
@@ -584,54 +595,70 @@ END:VCALENDAR`;
           ))}
         </div>
 
-        {/* Sort Select */}
-        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto text-xs text-zinc-500 font-medium">
-          <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400" />
-          <span>Sort:</span>
-          <select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as any)}
-            className="bg-zinc-100 border border-zinc-200/80 rounded-xl px-2.5 py-1 text-xs font-bold text-zinc-800 focus:outline-none focus:border-amber-500 cursor-pointer"
-          >
-            <option value="newest">Newest First</option>
-            <option value="oldest">Oldest First</option>
-            <option value="price_high">Highest Price</option>
-          </select>
+        {/* Search & Sort Controls */}
+        <div className="flex items-center gap-2 w-full sm:w-auto shrink-0 self-end sm:self-auto">
+          <div className="relative flex-1 sm:flex-none sm:w-44">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400 pointer-events-none" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search bookings"
+              aria-label="Search bookings"
+              className="w-full bg-zinc-100 border border-zinc-200/80 rounded-xl pl-8 pr-2.5 py-1.5 text-xs font-medium text-zinc-800 placeholder-zinc-400 focus:outline-none focus:border-amber-500"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5 shrink-0 text-xs text-zinc-500 font-medium">
+            <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400" />
+            <span className="hidden sm:inline">Sort:</span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="bg-zinc-100 border border-zinc-200/80 rounded-xl px-2.5 py-1.5 text-xs font-bold text-zinc-800 focus:outline-none focus:border-amber-500 cursor-pointer"
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+              <option value="price_high">Highest Price</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* COMPACT BOOKING CARDS LIST */}
+      {/* COMPACT BOOKING LIST */}
       {sortedBookings.length === 0 ? (
         <div className="p-8 rounded-3xl bg-zinc-50 border border-zinc-200 text-center space-y-3">
           <AlertCircle className="w-8 h-8 text-zinc-400 mx-auto" />
           <div className="space-y-1">
             <h3 className="text-sm font-bold text-zinc-800">No Bookings Found</h3>
-            <p className="text-xs text-zinc-500">There are no booking records matching the "{filter}" filter.</p>
+            <p className="text-xs text-zinc-500">There are no booking records matching the current filters.</p>
           </div>
           <button
             type="button"
-            onClick={() => setFilter('all')}
+            onClick={() => {
+              setFilter('all');
+              setSearchQuery('');
+            }}
             className="px-4 py-2 rounded-xl bg-zinc-200 hover:bg-zinc-300 text-zinc-800 text-xs font-bold transition cursor-pointer"
           >
-            Clear Filter
+            Clear Filters
           </button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-zinc-200 border-y border-zinc-200">
           {sortedBookings.map((b) => {
             const badge = getStatusBadge(b.status);
-            const providerDisplayName = b.providerName || b.businessName || 'W3C Merchant';
 
             return (
               <div
                 key={b.id}
                 onClick={() => setSelectedBookingId(b.id)}
                 id={`card-booking-item-${b.id}`}
-                className="group p-4 rounded-3xl bg-white border border-zinc-200/90 hover:border-amber-400 shadow-2xs hover:shadow-md transition duration-200 cursor-pointer space-y-3 relative overflow-hidden"
+                className="group py-4 first:pt-3 last:pb-3 cursor-pointer transition hover:bg-zinc-50/70"
               >
-                {/* Top Bar: Status Badge & Ref ID */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                {/* Status & Price */}
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${badge.classes}`}>
                       <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
                       <span>{badge.label}</span>
@@ -645,42 +672,30 @@ END:VCALENDAR`;
                     )}
                   </div>
 
-                  <span className="text-[11px] font-mono font-bold text-zinc-400 group-hover:text-amber-700 transition">
-                    #{b.id}
-                  </span>
-                </div>
-
-                {/* Main Information Stack */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1 min-w-0">
-                    <h3 className="text-sm font-black text-zinc-900 group-hover:text-amber-700 transition leading-snug truncate">
-                      {b.serviceName}
-                    </h3>
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium">
-                      <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                      <span className="truncate">{providerDisplayName}</span>
-                    </div>
-                  </div>
-
                   <div className="text-right shrink-0">
                     <span className="text-base font-black text-amber-600 block">{b.pricePi.toFixed(2)} π</span>
                     <span className="text-[10px] text-zinc-400 block font-medium">Pi Escrow</span>
                   </div>
                 </div>
 
-                {/* Appointment Schedule & Action Prompt Bar */}
-                <div className="pt-2.5 border-t border-zinc-100 flex items-center justify-between text-xs gap-2">
-                  <div className="flex items-center gap-1.5 text-zinc-600 font-semibold truncate">
-                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span>{b.date}</span>
-                    <span className="text-zinc-300">•</span>
-                    <span className="truncate">{b.timeSlot}</span>
-                  </div>
+                {/* Main Information */}
+                <div className="flex items-center justify-between gap-3 mt-2.5">
+                  <h3 className="text-sm font-black text-zinc-900 group-hover:text-amber-700 transition leading-snug truncate min-w-0">
+                    {b.serviceName}
+                  </h3>
 
                   <div className="flex items-center gap-1 text-[11px] font-bold text-amber-700 group-hover:translate-x-0.5 transition shrink-0">
                     <span>View Details</span>
                     <ChevronRight className="w-4 h-4" />
                   </div>
+                </div>
+
+                {/* Appointment Schedule */}
+                <div className="flex items-center gap-1.5 text-zinc-600 font-semibold text-xs mt-2 truncate">
+                  <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>{b.date}</span>
+                  <span className="text-zinc-300">•</span>
+                  <span className="truncate">{b.timeSlot}</span>
                 </div>
               </div>
             );
