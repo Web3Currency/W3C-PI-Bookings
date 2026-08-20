@@ -4,9 +4,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock,
-  QrCode,
   Copy,
-  Download,
   MessageSquare,
   ShieldCheck,
   Star,
@@ -47,7 +45,6 @@ export const BookingStatusView: React.FC<BookingStatusViewProps> = ({
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest' | 'price_high'>('newest');
   
   const [copiedTxHash, setCopiedTxHash] = useState(false);
-  const [showQRModal, setShowQRModal] = useState(false);
 
   // Review Form state
   const [reviewRating, setReviewRating] = useState<number>(5);
@@ -91,29 +88,6 @@ export const BookingStatusView: React.FC<BookingStatusViewProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedTxHash(true);
     setTimeout(() => setCopiedTxHash(false), 2000);
-  };
-
-  const generateICSFile = (b: Booking) => {
-    const icsContent = `BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//W3C Digital Network Appointment Pass//EN
-BEGIN:VEVENT
-SUMMARY:${b.serviceName} - ${b.businessName || b.providerName || 'W3C Merchant'}
-DESCRIPTION:Appointment for ${b.serviceName} paid with ${b.pricePi} Pi. Booking ID: ${b.id}
-DTSTART:${b.date.replace(/-/g, '')}T100000Z
-DTEND:${b.date.replace(/-/g, '')}T110000Z
-STATUS:CONFIRMED
-END:VEVENT
-END:VCALENDAR`;
-
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `booking-${b.id}.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
   };
 
   const handleReviewSubmit = (e: React.FormEvent) => {
@@ -189,12 +163,18 @@ END:VCALENDAR`;
   // 2. DEDICATED BOOKING DETAILS PAGE VIEW (LEVEL 2)
   if (selectedBookingId && activeBooking) {
     const providerDisplayName = activeBooking.providerName || activeBooking.businessName || 'W3C Verified Merchant';
+    const providerInitials = providerDisplayName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join('') || 'W3C';
     const badge = getStatusBadge(activeBooking.status);
 
     return (
-      <div className="max-w-md mx-auto space-y-4 pb-28 animate-in fade-in duration-200">
+      <div className="max-w-md mx-auto space-y-5 pb-28 animate-in fade-in duration-200">
         {/* Navigation Top Bar */}
-        <div className="flex items-center justify-between gap-2 pt-1 pb-1 border-b border-zinc-200/80">
+        <div className="flex items-center justify-between gap-2 pt-1 pb-1">
           <button
             type="button"
             onClick={() => setSelectedBookingId(null)}
@@ -205,13 +185,10 @@ END:VCALENDAR`;
             <span>My Bookings</span>
           </button>
 
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold text-zinc-500">#{activeBooking.id}</span>
-            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${badge.classes}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-              <span>{badge.label}</span>
-            </span>
-          </div>
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${badge.classes}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+            <span>{badge.label}</span>
+          </span>
         </div>
 
         {/* Status Lifecycle & Escrow Banner */}
@@ -238,19 +215,14 @@ END:VCALENDAR`;
           </div>
         )}
 
-        {/* Telegram Project Workspace Action Banner */}
+        {/* Compact Provider / Telegram Card */}
         {activeBooking.status !== 'Cancelled' && (
-          <div className="p-3.5 rounded-2xl bg-sky-50/90 border border-sky-200/80 space-y-2.5 shadow-2xs">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                  <MessageSquare className="w-4 h-4 fill-current" />
-                </div>
-                <div>
-                  <h3 className="text-xs font-black text-sky-950">Project Telegram Workspace</h3>
-                  <p className="text-[10px] text-sky-800 font-medium">Submit requirements & chat with provider</p>
-                </div>
-              </div>
+          <div className="p-3 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 overflow-hidden">
+              <span className="text-xs font-black">{providerInitials}</span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm font-black text-zinc-900 truncate block">{providerDisplayName}</span>
             </div>
 
             <a
@@ -258,171 +230,98 @@ END:VCALENDAR`;
               target="_blank"
               rel="noopener noreferrer"
               id={`btn-telegram-my-bookings-${activeBooking.id}`}
-              className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-xs flex items-center justify-center gap-2 transition active:scale-[0.98] shadow-xs cursor-pointer"
+              className="shrink-0 py-2 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-black text-[11px] flex items-center gap-1.5 transition active:scale-[0.98] shadow-xs cursor-pointer"
             >
-              <MessageSquare className="w-4 h-4 fill-current" />
-              <span>Continue Chat on Telegram</span>
-              <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-80" />
+              <MessageSquare className="w-3.5 h-3.5 fill-current" />
+              <span>Telegram Chat</span>
             </a>
           </div>
         )}
 
-        {/* Main Pass Ticket Card */}
-        <div className="rounded-3xl bg-white border border-zinc-200 shadow-md overflow-hidden">
-          {/* Ticket Header */}
-          <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 text-white p-4 sm:p-5 relative overflow-hidden">
-            <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
-              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-extrabold uppercase tracking-widest border border-amber-500/30">
-                OFFICIAL BOOKING PASS
+        {/* Booking Details */}
+        <div className="space-y-5 px-1">
+          <div>
+            <h2 className="text-lg sm:text-xl font-black text-zinc-900 leading-snug tracking-tight">
+              {activeBooking.serviceName}
+            </h2>
+          </div>
+
+          <div className="divide-y divide-zinc-100">
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 first:pt-0 items-start">
+              <span className="text-xs font-medium text-zinc-500">Appointment Date</span>
+              <span className="text-xs font-black text-zinc-900 text-right break-words">{activeBooking.date}</span>
+            </div>
+
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 items-start">
+              <span className="text-xs font-medium text-zinc-500">Time Slot</span>
+              <span className="text-xs font-black text-zinc-900 text-right break-words">{activeBooking.timeSlot}</span>
+            </div>
+
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 items-start">
+              <span className="text-xs font-medium text-zinc-500">Escrow Amount</span>
+              <span className="text-sm font-black text-amber-600 text-right break-words">{activeBooking.pricePi.toFixed(2)} π</span>
+            </div>
+
+            <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 items-start">
+              <span className="text-xs font-medium text-zinc-500">Requirement Notes</span>
+              <span className="text-xs font-medium text-zinc-800 text-right whitespace-pre-wrap break-words">
+                {activeBooking.notes || '—'}
               </span>
-              <span className="text-[11px] font-mono text-zinc-400">#{activeBooking.id}</span>
-            </div>
-
-            <div className="mt-3 space-y-1">
-              <h2 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">
-                {activeBooking.serviceName}
-              </h2>
-              <div className="flex items-center gap-2 text-xs text-zinc-300 font-medium">
-                <User className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="truncate">{providerDisplayName}</span>
-              </div>
             </div>
           </div>
 
-          {/* Ticket Perforated Edge Divider */}
-          <div className="relative bg-white h-4 border-b border-dashed border-zinc-200/90 flex items-center justify-between px-3">
-            <div className="w-4 h-4 rounded-full bg-zinc-100 -ml-5 border-r border-zinc-200" />
-            <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400">
-              W3C PI ESCROW VERIFIED
-            </div>
-            <div className="w-4 h-4 rounded-full bg-zinc-100 -mr-5 border-l border-zinc-200" />
-          </div>
-
-          {/* Ticket Details Body */}
-          <div className="p-4 sm:p-5 space-y-3.5 text-xs">
-            {/* Schedule Row */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-1">
-                <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
-                  <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Appointment Date</span>
-                </div>
-                <span className="text-xs font-black text-zinc-900 block truncate">{activeBooking.date}</span>
+          {/* Pi Blockchain Tx Hash */}
+          {activeBooking.piTxHash && (
+            <div className="flex items-center justify-between gap-2 pt-2">
+              <div className="min-w-0 flex-1">
+                <span className="text-[9px] text-zinc-400 font-bold block uppercase tracking-wider">PI BLOCKCHAIN TX</span>
+                <span className="font-mono text-[11px] text-zinc-800 truncate block">{activeBooking.piTxHash}</span>
               </div>
-
-              <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-1">
-                <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
-                  <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Time Slot</span>
-                </div>
-                <span className="text-xs font-black text-zinc-900 block truncate">{activeBooking.timeSlot}</span>
-              </div>
-            </div>
-
-            {/* Price & Client Row */}
-            <div className="space-y-2 pt-1 border-t border-zinc-100">
-              <div className="flex items-center justify-between text-xs py-0.5">
-                <span className="text-zinc-500 font-medium">Pi Escrow Amount</span>
-                <span className="font-black text-amber-600 text-sm">{activeBooking.pricePi.toFixed(2)} π</span>
-              </div>
-
-              <div className="flex items-center justify-between text-xs py-0.5">
-                <span className="text-zinc-500 font-medium">Pioneer Client</span>
-                <span className="font-bold text-zinc-900 truncate max-w-[200px]">
-                  {activeBooking.clientName} <span className="text-zinc-400 font-normal">(@{activeBooking.clientPiUsername})</span>
-                </span>
-              </div>
-
-              {/* Pi Blockchain Tx Hash */}
-              {activeBooking.piTxHash && (
-                <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <span className="text-[9px] text-zinc-400 font-bold block uppercase tracking-wider">PI BLOCKCHAIN TX</span>
-                    <span className="font-mono text-[11px] text-zinc-800 truncate block">
-                      {activeBooking.piTxHash}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => copyToClipboard(activeBooking.piTxHash!)}
-                    id="btn-copy-tx-hash-my-bookings"
-                    className="p-1.5 rounded-lg bg-white border border-zinc-200 text-zinc-700 hover:text-amber-600 transition shrink-0 shadow-2xs cursor-pointer"
-                    title="Copy Transaction Hash"
-                  >
-                    {copiedTxHash ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                  </button>
-                </div>
-              )}
-
-              {/* Requirement Notes */}
-              {activeBooking.notes && (
-                <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/50 text-[11px] text-zinc-700 space-y-0.5">
-                  <span className="font-bold text-amber-800 flex items-center gap-1 text-[10px] uppercase">
-                    <FileText className="w-3 h-3 text-amber-600" />
-                    <span>Requirement Notes</span>
-                  </span>
-                  <p className="italic text-zinc-600">"{activeBooking.notes}"</p>
-                </div>
-              )}
-
-              {/* Attached Files */}
-              {activeBooking.attachments && activeBooking.attachments.length > 0 && (
-                <div className="pt-2 border-t border-zinc-100">
-                  <span className="text-zinc-500 block text-[10px] font-bold uppercase mb-1">
-                    Attached Files ({activeBooking.attachments.length})
-                  </span>
-                  <div className="space-y-1">
-                    {activeBooking.attachments.map((att, idx) => (
-                      <div key={att.id || idx} className="p-2 rounded-xl bg-zinc-50 border border-zinc-200/70 flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Paperclip className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                          <span className="font-medium text-zinc-800 truncate">{att.name}</span>
-                        </div>
-                        <span className="text-[10px] text-zinc-400 shrink-0">{att.size}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Ticket Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-100">
               <button
                 type="button"
-                onClick={() => setShowQRModal(true)}
-                id="btn-show-qr-my-bookings"
-                className="py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-extrabold text-xs flex items-center justify-center gap-1.5 transition border border-zinc-200/60 cursor-pointer"
+                onClick={() => copyToClipboard(activeBooking.piTxHash!)}
+                id="btn-copy-tx-hash-my-bookings"
+                className="p-1.5 rounded-lg bg-zinc-100 text-zinc-700 hover:text-amber-600 transition shrink-0 cursor-pointer"
+                title="Copy Transaction Hash"
               >
-                <QrCode className="w-3.5 h-3.5 text-zinc-700" />
-                <span>Show QR Pass</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => generateICSFile(activeBooking)}
-                id="btn-download-ics-my-bookings"
-                className="py-2.5 px-3 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 font-extrabold text-xs flex items-center justify-center gap-1.5 transition border border-zinc-200/60 cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5 text-zinc-700" />
-                <span>Add Calendar</span>
+                {copiedTxHash ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               </button>
             </div>
+          )}
 
-            {/* Cancellation Option */}
-            {activeBooking.status === 'Confirmed' && (
-              <div className="pt-2 text-center">
-                <button
-                  type="button"
-                  onClick={() => onCancelBooking(activeBooking.id)}
-                  id={`btn-cancel-booking-${activeBooking.id}`}
-                  className="text-xs text-rose-600 hover:text-rose-700 underline font-semibold transition cursor-pointer"
-                >
-                  Request Appointment Cancellation & Refund
-                </button>
+          {/* Attached Files */}
+          {activeBooking.attachments && activeBooking.attachments.length > 0 && (
+            <div className="pt-2 space-y-2">
+              <span className="text-zinc-500 block text-[10px] font-bold uppercase">
+                Attached Files ({activeBooking.attachments.length})
+              </span>
+              <div className="space-y-1">
+                {activeBooking.attachments.map((att, idx) => (
+                  <div key={att.id || idx} className="py-2 flex items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Paperclip className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="font-medium text-zinc-800 truncate">{att.name}</span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 shrink-0">{att.size}</span>
+                  </div>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Cancellation Option */}
+          {activeBooking.status === 'Confirmed' && (
+            <div className="pt-2 text-center">
+              <button
+                type="button"
+                onClick={() => onCancelBooking(activeBooking.id)}
+                id={`btn-cancel-booking-${activeBooking.id}`}
+                className="text-xs text-rose-600 hover:text-rose-700 underline font-semibold transition cursor-pointer"
+              >
+                Request Appointment Cancellation & Refund
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Rating & Star Review Form (For Completed Bookings Only) */}
@@ -496,41 +395,6 @@ END:VCALENDAR`;
                 </button>
               </form>
             )}
-          </div>
-        )}
-
-        {/* QR Code Pass Modal */}
-        {showQRModal && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-            <div className="w-full max-w-xs rounded-3xl bg-white p-6 space-y-4 text-center shadow-2xl border border-zinc-200 animate-in zoom-in-95 duration-150">
-              <div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 block">Check-In Pass</span>
-                <h3 className="text-base font-black text-zinc-900 mt-0.5">
-                  {activeBooking.serviceName}
-                </h3>
-              </div>
-
-              <div className="p-4 bg-zinc-50 rounded-2xl inline-block mx-auto border border-zinc-200 shadow-2xs">
-                <img
-                  src={activeBooking.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${activeBooking.id}`}
-                  alt="Booking Check-In QR"
-                  className="w-40 h-40 object-contain"
-                />
-              </div>
-
-              <div className="space-y-1 text-xs text-zinc-600 font-medium">
-                <p>Reference ID: <strong className="font-mono text-zinc-900">#{activeBooking.id}</strong></p>
-                <p className="text-[11px] text-zinc-500">Present this QR pass to <strong className="text-zinc-800">{providerDisplayName}</strong> upon project check-in.</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowQRModal(false)}
-                className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs transition cursor-pointer"
-              >
-                Close Ticket
-              </button>
-            </div>
           </div>
         )}
       </div>
