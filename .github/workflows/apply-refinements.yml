@@ -1,0 +1,25 @@
+name: Apply provider refinements
+on:
+  push:
+    branches: [refine-provider-services-and-booking-ui]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    if: github.event.head_commit.message != 'chore: apply provider refinement batch'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python scripts/apply_provider_service_refinements.py
+      - run: python scripts/finalize_provider_refinements.py
+      - name: Commit refinements
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- artifacts/pibooking/src/components/Navbar.tsx artifacts/pibooking/src/features/provider/ProviderServicesView.tsx artifacts/pibooking/src/services/providerServiceService.ts artifacts/api-server/src/routes/pi-services.ts artifacts/pibooking/src/services/providerMediaService.ts artifacts/pibooking/src/components/ServiceDetail.tsx artifacts/pibooking/src/App.tsx artifacts/pibooking/src/components/SelectDetailsStep.tsx artifacts/pibooking/src/types.ts artifacts/pibooking/src/services/bookingService.ts artifacts/pibooking/src/components/BookingSummaryStep.tsx artifacts/pibooking/src/features/provider/ProviderDashboardView.tsx
+          git diff --cached --quiet || (git commit -m "chore: apply provider refinement batch" && git push origin HEAD:refine-provider-services-and-booking-ui)
