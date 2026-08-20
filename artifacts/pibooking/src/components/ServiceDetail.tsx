@@ -57,7 +57,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business,
 
       <div className="p-6 rounded-3xl bg-white shadow-sm space-y-4">
         <div className="text-xs text-zinc-500 font-medium">Offered by <strong className="text-zinc-900 font-bold">{business.name}</strong></div>
-        <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-normal">{service.description}</p>
+        <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-normal whitespace-pre-line">{service.description}</p>
         <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-100 text-xs">
           <div className="p-3.5 rounded-2xl bg-zinc-50 space-y-0.5"><span className="block text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider">Estimated Duration</span><span className="font-extrabold text-zinc-900 text-xs">{service.durationMinutes} minutes</span></div>
           <div className="p-3.5 rounded-2xl bg-zinc-50 space-y-0.5 min-w-0"><span className="block text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider">Service Mode</span><span className="font-extrabold text-zinc-900 text-xs truncate block">{service.locationType}</span></div>
@@ -76,7 +76,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business,
           <p className="text-orange-600 font-bold mt-0.5">{providerRole}</p>
           {resolvedProvider?.piUsername && <p className="text-zinc-400 text-[11px] mt-0.5 font-mono">@{resolvedProvider.piUsername.replace(/^@+/, '')}</p>}
         </div>
-        {resolvedProvider && onOpenProviderProfile && <button type="button" onClick={() => onOpenProviderProfile(resolvedProvider)} className="shrink-0 text-[11px] font-bold text-orange-700 hover:text-orange-800 whitespace-nowrap">View Provider Profile</button>}
+        {resolvedProvider && onOpenProviderProfile && <button type="button" onClick={() => onOpenProviderProfile(resolvedProvider)} className="shrink-0 text-[11px] font-bold text-orange-700 hover:text-orange-800 whitespace-nowrap">View Profile</button>}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-zinc-100 z-50 shadow-lg">
