@@ -219,10 +219,9 @@ export const BookingStatusView: React.FC<BookingStatusViewProps> = ({
         {activeBooking.status !== 'Cancelled' && (
           <div className="p-3 rounded-2xl bg-white border border-zinc-200 shadow-sm flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 overflow-hidden">
-              <User className="w-5 h-5" />
+              <span className="text-xs font-black">{providerInitials}</span>
             </div>
             <div className="min-w-0 flex-1">
-              <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Provider</span>
               <span className="text-sm font-black text-zinc-900 truncate block">{providerDisplayName}</span>
             </div>
 
