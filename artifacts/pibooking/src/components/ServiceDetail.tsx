@@ -9,9 +9,10 @@ interface ServiceDetailProps {
   business: BusinessProfile;
   onBack: () => void;
   onProceedToBooking: () => void;
+  onOpenProviderProfile?: (provider: Provider) => void;
 }
 
-export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business, onBack, onProceedToBooking }) => {
+export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business, onBack, onProceedToBooking, onOpenProviderProfile }) => {
   const [resolvedProvider, setResolvedProvider] = useState<Provider | null>(service.provider || null);
 
   useEffect(() => {
@@ -75,6 +76,7 @@ export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business,
           <p className="text-orange-600 font-bold mt-0.5">{providerRole}</p>
           {resolvedProvider?.piUsername && <p className="text-zinc-400 text-[11px] mt-0.5 font-mono">@{resolvedProvider.piUsername.replace(/^@+/, '')}</p>}
         </div>
+        {resolvedProvider && onOpenProviderProfile && <button type="button" onClick={() => onOpenProviderProfile(resolvedProvider)} className="shrink-0 text-[11px] font-bold text-orange-700 hover:text-orange-800 whitespace-nowrap">View Provider Profile</button>}
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-zinc-100 z-50 shadow-lg">
