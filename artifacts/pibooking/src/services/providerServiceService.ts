@@ -7,7 +7,6 @@ function mapService(row: any): Service {
     name: row.title || '',
     category: row.category || 'web_dev',
     description: row.short_description || '',
-    fullDescription: row.full_description || '',
     coverImageUrl: row.cover_image || '',
     included: Array.isArray(row.deliverables) ? row.deliverables : [],
     durationMinutes: Number(row.duration) || 60,
@@ -29,14 +28,7 @@ function mapService(row: any): Service {
 async function request(path: string, init: RequestInit = {}) {
   const user = piAuthService.getStoredUser();
   if (!user?.accessToken) throw new Error('Please sign in with Pi Network first.');
-  const response = await fetch(path, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${user.accessToken}`,
-      ...(init.headers || {}),
-    },
-  });
+  const response = await fetch(path, { ...init, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user.accessToken}`, ...(init.headers || {}) } });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.error || 'Provider service request failed.');
   return body;
@@ -45,7 +37,6 @@ async function request(path: string, init: RequestInit = {}) {
 export interface ProviderServiceInput {
   title: string;
   shortDescription: string;
-  fullDescription: string;
   coverImage: string;
   deliverables: string[];
   duration: number;
@@ -56,18 +47,7 @@ export interface ProviderServiceInput {
 }
 
 export const providerServiceService = {
-  async list(): Promise<Service[]> {
-    const body = await request('/api/pi/services');
-    return Array.isArray(body.services) ? body.services.map(mapService) : [];
-  },
-
-  async create(input: ProviderServiceInput): Promise<Service> {
-    const body = await request('/api/pi/services', { method: 'POST', body: JSON.stringify(input) });
-    return mapService(body.service);
-  },
-
-  async update(serviceId: string, input: ProviderServiceInput): Promise<Service> {
-    const body = await request(`/api/pi/services/${encodeURIComponent(serviceId)}`, { method: 'PATCH', body: JSON.stringify(input) });
-    return mapService(body.service);
-  },
+  async list(): Promise<Service[]> { const body = await request('/api/pi/services'); return Array.isArray(body.services) ? body.services.map(mapService) : []; },
+  async create(input: ProviderServiceInput): Promise<Service> { const body = await request('/api/pi/services', { method: 'POST', body: JSON.stringify(input) }); return mapService(body.service); },
+  async update(serviceId: string, input: ProviderServiceInput): Promise<Service> { const body = await request(`/api/pi/services/${encodeURIComponent(serviceId)}`, { method: 'PATCH', body: JSON.stringify(input) }); return mapService(body.service); },
 };
