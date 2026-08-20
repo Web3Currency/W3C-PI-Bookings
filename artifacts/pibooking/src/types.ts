@@ -114,6 +114,7 @@ export interface Booking {
   providerId?: string;
   providerName?: string;
   providerPiUsername?: string;
+  providerPhotoUrl?: string;
   providerWalletAddress?: string;
   payoutTxHash?: string;
   createdAt: string;
@@ -137,121 +138,4 @@ export interface Customer {
   currency: string;
   lastActiveAt: string;
   createdAt: string;
-}
-
-export interface DaySchedule {
-  open: string;
-  close: string;
-  active: boolean;
-}
-
-export interface BusinessHours {
-  monday: DaySchedule;
-  tuesday: DaySchedule;
-  wednesday: DaySchedule;
-  thursday: DaySchedule;
-  friday: DaySchedule;
-  saturday: DaySchedule;
-  sunday: DaySchedule;
-}
-
-export interface SocialLink {
-  platform: string;
-  url: string;
-  handle: string;
-}
-
-export interface GalleryImage {
-  id: string;
-  title: string;
-  category: string;
-  imageUrl: string;
-}
-
-export interface BusinessProfile {
-  id: string;
-  name: string;
-  tagline: string;
-  category: string;
-  avatarUrl: string;
-  logoUrl?: string;
-  piWalletAddress: string;
-  verifiedPiMerchant: boolean;
-  rating: number;
-  reviewsCount: number;
-  location: string;
-  bio: string;
-  website: string;
-  phone: string;
-  email: string;
-  socials: SocialLink[];
-  businessHours: BusinessHours;
-  blockedDates: string[];
-  galleryImages: GalleryImage[];
-  services: Service[];
-  updatedAt?: string;
-  usernameSlug?: string;
-  headline?: string;
-  specialties?: string[];
-  servicesSummary?: string;
-  profileVerified?: boolean;
-  piVerified?: boolean;
-  availabilityStatus?: string;
-  responseTime?: string;
-  socialLinks?: SocialLink[];
-  profileVisibility?: string;
-}
-
-export interface GlobalSettings {
-  exchangeRateNGN: number;
-  defaultCurrency: string;
-  timezone: string;
-  updatedAt?: string;
-}
-
-export type AppTab = 'customer' | 'console';
-
-export interface PiUser {
-  username: string;
-  uid: string;
-  accessToken?: string;
-  verified?: boolean;
-  walletBalancePi?: number;
-}
-
-export interface PiPaymentResult {
-  identifier: string;
-  txHash: string;
-  amount: number;
-  memo: string;
-}
-
-export interface TimeSlotOption {
-  time: string;
-  available: boolean;
-  reason?: string;
-}
-
-declare global {
-  interface Window {
-    Pi?: {
-      init: (config: { version: string; sandbox?: boolean }) => Promise<void>;
-      authenticate: (
-        scopes: string[],
-        onIncompletePaymentFound: (payment: any) => void
-      ) => Promise<{
-        accessToken: string;
-        user: { uid: string; username: string };
-      }>;
-      createPayment: (
-        paymentData: { amount: number; memo: string; metadata: Record<string, any> },
-        callbacks: {
-          onReadyForServerApproval: (paymentId: string) => void;
-          onReadyForServerCompletion: (paymentId: string, txid: string) => void;
-          onCancel: (paymentId: string) => void;
-          onError: (error: Error, payment?: any) => void;
-        }
-      ) => void;
-    };
-  }
 }
