@@ -2,10 +2,10 @@ name: Apply provider refinements
 on:
   push:
     branches: [refine-provider-services-and-booking-ui]
-
+  pull_request:
+    branches: [main]
 permissions:
   contents: write
-
 jobs:
   apply:
     runs-on: ubuntu-latest
@@ -16,6 +16,7 @@ jobs:
         with:
           python-version: '3.x'
       - run: python scripts/apply_provider_service_refinements.py
+      - run: python scripts/finalize_provider_refinements.py
       - name: Commit refinements
         run: |
           git config user.name "github-actions[bot]"
