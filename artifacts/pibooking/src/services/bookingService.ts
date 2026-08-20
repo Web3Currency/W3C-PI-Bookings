@@ -28,7 +28,10 @@ export const bookingService = {
     const localBookings = this.getBookingsLocal();
     if (!isSupabaseConfigured()) return localBookings;
     try {
-      const { data, error } = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*, provider:providers(full_name, pi_username, photo_url)')
+        .order('created_at', { ascending: false });
       if (error) {
         console.warn('[Supabase Note] Failed to fetch bookings from database:', error.message);
         if (error.code === '42501') logRLSHint('bookings');
@@ -64,8 +67,9 @@ export const bookingService = {
         provider_payout_pi: row.provider_payout_pi,
         rejection_reason: row.rejection_reason,
         providerId: row.provider_id,
-        providerName: row.provider_name,
-        providerPiUsername: row.provider_pi_username,
+        providerName: row.provider?.full_name || undefined,
+        providerPiUsername: row.provider?.pi_username || undefined,
+        providerPhotoUrl: row.provider?.photo_url || undefined,
         providerWalletAddress: row.provider_wallet_address,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
