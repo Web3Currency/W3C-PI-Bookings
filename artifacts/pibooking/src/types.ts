@@ -108,6 +108,7 @@ export interface Booking {
   confirmed_at?: string;
   released_at?: string;
   refunded_at?: string;
+  cancelled_at?: string;
   platform_fee_pi?: number;
   provider_payout_pi?: number;
   rejection_reason?: string;
