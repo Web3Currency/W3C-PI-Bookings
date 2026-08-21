@@ -59,6 +59,29 @@ function mapProviderRow(row: any): Provider {
   };
 }
 
+function normalizeExperienceLevel(value: string | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  const map: Record<string, string> = {
+    'entry level': 'beginner', entry: 'beginner', beginner: 'beginner',
+    intermediate: 'intermediate',
+    senior: 'advanced', advanced: 'advanced',
+    'senior / expert': 'expert', expert: 'expert',
+  };
+  return map[normalized] || 'intermediate';
+}
+
+function normalizeServiceMode(value: string | undefined): string | null {
+  if (!value) return null;
+  const normalized = value.trim().toLowerCase();
+  const map: Record<string, string> = {
+    remote: 'remote', 'remote / online': 'remote', online: 'remote',
+    onsite: 'onsite', 'on-site': 'onsite', 'on-site / in-person': 'onsite', 'in-person': 'onsite',
+    hybrid: 'hybrid',
+  };
+  return map[normalized] || 'remote';
+}
+
 function providerPayload(provider: Provider) {
   return {
     id: provider.id, full_name: provider.fullName, pi_username: provider.piUsername || null, pi_uid: provider.piUid || null,
@@ -66,10 +89,10 @@ function providerPayload(provider: Provider) {
     photo_url: provider.photoUrl || null, portfolio_images: provider.portfolioImages || [], portfolio_items: provider.portfolioItems || [],
     contact_email: provider.contactEmail || null, contact_phone: provider.contactPhone || null, status: provider.status || 'Approved',
     username_slug: provider.usernameSlug || null, headline: provider.headline || null, specialties: provider.specialties || [],
-    skills: provider.skills || [], experience_level: provider.experienceLevel || null,
+    skills: provider.skills || [], experience_level: normalizeExperienceLevel(provider.experienceLevel),
     years_experience: typeof provider.yearsExperience === 'number' && !isNaN(provider.yearsExperience) ? provider.yearsExperience : null,
     availability_status: provider.availabilityStatus || 'available', response_time: provider.responseTime || null,
-    languages: provider.languages || [], service_mode: provider.serviceMode || null, location: provider.location || null,
+    languages: provider.languages || [], service_mode: normalizeServiceMode(provider.serviceMode), location: provider.location || null,
     website: provider.website || null, social_links: provider.socialLinks || [], profile_visibility: provider.profileVisibility || 'public',
   };
 }
@@ -105,6 +128,8 @@ export const providerService = {
       const payload: Record<string, any> = { updated_at: new Date().toISOString() };
       const map: Record<string, string> = { fullName:'full_name', piUsername:'pi_username', piWalletAddress:'pi_wallet_address', roleTitle:'role_title', photoUrl:'photo_url', bio:'bio', contactEmail:'contact_email', contactPhone:'contact_phone', status:'status', usernameSlug:'username_slug', headline:'headline', specialties:'specialties', skills:'skills', experienceLevel:'experience_level', yearsExperience:'years_experience', availabilityStatus:'availability_status', responseTime:'response_time', languages:'languages', serviceMode:'service_mode', profileVerified:'profile_verified', piVerified:'pi_verified', location:'location', website:'website', socialLinks:'social_links', profileVisibility:'profile_visibility', portfolioImages:'portfolio_images', portfolioItems:'portfolio_items' };
       Object.entries(updates).forEach(([key, value]) => { if (map[key] && value !== undefined) payload[map[key]] = value; });
+      if ('experienceLevel' in updates) payload.experience_level = normalizeExperienceLevel(updates.experienceLevel);
+      if ('serviceMode' in updates) payload.service_mode = normalizeServiceMode(updates.serviceMode);
       const token = piAccessToken || getPiAccessToken();
       if (token) {
         const remote = await invokeProviderProfile('update', { providerId, updates: payload }, token);
