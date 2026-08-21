@@ -4,25 +4,11 @@ import { providerService } from '../services/providerService';
 import { MerchantCard } from './MerchantCard';
 import { Search, X, ArrowUpDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
-interface SearchViewProps {
-  services?: Service[];
-  onSelectService?: (service: Service) => void;
-  onSelectProvider?: (provider: Provider) => void;
-  onBecomeProvider?: () => void;
-  initialQuery?: string;
-}
-
+interface SearchViewProps { services?: Service[]; onSelectService?: (service: Service) => void; onSelectProvider?: (provider: Provider) => void; onBecomeProvider?: () => void; initialQuery?: string; }
 type ViewMode = 'services' | 'providers';
 type ServiceSort = 'featured' | 'newest' | 'price_low' | 'price_high' | 'duration';
 type ProviderSort = 'featured' | 'rating' | 'reviews' | 'newest' | 'name';
-
-type HeroSlide = {
-  eyebrow: string;
-  title: string;
-  description: string;
-  cta: string;
-  action: 'services' | 'providers' | 'become';
-};
+type HeroSlide = { eyebrow: string; title: string; description: string; cta: string; action: 'services' | 'providers' | 'become'; };
 
 const HERO_SLIDES: HeroSlide[] = [
   { eyebrow: 'W3C Digital Network', title: 'Find what you need — or who can provide it.', description: 'Discover bookable digital services and verified Pi Network providers in one marketplace.', cta: 'Explore Services', action: 'services' },
@@ -30,96 +16,34 @@ const HERO_SLIDES: HeroSlide[] = [
   { eyebrow: 'For Providers', title: 'Put your skills in front of clients.', description: 'Build your provider presence and offer services through the W3C marketplace.', cta: 'Become a Provider', action: 'become' },
   { eyebrow: 'Meet the Community', title: 'Search for the right provider directly.', description: 'Switch to Providers to explore people by role, skills, specialties, ratings, and more.', cta: 'Find Providers', action: 'providers' },
 ];
-
-function providerSearchText(provider: Provider): string {
-  return [provider.fullName, provider.piUsername, provider.roleTitle, provider.headline, provider.bio, ...(provider.specialties || []), ...(provider.skills || []), ...(provider.languages || []), provider.location].filter(Boolean).join(' ').toLowerCase();
-}
-
-function serviceSearchText(service: Service): string {
-  return [service.name, service.description, service.category, service.providerName, service.providerRole, ...(service.included || [])].filter(Boolean).join(' ').toLowerCase();
-}
+function providerSearchText(provider: Provider): string { return [provider.fullName, provider.piUsername, provider.roleTitle, provider.headline, provider.bio, ...(provider.specialties || []), ...(provider.skills || []), ...(provider.languages || []), provider.location].filter(Boolean).join(' ').toLowerCase(); }
+function serviceSearchText(service: Service): string { return [service.name, service.description, service.category, service.providerName, service.providerRole, ...(service.included || [])].filter(Boolean).join(' ').toLowerCase(); }
 
 export const SearchView: React.FC<SearchViewProps> = ({ services = [], onSelectService, onSelectProvider, onBecomeProvider, initialQuery = '' }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('services');
-  const [query, setQuery] = useState(initialQuery);
-  const [serviceSort, setServiceSort] = useState<ServiceSort>('featured');
-  const [providerSort, setProviderSort] = useState<ProviderSort>('featured');
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [providersLoading, setProvidersLoading] = useState(false);
-  const [providersError, setProvidersError] = useState(false);
-  const [slideIndex, setSlideIndex] = useState(0);
-
+  const [viewMode, setViewMode] = useState<ViewMode>('services'); const [query, setQuery] = useState(initialQuery); const [serviceSort, setServiceSort] = useState<ServiceSort>('featured'); const [providerSort, setProviderSort] = useState<ProviderSort>('featured'); const [providers, setProviders] = useState<Provider[]>([]); const [providersLoading, setProvidersLoading] = useState(false); const [providersError, setProvidersError] = useState(false); const [slideIndex, setSlideIndex] = useState(0);
   useEffect(() => setQuery(initialQuery || ''), [initialQuery]);
-
-  useEffect(() => {
-    let active = true;
-    setProvidersLoading(true);
-    setProvidersError(false);
-    providerService.getProvidersAsync().then((data) => { if (active) setProviders(data.filter((provider) => provider.status === 'Approved' && provider.profileVisibility !== 'private')); }).catch(() => { if (active) setProvidersError(true); }).finally(() => { if (active) setProvidersLoading(false); });
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setSlideIndex((current) => (current + 1) % HERO_SLIDES.length), 6500);
-    return () => window.clearInterval(timer);
-  }, []);
-
+  useEffect(() => { let active = true; setProvidersLoading(true); setProvidersError(false); providerService.getProvidersAsync().then((data) => { if (active) setProviders(data.filter((provider) => provider.status === 'Approved' && provider.profileVisibility !== 'private')); }).catch(() => { if (active) setProvidersError(true); }).finally(() => { if (active) setProvidersLoading(false); }); return () => { active = false; }; }, []);
+  useEffect(() => { const timer = window.setInterval(() => setSlideIndex((current) => (current + 1) % HERO_SLIDES.length), 6500); return () => window.clearInterval(timer); }, []);
   const currentSlide = HERO_SLIDES[slideIndex];
   const publishedServices = useMemo(() => services.filter((service) => service.status === 'Published'), [services]);
-
-  const filteredServices = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return publishedServices.filter((service) => !q || serviceSearchText(service).includes(q));
-  }, [publishedServices, query]);
-
-  const sortedServices = useMemo(() => [...filteredServices].sort((a, b) => {
-    if (serviceSort === 'price_low') return a.pricePi - b.pricePi;
-    if (serviceSort === 'price_high') return b.pricePi - a.pricePi;
-    if (serviceSort === 'duration') return a.durationMinutes - b.durationMinutes;
-    if (serviceSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
-    if (serviceSort === 'featured') return Number(b.featured) - Number(a.featured);
-    return 0;
-  }), [filteredServices, serviceSort]);
-
-  const filteredProviders = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return providers.filter((provider) => !q || providerSearchText(provider).includes(q));
-  }, [providers, query]);
-
-  const sortedProviders = useMemo(() => [...filteredProviders].sort((a, b) => {
-    if (providerSort === 'rating') return (b.rating || 0) - (a.rating || 0);
-    if (providerSort === 'reviews') return (b.reviewsCount || 0) - (a.reviewsCount || 0);
-    if (providerSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
-    if (providerSort === 'name') return a.fullName.localeCompare(b.fullName);
-    const featuredScore = (provider: Provider) => Number(provider.profileVerified || provider.piVerified || provider.status === 'Approved');
-    return featuredScore(b) - featuredScore(a);
-  }), [filteredProviders, providerSort]);
-
-  const resultCount = viewMode === 'services' ? sortedServices.length : sortedProviders.length;
+  const filteredServices = useMemo(() => { const q = query.trim().toLowerCase(); return publishedServices.filter((service) => !q || serviceSearchText(service).includes(q)); }, [publishedServices, query]);
+  const sortedServices = useMemo(() => [...filteredServices].sort((a, b) => { if (serviceSort === 'price_low') return a.pricePi - b.pricePi; if (serviceSort === 'price_high') return b.pricePi - a.pricePi; if (serviceSort === 'duration') return a.durationMinutes - b.durationMinutes; if (serviceSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); if (serviceSort === 'featured') return Number(b.featured) - Number(a.featured); return 0; }), [filteredServices, serviceSort]);
+  const filteredProviders = useMemo(() => { const q = query.trim().toLowerCase(); return providers.filter((provider) => !q || providerSearchText(provider).includes(q)); }, [providers, query]);
+  const sortedProviders = useMemo(() => [...filteredProviders].sort((a, b) => { if (providerSort === 'rating') return (b.rating || 0) - (a.rating || 0); if (providerSort === 'reviews') return (b.reviewsCount || 0) - (a.reviewsCount || 0); if (providerSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); if (providerSort === 'name') return a.fullName.localeCompare(b.fullName); const featuredScore = (provider: Provider) => Number(provider.profileVerified || provider.piVerified || provider.status === 'Approved'); return featuredScore(b) - featuredScore(a); }), [filteredProviders, providerSort]);
   const handleModeChange = (mode: ViewMode) => { setViewMode(mode); setQuery(''); };
   const handleSlideAction = () => { if (currentSlide.action === 'services') handleModeChange('services'); else if (currentSlide.action === 'providers') handleModeChange('providers'); else onBecomeProvider?.(); };
 
-  return (
-    <div className="space-y-5 pb-20 animate-in fade-in duration-200">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-orange-500 to-amber-600 text-white shadow-lg">
-        <div className="min-h-[250px] sm:min-h-[230px] p-6 sm:p-8 flex flex-col justify-between gap-7">
-          <div className="max-w-2xl space-y-2"><div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-100">{currentSlide.eyebrow}</div><h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">{currentSlide.title}</h1><p className="max-w-xl text-xs sm:text-sm text-orange-50/90 font-medium leading-relaxed">{currentSlide.description}</p></div>
-          <div className="flex items-end justify-between gap-4"><button type="button" onClick={handleSlideAction} className="rounded-xl bg-white px-4 py-2.5 text-xs font-black text-orange-700 shadow-sm hover:bg-orange-50 transition">{currentSlide.cta}</button><div className="flex items-center gap-1.5"><button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} className="p-2 rounded-full bg-white/15 hover:bg-white/25 transition"><ChevronLeft className="w-4 h-4" /></button>{HERO_SLIDES.map((_, index) => <button key={index} type="button" aria-label={`Go to slide ${index + 1}`} onClick={() => setSlideIndex(index)} className={`h-1.5 rounded-full transition-all ${index === slideIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/45'}`} />)}<button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % HERO_SLIDES.length)} className="p-2 rounded-full bg-white/15 hover:bg-white/25 transition"><ChevronRight className="w-4 h-4" /></button></div></div>
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex justify-center"><div className="inline-flex rounded-full bg-zinc-100 p-1 border border-zinc-200/80" role="tablist" aria-label="Marketplace discovery mode"><button type="button" role="tab" aria-selected={viewMode === 'services'} onClick={() => handleModeChange('services')} className={`min-w-28 sm:min-w-32 px-5 py-2.5 rounded-full text-xs font-black transition ${viewMode === 'services' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}>Services</button><button type="button" role="tab" aria-selected={viewMode === 'providers'} onClick={() => handleModeChange('providers')} className={`min-w-28 sm:min-w-32 px-5 py-2.5 rounded-full text-xs font-black transition ${viewMode === 'providers' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}>Providers</button></div></div>
-        <div className="flex flex-col sm:flex-row gap-2"><div className="flex-1 flex items-center px-4 py-3 rounded-2xl bg-white border border-zinc-200 focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-500/10 transition"><Search className="w-4 h-4 text-zinc-400 shrink-0 mr-2.5" /><input type="text" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={viewMode === 'services' ? 'Search services, keywords, delivery...' : 'Search providers, skills, specialties...'} className="w-full text-zinc-900 placeholder-zinc-400 text-xs sm:text-sm font-medium bg-transparent focus:outline-none" />{query && <button type="button" onClick={() => setQuery('')} className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 transition" title="Clear search"><X className="w-4 h-4" /></button>}</div><div className="flex items-center gap-1.5 px-3 py-3 rounded-2xl bg-white border border-zinc-200 text-zinc-700 text-xs font-bold sm:w-auto"><ArrowUpDown className="w-3.5 h-3.5 text-zinc-400 shrink-0" />{viewMode === 'services' ? <select value={serviceSort} onChange={(event) => setServiceSort(event.target.value as ServiceSort)} className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"><option value="featured">Featured</option><option value="newest">Newest</option><option value="price_low">Price: Low to High</option><option value="price_high">Price: High to Low</option><option value="duration">Fastest Delivery</option></select> : <select value={providerSort} onChange={(event) => setProviderSort(event.target.value as ProviderSort)} className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"><option value="featured">Featured</option><option value="rating">Highest Rated</option><option value="reviews">Most Reviews</option><option value="newest">Newest</option><option value="name">A–Z</option></select>}</div></div>
-      </section>
-
-      <div className="flex items-center justify-between px-1 text-xs font-bold text-zinc-500"><span>{resultCount} {viewMode === 'services' ? (resultCount === 1 ? 'SERVICE AVAILABLE' : 'SERVICES AVAILABLE') : (resultCount === 1 ? 'PROVIDER AVAILABLE' : 'PROVIDERS AVAILABLE')}</span>{query && <button type="button" onClick={() => setQuery('')} className="text-orange-600 hover:text-orange-700 font-extrabold">Clear Search ×</button>}</div>
-
-      {viewMode === 'services' ? (sortedServices.length === 0 ? <EmptyState type="services" query={query} onClear={() => setQuery('')} /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{sortedServices.map((service) => <div key={service.id} onClick={() => onSelectService?.(service)} id={`search-service-card-${service.id}`} className="group p-5 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 border border-zinc-100/60"><div className="space-y-2"><div className="flex items-center justify-between gap-2"><span className="inline-block px-3 py-1 rounded-full bg-orange-100/70 text-orange-950 text-[10px] font-extrabold uppercase tracking-wider">{String(service.category).replace(/_/g, ' ')}</span><span className="text-[11px] text-zinc-500 font-bold">{service.durationMinutes} mins</span></div><h3 className="font-extrabold text-sm sm:text-base text-zinc-900 group-hover:text-orange-600 transition line-clamp-2 text-left">{service.name}</h3>{service.description && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">{service.description}</p>}</div><div className="pt-3 border-t border-zinc-100 flex items-center justify-between"><div><span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block">Price</span><span className="text-lg font-black text-orange-600 tracking-tight">{service.pricePi} <span className="text-xs font-bold text-orange-500">π</span></span></div><button type="button" onClick={(event) => { event.stopPropagation(); onSelectService?.(service); }} className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition cursor-pointer shadow-xs">Book Service</button></div></div>)}</div>) : providersLoading ? <div className="py-14 text-center text-xs font-bold text-zinc-500">Loading providers...</div> : providersError ? <div className="py-14 text-center text-xs font-bold text-zinc-500">We couldn't load providers right now. Please try again.</div> : sortedProviders.length === 0 ? <EmptyState type="providers" query={query} onClear={() => setQuery('')} /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{sortedProviders.map((provider) => <MerchantCard key={provider.id} merchant={provider} services={publishedServices} onOpenAbout={(merchant) => { if (merchant && 'fullName' in merchant) onSelectProvider?.(merchant as Provider); }} />)}</div>}
-    </div>
-  );
+  return <div className="space-y-5 pb-20 animate-in fade-in duration-200">
+    <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-orange-600 via-orange-500 to-amber-600 text-white shadow-lg"><div className="min-h-[250px] sm:min-h-[230px] p-6 sm:p-8 flex flex-col justify-between gap-7"><div className="max-w-2xl space-y-2"><div className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-orange-100">{currentSlide.eyebrow}</div><h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">{currentSlide.title}</h1><p className="max-w-xl text-xs sm:text-sm text-orange-50/90 font-medium leading-relaxed">{currentSlide.description}</p></div><div className="flex items-end justify-between gap-4"><button type="button" onClick={handleSlideAction} className="rounded-xl bg-white px-4 py-2.5 text-xs font-black text-orange-700 shadow-sm hover:bg-orange-50 transition">{currentSlide.cta}</button><div className="flex items-center gap-1.5"><button type="button" aria-label="Previous slide" onClick={() => setSlideIndex((slideIndex - 1 + HERO_SLIDES.length) % HERO_SLIDES.length)} className="p-2 rounded-full bg-white/15 hover:bg-white/25 transition"><ChevronLeft className="w-4 h-4" /></button>{HERO_SLIDES.map((_, index) => <button key={index} type="button" aria-label={`Go to slide ${index + 1}`} onClick={() => setSlideIndex(index)} className={`h-1.5 rounded-full transition-all ${index === slideIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/45'}`} />)}<button type="button" aria-label="Next slide" onClick={() => setSlideIndex((slideIndex + 1) % HERO_SLIDES.length)} className="p-2 rounded-full bg-white/15 hover:bg-white/25 transition"><ChevronRight className="w-4 h-4" /></button></div></div></div></section>
+    <section className="space-y-3">
+      <div className="flex justify-start"><div className="inline-flex rounded-full bg-zinc-100 p-1 border border-zinc-200/80" role="tablist" aria-label="Marketplace discovery mode"><button type="button" role="tab" aria-selected={viewMode === 'services'} onClick={() => handleModeChange('services')} className={`min-w-28 sm:min-w-32 px-5 py-2.5 rounded-full text-xs font-black transition ${viewMode === 'services' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}>Services</button><button type="button" role="tab" aria-selected={viewMode === 'providers'} onClick={() => handleModeChange('providers')} className={`min-w-28 sm:min-w-32 px-5 py-2.5 rounded-full text-xs font-black transition ${viewMode === 'providers' ? 'bg-white text-orange-700 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}>Providers</button></div></div>
+      <div className="flex flex-col sm:flex-row items-stretch gap-0 rounded-2xl bg-white border border-zinc-200 overflow-hidden focus-within:border-orange-300 focus-within:ring-2 focus-within:ring-orange-500/10 transition">
+        <div className="flex-1 flex items-center px-4 py-3 min-w-0"><Search className="w-4 h-4 text-zinc-400 shrink-0 mr-2.5" /><input type="text" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={viewMode === 'services' ? 'Search services, keywords, delivery...' : 'Search providers, skills, specialties...'} className="w-full text-zinc-900 placeholder-zinc-400 text-xs sm:text-sm font-medium bg-transparent focus:outline-none" />{query && <button type="button" onClick={() => setQuery('')} className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 transition" title="Clear search"><X className="w-4 h-4" /></button>}</div>
+        <div className="hidden sm:flex items-center gap-2 px-4 py-3 border-l border-zinc-200 text-zinc-700 text-xs font-bold shrink-0"><ArrowUpDown className="w-3.5 h-3.5 text-zinc-400" />{viewMode === 'services' ? <select value={serviceSort} onChange={(event) => setServiceSort(event.target.value as ServiceSort)} className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"><option value="featured">Featured</option><option value="newest">Newest</option><option value="price_low">Price: Low to High</option><option value="price_high">Price: High to Low</option><option value="duration">Fastest Delivery</option></select> : <select value={providerSort} onChange={(event) => setProviderSort(event.target.value as ProviderSort)} className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"><option value="featured">Featured</option><option value="rating">Highest Rated</option><option value="reviews">Most Reviews</option><option value="newest">Newest</option><option value="name">A–Z</option></select>}</div>
+        <div className="flex sm:hidden items-center gap-2 px-4 py-2.5 border-t border-zinc-200 text-zinc-700 text-xs font-bold"><ArrowUpDown className="w-3.5 h-3.5 text-zinc-400" />{viewMode === 'services' ? <select value={serviceSort} onChange={(event) => setServiceSort(event.target.value as ServiceSort)} className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"><option value="featured">Featured</option><option value="newest">Newest</option><option value="price_low">Price: Low to High</option><option value="price_high">Price: High to Low</option><option value="duration">Fastest Delivery</option></select> : <select value={providerSort} onChange={(event) => setProviderSort(event.target.value as ProviderSort)} className="bg-transparent text-xs font-bold text-zinc-800 focus:outline-none cursor-pointer"><option value="featured">Featured</option><option value="rating">Highest Rated</option><option value="reviews">Most Reviews</option><option value="newest">Newest</option><option value="name">A–Z</option></select>}</div>
+      </div>
+    </section>
+    {viewMode === 'services' ? (sortedServices.length === 0 ? <EmptyState type="services" query={query} onClear={() => setQuery('')} /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{sortedServices.map((service) => <div key={service.id} onClick={() => onSelectService?.(service)} id={`search-service-card-${service.id}`} className="group p-5 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col justify-between space-y-4 border border-zinc-100/60"><div className="space-y-2"><div className="flex items-center justify-between gap-2"><span className="inline-block px-3 py-1 rounded-full bg-orange-100/70 text-orange-950 text-[10px] font-extrabold uppercase tracking-wider">{String(service.category).replace(/_/g, ' ')}</span><span className="text-[11px] text-zinc-500 font-bold">{service.durationMinutes} mins</span></div><h3 className="font-extrabold text-sm sm:text-base text-zinc-900 group-hover:text-orange-600 transition line-clamp-2 text-left">{service.name}</h3>{service.description && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">{service.description}</p>}</div><div className="pt-3 border-t border-zinc-100 flex items-center justify-between"><div><span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block">Price</span><span className="text-lg font-black text-orange-600 tracking-tight">{service.pricePi} <span className="text-xs font-bold text-orange-500">π</span></span></div><button type="button" onClick={(event) => { event.stopPropagation(); onSelectService?.(service); }} className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition cursor-pointer shadow-xs">Book Service</button></div></div>)}</div>) : providersLoading ? <div className="py-14 text-center text-xs font-bold text-zinc-500">Loading providers...</div> : providersError ? <div className="py-14 text-center text-xs font-bold text-zinc-500">We couldn't load providers right now. Please try again.</div> : sortedProviders.length === 0 ? <EmptyState type="providers" query={query} onClear={() => setQuery('')} /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{sortedProviders.map((provider) => <MerchantCard key={provider.id} merchant={provider} services={publishedServices} onOpenAbout={(merchant) => { if (merchant && 'fullName' in merchant) onSelectProvider?.(merchant as Provider); }} />)}</div>}
+  </div>;
 };
-
-const EmptyState: React.FC<{ type: ViewMode; query: string; onClear: () => void }> = ({ type, query, onClear }) => (
-  <div className="py-14 text-center space-y-3"><div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><Search className="w-6 h-6" /></div><h3 className="text-base font-black text-zinc-900">No {type} found</h3><p className="text-xs text-zinc-500 font-medium max-w-sm mx-auto leading-relaxed">{query ? `We couldn't find any ${type} matching “${query}”. Try another search.` : `There are no ${type} available right now.`}</p>{query && <button type="button" onClick={onClear} className="px-5 py-2.5 rounded-xl bg-orange-600 text-white font-black text-xs">Clear Search</button>}</div>
-);
+const EmptyState: React.FC<{ type: ViewMode; query: string; onClear: () => void }> = ({ type, query, onClear }) => <div className="py-14 text-center space-y-3"><div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><Search className="w-6 h-6" /></div><h3 className="text-base font-black text-zinc-900">No {type} found</h3><p className="text-xs text-zinc-500 font-medium max-w-sm mx-auto leading-relaxed">{query ? `We couldn't find any ${type} matching “${query}”. Try another search.` : `There are no ${type} available right now.`}</p>{query && <button type="button" onClick={onClear} className="px-5 py-2.5 rounded-xl bg-orange-600 text-white font-black text-xs">Clear Search</button>}</div>;
