@@ -1,7 +1,29 @@
 import { Router, type IRouter } from "express";
-import { pool } from "@workspace/db";
 
 const router: IRouter = Router();
+
+function getSupabaseConfig() {
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && key ? { url: url.replace(/\/$/, ""), key } : null;
+}
+
+async function supabaseRequest(path: string, init: RequestInit = {}) {
+  const config = getSupabaseConfig();
+  if (!config) throw new Error("Chat database configuration is unavailable.");
+  const headers = new Headers(init.headers);
+  headers.set("apikey", config.key);
+  headers.set("Content-Type", "application/json");
+  headers.set("Prefer", headers.get("Prefer") || "return=representation");
+  if (config.key.startsWith("eyJ")) headers.set("Authorization", `Bearer ${config.key}`);
+  const response = await fetch(`${config.url}/rest/v1/${path}`, { ...init, headers });
+  if (!response.ok) {
+    const body = await response.text().catch(() => "");
+    throw new Error(body || `Chat database request failed (${response.status}).`);
+  }
+  const text = await response.text();
+  return text ? JSON.parse(text) : [];
+}
 
 async function verifyPiAccessToken(accessToken?: string) {
   if (!accessToken?.trim()) return null;
@@ -11,73 +33,47 @@ async function verifyPiAccessToken(accessToken?: string) {
   return user.uid ? user : null;
 }
 
-async function participantConversationIds(piUid: string) {
-  const result = await pool.query(
-    `select cp.conversation_id
-       from public.conversation_participants cp
-      where lower(cp.pi_uid) = lower($1)`,
-    [piUid],
-  );
-  return result.rows.map((row: { conversation_id: string }) => row.conversation_id);
+async function assertParticipant(conversationId: string, piUid: string) {
+  const rows = await supabaseRequest(`conversation_participants?select=conversation_id&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=eq.${encodeURIComponent(piUid)}&limit=1`);
+  return rows[0] || null;
 }
 
 async function ensureConversationForBooking(bookingId: string) {
-  const existing = await pool.query(`select id from public.conversations where booking_id = $1 limit 1`, [bookingId]);
-  if (existing.rows[0]) return existing.rows[0].id as string;
+  const existing = await supabaseRequest(`conversations?select=id&booking_id=eq.${encodeURIComponent(bookingId)}&limit=1`);
+  if (existing[0]) return existing[0].id as string;
 
-  const booking = await pool.query(
-    `select b.id, b.client_pi_uid, b.customer_pi_username, b.provider_id,
-            p.pi_uid as provider_pi_uid, p.full_name as provider_name,
-            b.service_title
-       from public.bookings b
-       join public.providers p on p.id = b.provider_id
-      where b.id = $1 limit 1`,
-    [bookingId],
-  );
-  if (!booking.rows[0]) throw new Error("Booking not found.");
-  const row = booking.rows[0];
-  if (!row.client_pi_uid || !row.provider_pi_uid) throw new Error("Booking is missing a client or provider Pi UID.");
+  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,service_title&id=eq.${encodeURIComponent(bookingId)}&limit=1`);
+  if (!bookings[0]) throw new Error("Booking not found.");
+  const booking = bookings[0];
+  if (!booking.client_pi_uid || !booking.provider_id) throw new Error("Booking is missing a client or provider identity.");
 
-  const created = await pool.query(
-    `insert into public.conversations (booking_id)
-     values ($1)
-     on conflict (booking_id) do update set updated_at = now()
-     returning id`,
-    [bookingId],
-  );
-  const conversationId = created.rows[0].id as string;
+  const providers = await supabaseRequest(`providers?select=id,pi_uid& id=eq.${encodeURIComponent(booking.provider_id)}&limit=1`.replace("?select=id,pi_uid& id=", "?select=id,pi_uid&id="));
+  const provider = providers[0];
+  if (!provider?.pi_uid) throw new Error("Booking provider is missing a Pi identity.");
 
-  await pool.query(
-    `insert into public.conversation_participants (conversation_id, pi_uid, role)
-     values ($1, $2, 'client'), ($1, $3, 'provider')
-     on conflict (conversation_id, pi_uid) do nothing`,
-    [conversationId, row.client_pi_uid, row.provider_pi_uid],
-  );
+  const created = await supabaseRequest("conversations", { method: "POST", body: JSON.stringify({ booking_id: bookingId }) });
+  const conversationId = created[0]?.id as string;
+  if (!conversationId) throw new Error("Could not create chat conversation.");
 
-  await pool.query(
-    `insert into public.messages (conversation_id, sender_pi_uid, message_type, content)
-     select $1, $2, 'system', $3
-      where not exists (
-        select 1 from public.messages where conversation_id = $1 and message_type = 'system'
-          and content like 'Booking #% accepted%'
-      )`,
-    [conversationId, row.provider_pi_uid, `Booking #${row.id} has been accepted. You can now communicate regarding ${row.service_title || "this service"}.`],
-  );
+  await supabaseRequest("conversation_participants", {
+    method: "POST",
+    body: JSON.stringify([
+      { conversation_id: conversationId, pi_uid: booking.client_pi_uid, role: "client" },
+      { conversation_id: conversationId, pi_uid: provider.pi_uid, role: "provider" },
+    ]),
+  });
 
-  await pool.query(`update public.conversations set updated_at = now() where id = $1`, [conversationId]);
+  const systemContent = `Booking #${booking.id} has been accepted. You can now communicate regarding ${booking.service_title || "this service"}.`;
+  const existingSystem = await supabaseRequest(`messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(systemContent)}&limit=1`);
+  if (!existingSystem[0]) {
+    await supabaseRequest("messages", {
+      method: "POST",
+      body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }),
+    });
+  }
+
+  await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
   return conversationId;
-}
-
-async function assertParticipant(conversationId: string, piUid: string) {
-  const result = await pool.query(
-    `select c.id, c.booking_id
-       from public.conversations c
-       join public.conversation_participants cp on cp.conversation_id = c.id
-      where c.id = $1 and lower(cp.pi_uid) = lower($2)
-      limit 1`,
-    [conversationId, piUid],
-  );
-  return result.rows[0] || null;
 }
 
 router.post("/pi/chat/conversations", async (req, res) => {
@@ -85,35 +81,61 @@ router.post("/pi/chat/conversations", async (req, res) => {
   try {
     const user = await verifyPiAccessToken(accessToken);
     if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
-    const pattern = search?.trim() ? `%${search.trim().replace(/[%_]/g, "\\$&").toLowerCase()}%` : null;
-    const result = await pool.query(
-      `select c.id, c.booking_id, c.updated_at,
-              other.pi_uid as other_pi_uid,
-              coalesce(p.full_name, other.pi_uid) as other_name,
-              p.pi_username as other_username, p.photo_url as other_photo_url,
-              m.content as last_message, m.message_type as last_message_type, m.created_at as last_message_at,
-              coalesce(unread.unread_count, 0) as unread_count
-         from public.conversations c
-         join public.conversation_participants me on me.conversation_id = c.id and lower(me.pi_uid) = lower($1)
-         join public.conversation_participants other on other.conversation_id = c.id and lower(other.pi_uid) <> lower($1)
-         left join public.providers p on lower(p.pi_uid) = lower(other.pi_uid)
-         left join lateral (
-           select content, message_type, created_at from public.messages
-            where conversation_id = c.id order by created_at desc limit 1
-         ) m on true
-         left join lateral (
-           select count(*)::int as unread_count from public.messages um
-            where um.conversation_id = c.id and um.created_at > coalesce(me.last_read_at, 'epoch'::timestamptz)
-              and lower(um.sender_pi_uid) <> lower($1)
-         ) unread on true
-        where ($2::text is null or lower(coalesce(p.pi_username, other.pi_uid)) like $2 or lower(coalesce(p.full_name, '')) like $2)
-        order by c.updated_at desc`,
-      [user.uid, pattern],
-    );
-    return void res.json({ conversations: result.rows });
+
+    const participants = await supabaseRequest(`conversation_participants?select=conversation_id,last_read_at&pi_uid=eq.${encodeURIComponent(user.uid)}`);
+    const conversations = [];
+    for (const participant of participants) {
+      const conversationId = participant.conversation_id as string;
+      const conversationRows = await supabaseRequest(`conversations?select=id,booking_id,updated_at&id=eq.${encodeURIComponent(conversationId)}&limit=1`);
+      const conversation = conversationRows[0];
+      if (!conversation) continue;
+
+      const others = await supabaseRequest(`conversation_participants?select=pi_uid,role&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=neq.${encodeURIComponent(user.uid)}&limit=1`);
+      const other = others[0];
+      if (!other) continue;
+
+      const providers = await supabaseRequest(`providers?select=full_name,pi_username,photo_url,role_title,pi_uid&pi_uid=eq.${encodeURIComponent(other.pi_uid)}&limit=1`);
+      const provider = providers[0] || null;
+      let otherName = provider?.full_name || other.pi_uid;
+      let otherUsername = provider?.pi_username || other.pi_uid;
+      let otherPhotoUrl = provider?.photo_url || null;
+
+      if (!provider) {
+        const bookingRows = await supabaseRequest(`bookings?select=customer_name,customer_pi_username& id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`.replace("?select=customer_name,customer_pi_username& id=", "?select=customer_name,customer_pi_username&id="));
+        const booking = bookingRows[0];
+        otherName = booking?.customer_name || other.pi_uid;
+        otherUsername = booking?.customer_pi_username || other.pi_uid;
+      }
+
+      const messages = await supabaseRequest(`messages?select=id,content,message_type,created_at,sender_pi_uid&conversation_id=eq.${encodeURIComponent(conversationId)}&order=created_at.desc&limit=1`);
+      const lastMessage = messages[0] || null;
+      const unreadQuery = participant.last_read_at
+        ? `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&created_at=gt.${encodeURIComponent(participant.last_read_at)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`
+        : `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`;
+      const unread = await supabaseRequest(unreadQuery);
+      const term = search?.trim().toLowerCase();
+      if (term && !`${otherUsername} ${otherName}`.toLowerCase().includes(term)) continue;
+
+      conversations.push({
+        id: conversation.id,
+        booking_id: conversation.booking_id,
+        updated_at: conversation.updated_at,
+        other_pi_uid: other.pi_uid,
+        other_name: otherName,
+        other_username: otherUsername,
+        other_photo_url: otherPhotoUrl,
+        last_message: lastMessage?.content || null,
+        last_message_type: lastMessage?.message_type || null,
+        last_message_at: lastMessage?.created_at || null,
+        unread_count: unread.length,
+      });
+    }
+
+    conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
+    return void res.json({ conversations });
   } catch (err: any) {
     req.log.error({ err }, "Chat conversation list failed");
-    return void res.status(500).json({ error: err?.message || "Failed to load conversations." });
+    return void res.status(500).json({ error: "Chat is temporarily unavailable. Please try again." });
   }
 });
 
@@ -124,18 +146,13 @@ router.post("/pi/chat/conversations/:conversationId/messages", async (req, res) 
   try {
     const user = await verifyPiAccessToken(accessToken);
     if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
-    const participant = await assertParticipant(conversationId, user.uid);
-    if (!participant) return void res.status(403).json({ error: "You are not a participant in this conversation." });
-    const inserted = await pool.query(
-      `insert into public.messages (conversation_id, sender_pi_uid, message_type, content)
-       values ($1, $2, 'user', $3) returning id, conversation_id, sender_pi_uid, message_type, content, created_at`,
-      [conversationId, user.uid, content.trim().slice(0, 5000)],
-    );
-    await pool.query(`update public.conversations set updated_at = now() where id = $1`, [conversationId]);
-    return void res.status(201).json({ message: inserted.rows[0] });
+    if (!(await assertParticipant(conversationId, user.uid))) return void res.status(403).json({ error: "You are not a participant in this conversation." });
+    const inserted = await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: user.uid, message_type: "user", content: content.trim().slice(0, 5000) }) });
+    await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
+    return void res.status(201).json({ message: inserted[0] });
   } catch (err: any) {
     req.log.error({ err, conversationId }, "Chat message send failed");
-    return void res.status(500).json({ error: err?.message || "Failed to send message." });
+    return void res.status(500).json({ error: "Unable to send your message right now. Please try again." });
   }
 });
 
@@ -145,13 +162,12 @@ router.post("/pi/chat/conversations/:conversationId/read", async (req, res) => {
   try {
     const user = await verifyPiAccessToken(accessToken);
     if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
-    const participant = await assertParticipant(conversationId, user.uid);
-    if (!participant) return void res.status(403).json({ error: "You are not a participant in this conversation." });
-    await pool.query(`update public.conversation_participants set last_read_at = now() where conversation_id = $1 and lower(pi_uid) = lower($2)`, [conversationId, user.uid]);
+    if (!(await assertParticipant(conversationId, user.uid))) return void res.status(403).json({ error: "You are not a participant in this conversation." });
+    await supabaseRequest(`conversation_participants?conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=eq.${encodeURIComponent(user.uid)}`, { method: "PATCH", body: JSON.stringify({ last_read_at: new Date().toISOString() }) });
     return void res.json({ success: true });
   } catch (err: any) {
     req.log.error({ err, conversationId }, "Chat read-state update failed");
-    return void res.status(500).json({ error: err?.message || "Failed to mark conversation as read." });
+    return void res.status(500).json({ error: "Unable to update read status right now." });
   }
 });
 
@@ -161,18 +177,13 @@ router.post("/pi/chat/conversations/:conversationId/messages/list", async (req, 
   try {
     const user = await verifyPiAccessToken(accessToken);
     if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
-    const participant = await assertParticipant(conversationId, user.uid);
-    if (!participant) return void res.status(403).json({ error: "You are not a participant in this conversation." });
-    const result = await pool.query(
-      `select id, conversation_id, sender_pi_uid, message_type, content, created_at
-         from public.messages where conversation_id = $1 order by created_at asc`,
-      [conversationId],
-    );
-    await pool.query(`update public.conversation_participants set last_read_at = now() where conversation_id = $1 and lower(pi_uid) = lower($2)`, [conversationId, user.uid]);
-    return void res.json({ messages: result.rows });
+    if (!(await assertParticipant(conversationId, user.uid))) return void res.status(403).json({ error: "You are not a participant in this conversation." });
+    const messages = await supabaseRequest(`messages?select=id,conversation_id,sender_pi_uid,message_type,content,created_at&conversation_id=eq.${encodeURIComponent(conversationId)}&order=created_at.asc`);
+    await supabaseRequest(`conversation_participants?conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=eq.${encodeURIComponent(user.uid)}`, { method: "PATCH", body: JSON.stringify({ last_read_at: new Date().toISOString() }) });
+    return void res.json({ messages });
   } catch (err: any) {
     req.log.error({ err, conversationId }, "Chat message list failed");
-    return void res.status(500).json({ error: err?.message || "Failed to load messages." });
+    return void res.status(500).json({ error: "Unable to load this conversation right now. Please try again." });
   }
 });
 
