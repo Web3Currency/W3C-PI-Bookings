@@ -5,6 +5,7 @@ import piPaymentsRouter from "./pi-payments";
 import piPayoutsRouter from "./pi-payouts";
 import piBookingsRouter from "./pi-bookings";
 import piServicesRouter from "./pi-services";
+import piChatRouter from "./pi-chat";
 
 const router: IRouter = Router();
 
@@ -14,5 +15,6 @@ router.use(piPaymentsRouter);
 router.use(piPayoutsRouter);
 router.use(piBookingsRouter);
 router.use(piServicesRouter);
+router.use(piChatRouter);
 
 export default router;
