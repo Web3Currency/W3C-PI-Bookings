@@ -17,16 +17,14 @@ const CATEGORIES = [
 ];
 
 export const ServiceBrowser: React.FC<ServiceBrowserProps> = ({ business, services = [], onSelectService, onOpenAbout, onOpenSearch }) => {
-  const [providers, setProviders] = useState<Provider[]>(() => providerService.getProvidersLocal()); const [searchQuery, setSearchQuery] = useState('');
+  const [providers, setProviders] = useState<Provider[]>(() => providerService.getProvidersLocal());
   useEffect(() => { let isMounted = true; providerService.getProvidersAsync().then((data) => { if (isMounted && data) setProviders(data); }); return () => { isMounted = false; }; }, []);
   const publicProviders = providers.filter((p) => p.status === 'Approved' && p.profileVisibility !== 'private'); const topProviders = publicProviders.slice(0, 4); const risingProviders = publicProviders.length > 4 ? publicProviders.slice(4) : []; const publishedServices = services.filter((s) => s.status === 'Published');
-  const handleSearchSubmit = (e: React.FormEvent) => { e.preventDefault(); if (onOpenSearch) onOpenSearch(searchQuery.trim()); }; const handleCategoryClick = (categoryId: string) => { if (onOpenSearch) onOpenSearch('', categoryId); };
+  const handleCategoryClick = (categoryId: string) => { if (onOpenSearch) onOpenSearch('', categoryId); };
   return (
     <div className="w-full space-y-8 pb-12 animate-in fade-in duration-200">
-      <div className="relative w-full rounded-3xl overflow-hidden bg-hero-gradient text-white p-6 sm:p-10 shadow-lg space-y-6 text-left flex flex-col items-start justify-center">
+      <div className="relative w-full rounded-3xl overflow-hidden bg-hero-gradient text-white p-6 sm:p-10 shadow-lg text-left flex flex-col items-start justify-center">
         <div className="relative z-10 max-w-xl mx-0 space-y-3 flex flex-col items-start text-left"><div className="inline-block px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-[11px] font-extrabold uppercase tracking-widest text-orange-50">W3C Service Marketplace</div><h1 className="text-2xl sm:text-4xl font-black tracking-tight leading-tight text-left">Find & book expert digital services natively with Pi</h1><p className="text-xs sm:text-sm text-orange-100 leading-relaxed font-medium text-left">Connect with verified Web3 developers, UI/UX designers, and digital professionals. Secure bookings with smart Pi Escrow protection.</p></div>
-        <form onSubmit={handleSearchSubmit} className="relative z-10 w-full max-w-xl mx-0"><div className="flex items-center p-1.5 rounded-2xl bg-white shadow-xl"><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Try 'web development', 'UI design', 'Pi SDK'..." className="flex-1 px-4 py-2.5 text-zinc-900 placeholder-zinc-400 text-xs sm:text-sm font-medium bg-transparent focus:outline-none"/><button type="submit" className="px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition active:scale-95 cursor-pointer shrink-0 shadow-sm">Search</button></div></form>
-        <div className="relative z-10 flex items-center justify-start gap-2 overflow-x-auto pb-1 scrollbar-none text-xs font-bold text-orange-100 w-full"><span className="text-[11px] text-orange-200 shrink-0 font-extrabold uppercase tracking-wider">Popular:</span>{CATEGORIES.slice(0, 4).map((cat) => <button key={cat.id} type="button" onClick={() => handleCategoryClick(cat.id)} className="px-3 py-1 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur-xs transition shrink-0 cursor-pointer text-white text-xs font-semibold">{cat.label}</button>)}</div>
       </div>
 
       <div className="w-full space-y-3">
