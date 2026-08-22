@@ -4,7 +4,7 @@ import { providerService } from '../services/providerService';
 import { piAuthService } from '../services/piAuthService';
 import { ProfilePhotoUploader } from './media/ProfilePhotoUploader';
 import { PortfolioUploader } from './media/PortfolioUploader';
-import { Save, Plus, Trash2 } from 'lucide-react';
+import { Save, Plus, Trash2, Eye, EyeOff } from 'lucide-react';
 import { toast } from '../hooks/use-toast';
 
 interface ProviderProfileEditorProps {
@@ -30,10 +30,12 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
     e.preventDefault();
     setSaving(true);
     try {
-      await providerService.updateProvider(form.id, { ...form, socialLinks: socialLinks.filter((s) => s.url.trim()) }, token);
+      const updates = { ...form, socialLinks: socialLinks.filter((s) => s.url.trim()) };
+      await providerService.updateProvider(form.id, updates, token);
       const refreshed = await providerService.getProviderByPiUid(form.piUid || '');
-      const saved = refreshed || { ...form, socialLinks };
+      const saved = refreshed || { ...form, ...updates };
       setForm(saved);
+      setSocialLinks(saved.socialLinks || []);
       onSaved?.(saved);
       toast({ title: 'Public Profile Updated', description: 'Your provider profile has been saved.' });
     } catch (error: any) {
@@ -42,6 +44,8 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
       setSaving(false);
     }
   };
+
+  const isPublic = form.profileVisibility !== 'private';
 
   return (
     <form onSubmit={save} className="space-y-4">
@@ -89,6 +93,29 @@ export const ProviderProfileEditor: React.FC<ProviderProfileEditorProps> = ({ pr
         <div className="space-y-2 pt-2 border-t border-zinc-200">
           <div className="flex justify-between items-center"><span className="text-xs font-semibold">Social & Profile Links</span><button type="button" onClick={() => setSocialLinks([...socialLinks, { platform: 'Twitter / X', url: '' }])} className="text-xs font-bold text-amber-700 flex items-center gap-1"><Plus className="w-3.5 h-3.5" />Add Link</button></div>
           {socialLinks.map((s, i) => <div key={i} className="flex gap-2"><input value={s.platform} onChange={(e) => { const n=[...socialLinks]; n[i]={...n[i],platform:e.target.value}; setSocialLinks(n); }} className="w-1/3 px-3 py-1.5 text-xs bg-white border border-zinc-200 rounded-xl" /><input value={s.url} onChange={(e) => { const n=[...socialLinks]; n[i]={...n[i],url:e.target.value}; setSocialLinks(n); }} className="flex-1 px-3 py-1.5 text-xs bg-white border border-zinc-200 rounded-xl" /><button type="button" onClick={() => setSocialLinks(socialLinks.filter((_,j)=>j!==i))} className="p-1.5 text-zinc-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button></div>)}
+        </div>
+      </section>
+
+      <section className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wide">Profile Visibility</h3>
+            <p className="text-xs text-zinc-500 mt-1">Choose whether your provider profile is visible to the public marketplace.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => set('profileVisibility', isPublic ? 'private' : 'public')}
+            aria-pressed={isPublic}
+            className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition ${isPublic ? 'bg-orange-600' : 'bg-zinc-300'}`}
+            aria-label={isPublic ? 'Hide provider profile' : 'Show provider profile'}
+          >
+            <span className={`inline-flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm transition-transform ${isPublic ? 'translate-x-6' : 'translate-x-1'}`}>
+              {isPublic ? <Eye className="h-3 w-3 text-orange-600" /> : <EyeOff className="h-3 w-3 text-zinc-500" />}
+            </span>
+          </button>
+        </div>
+        <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${isPublic ? 'bg-green-50 text-green-700' : 'bg-zinc-100 text-zinc-600'}`}>
+          {isPublic ? 'Public — clients can discover and view your provider profile.' : 'Hidden — your provider profile is removed from public discovery.'}
         </div>
       </section>
 
