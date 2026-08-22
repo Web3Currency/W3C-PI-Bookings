@@ -88,8 +88,15 @@ router.post("/pi/chat/conversations/for-booking", async (req, res) => {
     const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,provider_id,status& id=", "?select=id,client_pi_uid,customer_pi_username,provider_id,status&id="));
     const booking = bookings[0];
     if (!booking) return void res.status(404).json({ error: "Booking not found." });
+
     const usernameMatches = booking.customer_pi_username && user.username && String(booking.customer_pi_username).replace(/^@+/, "").toLowerCase() === String(user.username).replace(/^@+/, "").toLowerCase();
-    if (booking.client_pi_uid ? booking.client_pi_uid !== user.uid : !usernameMatches) return void res.status(403).json({ error: "This booking does not belong to the signed-in Pi account." });
+    const isClient = booking.client_pi_uid ? booking.client_pi_uid === user.uid : Boolean(usernameMatches);
+
+    const providerRows = await supabaseRequest(`providers?select=id,pi_uid&id=eq.${encodeURIComponent(booking.provider_id)}&limit=1`);
+    const provider = providerRows[0];
+    const isProvider = provider?.pi_uid === user.uid;
+
+    if (!isClient && !isProvider) return void res.status(403).json({ error: "You are not authorized to access this booking chat." });
 
     const ensured = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: booking.status === "In Progress" });
     return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, provider: ensured.provider });
