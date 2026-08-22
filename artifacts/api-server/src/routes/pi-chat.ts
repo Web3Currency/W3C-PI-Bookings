@@ -38,18 +38,21 @@ async function assertParticipant(conversationId: string, piUid: string) {
   return rows[0] || null;
 }
 
-async function ensureConversationForBooking(bookingId: string, options: { includeAcceptanceMessage?: boolean } = {}) {
-  const existing = await supabaseRequest(`conversations?select=id,booking_id&booking_id=eq.${encodeURIComponent(bookingId)}&limit=1`);
-  let conversationId = existing[0]?.id as string | undefined;
-
-  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,service_title,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,provider_id,service_title,status& id=", "?select=id,client_pi_uid,customer_pi_username,provider_id,service_title,status&id="));
+async function getBookingAndProvider(bookingId: string) {
+  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status& id=", "?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status&id="));
   const booking = bookings[0];
   if (!booking) throw new Error("Booking not found.");
   if (!booking.client_pi_uid || !booking.provider_id) throw new Error("Booking is missing a client or provider identity.");
-
   const providers = await supabaseRequest(`providers?select=id,pi_uid,full_name,pi_username,photo_url&id=eq.${encodeURIComponent(booking.provider_id)}&limit=1`);
   const provider = providers[0];
   if (!provider?.pi_uid) throw new Error("Booking provider is missing a Pi identity.");
+  return { booking, provider };
+}
+
+async function ensureConversationForBooking(bookingId: string, options: { includeAcceptanceMessage?: boolean } = {}) {
+  const { booking, provider } = await getBookingAndProvider(bookingId);
+  const existing = await supabaseRequest(`conversations?select=id,booking_id&booking_id=eq.${encodeURIComponent(bookingId)}&limit=1`);
+  let conversationId = existing[0]?.id as string | undefined;
 
   if (!conversationId) {
     const created = await supabaseRequest("conversations", { method: "POST", body: JSON.stringify({ booking_id: bookingId }) });
@@ -75,7 +78,24 @@ async function ensureConversationForBooking(bookingId: string, options: { includ
   }
 
   await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
-  return { conversationId, provider: { id: provider.id, pi_uid: provider.pi_uid, full_name: provider.full_name, pi_username: provider.pi_username, photo_url: provider.photo_url }, bookingStatus: booking.status };
+  return { conversationId, booking, provider, bookingStatus: booking.status };
+}
+
+function participantView(user: { uid: string }, booking: any, provider: any) {
+  const isProvider = provider.pi_uid === user.uid;
+  return isProvider ? {
+    other_pi_uid: booking.client_pi_uid,
+    other_role: "client",
+    other_name: booking.customer_name || booking.customer_pi_username || booking.client_pi_uid,
+    other_username: booking.customer_pi_username || booking.client_pi_uid,
+    other_photo_url: null,
+  } : {
+    other_pi_uid: provider.pi_uid,
+    other_role: "provider",
+    other_name: provider.full_name || provider.pi_username || provider.pi_uid,
+    other_username: provider.pi_username || provider.pi_uid,
+    other_photo_url: provider.photo_url || null,
+  };
 }
 
 router.post("/pi/chat/conversations/for-booking", async (req, res) => {
@@ -84,22 +104,13 @@ router.post("/pi/chat/conversations/for-booking", async (req, res) => {
   try {
     const user = await verifyPiAccessToken(accessToken);
     if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
-
-    const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,provider_id,status& id=", "?select=id,client_pi_uid,customer_pi_username,provider_id,status&id="));
-    const booking = bookings[0];
-    if (!booking) return void res.status(404).json({ error: "Booking not found." });
-
+    const { booking, provider } = await getBookingAndProvider(bookingId);
     const usernameMatches = booking.customer_pi_username && user.username && String(booking.customer_pi_username).replace(/^@+/, "").toLowerCase() === String(user.username).replace(/^@+/, "").toLowerCase();
     const isClient = booking.client_pi_uid ? booking.client_pi_uid === user.uid : Boolean(usernameMatches);
-
-    const providerRows = await supabaseRequest(`providers?select=id,pi_uid&id=eq.${encodeURIComponent(booking.provider_id)}&limit=1`);
-    const provider = providerRows[0];
-    const isProvider = provider?.pi_uid === user.uid;
-
+    const isProvider = provider.pi_uid === user.uid;
     if (!isClient && !isProvider) return void res.status(403).json({ error: "You are not authorized to access this booking chat." });
-
     const ensured = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: booking.status === "In Progress" });
-    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, provider: ensured.provider });
+    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, participant: participantView(user, booking, provider) });
   } catch (err: any) {
     req.log.error({ err, bookingId }, "Failed to open booking chat");
     return void res.status(500).json({ error: "Unable to open this chat right now. Please try again." });
@@ -107,35 +118,28 @@ router.post("/pi/chat/conversations/for-booking", async (req, res) => {
 });
 
 router.post("/pi/chat/conversations", async (req, res) => {
-  const { accessToken, search } = req.body as { accessToken?: string; search?: string };
+  const { accessToken } = req.body as { accessToken?: string };
   try {
     const user = await verifyPiAccessToken(accessToken);
     if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
-
-    const participants = await supabaseRequest(`conversation_participants?select=conversation_id,last_read_at&pi_uid=eq.${encodeURIComponent(user.uid)}`);
+    const participants = await supabaseRequest(`conversation_participants?select=conversation_id,last_read_at,role&pi_uid=eq.${encodeURIComponent(user.uid)}`);
     const conversations = [];
     for (const participant of participants) {
       const conversationId = participant.conversation_id as string;
       const conversationRows = await supabaseRequest(`conversations?select=id,booking_id,updated_at&id=eq.${encodeURIComponent(conversationId)}&limit=1`);
       const conversation = conversationRows[0];
       if (!conversation) continue;
-
       const others = await supabaseRequest(`conversation_participants?select=pi_uid,role&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=neq.${encodeURIComponent(user.uid)}&limit=1`);
       const other = others[0];
       if (!other) continue;
 
-      const providers = await supabaseRequest(`providers?select=full_name,pi_username,photo_url,role_title,pi_uid&pi_uid=eq.${encodeURIComponent(other.pi_uid)}&limit=1`);
+      const bookings = await supabaseRequest(`bookings?select=client_pi_uid,customer_pi_username,customer_name,provider_id&id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`);
+      const booking = bookings[0];
+      const providers = booking?.provider_id ? await supabaseRequest(`providers?select=full_name,pi_username,photo_url,pi_uid&pi_uid=eq.${encodeURIComponent(booking.provider_id)}&limit=1`) : [];
       const provider = providers[0] || null;
-      let otherName = provider?.full_name || other.pi_uid;
-      let otherUsername = provider?.pi_username || other.pi_uid;
-      let otherPhotoUrl = provider?.photo_url || null;
-
-      if (!provider) {
-        const bookingRows = await supabaseRequest(`bookings?select=customer_name,customer_pi_username&id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`);
-        const booking = bookingRows[0];
-        otherName = booking?.customer_name || other.pi_uid;
-        otherUsername = booking?.customer_pi_username || other.pi_uid;
-      }
+      const otherInfo = provider?.pi_uid === other.pi_uid
+        ? { other_name: provider.full_name || provider.pi_username || other.pi_uid, other_username: provider.pi_username || other.pi_uid, other_photo_url: provider.photo_url || null }
+        : { other_name: booking?.customer_name || booking?.customer_pi_username || other.pi_uid, other_username: booking?.customer_pi_username || other.pi_uid, other_photo_url: null };
 
       const messages = await supabaseRequest(`messages?select=id,content,message_type,created_at,sender_pi_uid&conversation_id=eq.${encodeURIComponent(conversationId)}&order=created_at.desc&limit=1`);
       const lastMessage = messages[0] || null;
@@ -143,12 +147,8 @@ router.post("/pi/chat/conversations", async (req, res) => {
         ? `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&created_at=gt.${encodeURIComponent(participant.last_read_at)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`
         : `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`;
       const unread = await supabaseRequest(unreadQuery);
-      const term = search?.trim().toLowerCase();
-      if (term && !`${otherUsername} ${otherName}`.toLowerCase().includes(term)) continue;
-
-      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, other_pi_uid: other.pi_uid, other_name: otherName, other_username: otherUsername, other_photo_url: otherPhotoUrl, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
+      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, other_pi_uid: other.pi_uid, other_role: other.role, ...otherInfo, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
     }
-
     conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
     return void res.json({ conversations });
   } catch (err: any) {
@@ -200,7 +200,7 @@ router.post("/pi/chat/conversations/:conversationId/messages/list", async (req, 
     await supabaseRequest(`conversation_participants?conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=eq.${encodeURIComponent(user.uid)}`, { method: "PATCH", body: JSON.stringify({ last_read_at: new Date().toISOString() }) });
     return void res.json({ messages });
   } catch (err: any) {
-    req.log.error({ err, conversationId }, "Chat message list failed");
+    req.log.error({ err }, "Chat message list failed");
     return void res.status(500).json({ error: "Unable to load this conversation right now. Please try again." });
   }
 });
