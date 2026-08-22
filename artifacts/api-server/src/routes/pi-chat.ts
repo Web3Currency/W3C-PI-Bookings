@@ -38,43 +38,66 @@ async function assertParticipant(conversationId: string, piUid: string) {
   return rows[0] || null;
 }
 
-async function ensureConversationForBooking(bookingId: string) {
-  const existing = await supabaseRequest(`conversations?select=id&booking_id=eq.${encodeURIComponent(bookingId)}&limit=1`);
-  if (existing[0]) return existing[0].id as string;
+async function ensureConversationForBooking(bookingId: string, options: { includeAcceptanceMessage?: boolean } = {}) {
+  const existing = await supabaseRequest(`conversations?select=id,booking_id&booking_id=eq.${encodeURIComponent(bookingId)}&limit=1`);
+  let conversationId = existing[0]?.id as string | undefined;
 
-  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,service_title&id=eq.${encodeURIComponent(bookingId)}&limit=1`);
-  if (!bookings[0]) throw new Error("Booking not found.");
+  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,service_title,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,provider_id,service_title,status& id=", "?select=id,client_pi_uid,customer_pi_username,provider_id,service_title,status&id="));
   const booking = bookings[0];
+  if (!booking) throw new Error("Booking not found.");
   if (!booking.client_pi_uid || !booking.provider_id) throw new Error("Booking is missing a client or provider identity.");
 
-  const providers = await supabaseRequest(`providers?select=id,pi_uid& id=eq.${encodeURIComponent(booking.provider_id)}&limit=1`.replace("?select=id,pi_uid& id=", "?select=id,pi_uid&id="));
+  const providers = await supabaseRequest(`providers?select=id,pi_uid,full_name,pi_username,photo_url&id=eq.${encodeURIComponent(booking.provider_id)}&limit=1`);
   const provider = providers[0];
   if (!provider?.pi_uid) throw new Error("Booking provider is missing a Pi identity.");
 
-  const created = await supabaseRequest("conversations", { method: "POST", body: JSON.stringify({ booking_id: bookingId }) });
-  const conversationId = created[0]?.id as string;
-  if (!conversationId) throw new Error("Could not create chat conversation.");
+  if (!conversationId) {
+    const created = await supabaseRequest("conversations", { method: "POST", body: JSON.stringify({ booking_id: bookingId }) });
+    conversationId = created[0]?.id as string | undefined;
+    if (!conversationId) throw new Error("Could not create chat conversation.");
+  }
 
-  await supabaseRequest("conversation_participants", {
-    method: "POST",
-    body: JSON.stringify([
-      { conversation_id: conversationId, pi_uid: booking.client_pi_uid, role: "client" },
-      { conversation_id: conversationId, pi_uid: provider.pi_uid, role: "provider" },
-    ]),
-  });
+  const participants = await supabaseRequest(`conversation_participants?select=pi_uid&conversation_id=eq.${encodeURIComponent(conversationId)}`);
+  const existingUids = new Set(participants.map((row: any) => row.pi_uid));
+  const missing = [
+    !existingUids.has(booking.client_pi_uid) ? { conversation_id: conversationId, pi_uid: booking.client_pi_uid, role: "client" } : null,
+    !existingUids.has(provider.pi_uid) ? { conversation_id: conversationId, pi_uid: provider.pi_uid, role: "provider" } : null,
+  ].filter(Boolean);
+  if (missing.length) await supabaseRequest("conversation_participants", { method: "POST", body: JSON.stringify(missing) });
 
-  const systemContent = `Booking #${booking.id} has been accepted. You can now communicate regarding ${booking.service_title || "this service"}.`;
-  const existingSystem = await supabaseRequest(`messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(systemContent)}&limit=1`);
-  if (!existingSystem[0]) {
-    await supabaseRequest("messages", {
-      method: "POST",
-      body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }),
-    });
+  const shouldAddAcceptanceMessage = options.includeAcceptanceMessage ?? booking.status === "In Progress";
+  if (shouldAddAcceptanceMessage) {
+    const systemContent = `Booking #${booking.id} has been accepted. You can now communicate regarding ${booking.service_title || "this service"}.`;
+    const existingSystem = await supabaseRequest(`messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(systemContent)}&limit=1`);
+    if (!existingSystem[0]) {
+      await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
+    }
   }
 
   await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
-  return conversationId;
+  return { conversationId, provider: { id: provider.id, pi_uid: provider.pi_uid, full_name: provider.full_name, pi_username: provider.pi_username, photo_url: provider.photo_url }, bookingStatus: booking.status };
 }
+
+router.post("/pi/chat/conversations/for-booking", async (req, res) => {
+  const { accessToken, bookingId } = req.body as { accessToken?: string; bookingId?: string };
+  if (!bookingId) return void res.status(400).json({ error: "Booking ID is required." });
+  try {
+    const user = await verifyPiAccessToken(accessToken);
+    if (!user) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
+
+    const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,provider_id,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,provider_id,status& id=", "?select=id,client_pi_uid,customer_pi_username,provider_id,status&id="));
+    const booking = bookings[0];
+    if (!booking) return void res.status(404).json({ error: "Booking not found." });
+    const usernameMatches = booking.customer_pi_username && user.username && String(booking.customer_pi_username).replace(/^@+/, "").toLowerCase() === String(user.username).replace(/^@+/, "").toLowerCase();
+    if (booking.client_pi_uid ? booking.client_pi_uid !== user.uid : !usernameMatches) return void res.status(403).json({ error: "This booking does not belong to the signed-in Pi account." });
+
+    const ensured = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: booking.status === "In Progress" });
+    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, provider: ensured.provider });
+  } catch (err: any) {
+    req.log.error({ err, bookingId }, "Failed to open booking chat");
+    return void res.status(500).json({ error: "Unable to open this chat right now. Please try again." });
+  }
+});
 
 router.post("/pi/chat/conversations", async (req, res) => {
   const { accessToken, search } = req.body as { accessToken?: string; search?: string };
@@ -101,7 +124,7 @@ router.post("/pi/chat/conversations", async (req, res) => {
       let otherPhotoUrl = provider?.photo_url || null;
 
       if (!provider) {
-        const bookingRows = await supabaseRequest(`bookings?select=customer_name,customer_pi_username& id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`.replace("?select=customer_name,customer_pi_username& id=", "?select=customer_name,customer_pi_username&id="));
+        const bookingRows = await supabaseRequest(`bookings?select=customer_name,customer_pi_username&id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`);
         const booking = bookingRows[0];
         otherName = booking?.customer_name || other.pi_uid;
         otherUsername = booking?.customer_pi_username || other.pi_uid;
@@ -116,19 +139,7 @@ router.post("/pi/chat/conversations", async (req, res) => {
       const term = search?.trim().toLowerCase();
       if (term && !`${otherUsername} ${otherName}`.toLowerCase().includes(term)) continue;
 
-      conversations.push({
-        id: conversation.id,
-        booking_id: conversation.booking_id,
-        updated_at: conversation.updated_at,
-        other_pi_uid: other.pi_uid,
-        other_name: otherName,
-        other_username: otherUsername,
-        other_photo_url: otherPhotoUrl,
-        last_message: lastMessage?.content || null,
-        last_message_type: lastMessage?.message_type || null,
-        last_message_at: lastMessage?.created_at || null,
-        unread_count: unread.length,
-      });
+      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, other_pi_uid: other.pi_uid, other_name: otherName, other_username: otherUsername, other_photo_url: otherPhotoUrl, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
     }
 
     conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
