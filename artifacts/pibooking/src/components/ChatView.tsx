@@ -3,6 +3,8 @@ import { ArrowLeft, CheckCheck, MessageCircle, Paperclip, Search, Send, UserCirc
 import { chatService, ChatConversation, ChatMessage } from '../services/chatService';
 import { piAuthService } from '../services/piAuthService';
 
+const FRIENDLY_CHAT_ERROR = 'Chat is temporarily unavailable. Please try again.';
+
 export const ChatView: React.FC = () => {
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [selected, setSelected] = useState<ChatConversation | null>(null);
@@ -17,7 +19,7 @@ export const ChatView: React.FC = () => {
   const loadConversations = async () => {
     setError('');
     try { setConversations(await chatService.getConversations(search)); }
-    catch (e: any) { setError(e?.message || 'Unable to load conversations.'); }
+    catch { setError(FRIENDLY_CHAT_ERROR); }
     finally { setLoading(false); }
   };
 
@@ -30,7 +32,7 @@ export const ChatView: React.FC = () => {
   const openConversation = async (conversation: ChatConversation) => {
     setSelected(conversation); setMessageLoading(true); setError('');
     try { const loaded = await chatService.getMessages(conversation.id); setMessages(loaded); await chatService.markRead(conversation.id); setConversations((items) => items.map((item) => item.id === conversation.id ? { ...item, unread_count: 0 } : item)); }
-    catch (e: any) { setError(e?.message || 'Unable to load this conversation.'); }
+    catch { setError(FRIENDLY_CHAT_ERROR); }
     finally { setMessageLoading(false); }
   };
 
@@ -38,7 +40,7 @@ export const ChatView: React.FC = () => {
     const text = draft.trim(); if (!text || !selected || messageLoading) return;
     setMessageLoading(true); setError('');
     try { const message = await chatService.sendMessage(selected.id, text); setMessages((items) => [...items, message]); setDraft(''); await loadConversations(); }
-    catch (e: any) { setError(e?.message || 'Unable to send message.'); }
+    catch { setError('Unable to send your message right now. Please try again.'); }
     finally { setMessageLoading(false); }
   };
 
