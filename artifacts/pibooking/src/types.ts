@@ -2,6 +2,7 @@ export type ServiceCategory = 'landing_page' | 'web_dev' | 'ux_design' | 'pi_sdk
 export type CategoryId = ServiceCategory | string;
 
 export type ServiceStatus = 'Draft' | 'Published' | 'Archived';
+export type ProviderProfileStatus = 'Draft' | 'Published' | 'Archived';
 
 export interface PortfolioItem {
   id?: string;
@@ -26,6 +27,7 @@ export interface Provider {
   contactEmail?: string;
   contactPhone?: string;
   status: 'Pending' | 'Approved' | 'Rejected' | 'Suspended';
+  profileStatus?: ProviderProfileStatus;
   createdAt?: string;
   updatedAt?: string;
   usernameSlug?: string;
