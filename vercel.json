@@ -3,5 +3,8 @@
   "framework": "vite",
   "installCommand": "npm install --include=dev",
   "buildCommand": "npm run build --workspace=@workspace/pibooking",
-  "outputDirectory": "artifacts/pibooking/dist"
+  "outputDirectory": "artifacts/pibooking/dist/public",
+  "rewrites": [
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  ]
 }
