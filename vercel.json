@@ -2,8 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
   "installCommand": "npm install --include=dev --workspace=@workspace/pibooking --include-workspace-root",
-  "buildCommand": "npm run build --workspace=@workspace/pibooking",
-  "outputDirectory": "artifacts/pibooking/dist",
+  "buildCommand": "npm run build --workspace=@workspace/pibooking && rm -rf public && mkdir -p public && cp -R artifacts/pibooking/dist/public/. public/",
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
