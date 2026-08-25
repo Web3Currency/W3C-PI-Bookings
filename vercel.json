@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install --include=dev --workspace=@workspace/pibooking --include-workspace-root",
-  "buildCommand": "npm run build --workspace=@workspace/pibooking",
+  "installCommand": "npm install --include=dev --workspace=@workspace/pibooking --workspace=@workspace/api-server --include-workspace-root",
+  "buildCommand": "npm run build --workspace=@workspace/pibooking && npm run build --workspace=@workspace/api-server",
   "outputDirectory": "artifacts/pibooking/dist/public",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
