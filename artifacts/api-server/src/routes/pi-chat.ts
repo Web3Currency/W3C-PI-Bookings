@@ -81,20 +81,58 @@ async function ensureConversationForBooking(bookingId: string, options: { includ
   return { conversationId, booking, provider, bookingStatus: booking.status };
 }
 
-function participantView(user: { uid: string }, booking: any, provider: any) {
-  const isProvider = provider.pi_uid === user.uid;
-  return isProvider ? {
-    other_pi_uid: booking.client_pi_uid,
-    other_role: "client",
-    other_name: booking.customer_name || booking.customer_pi_username || booking.client_pi_uid,
-    other_username: booking.customer_pi_username || booking.client_pi_uid,
+async function lookupProviderByPiUid(piUid: string) {
+  const rows = await supabaseRequest(`providers?select=id,pi_uid,full_name,pi_username,photo_url&pi_uid=eq.${encodeURIComponent(piUid)}&limit=1`);
+  return rows[0] || null;
+}
+
+function providerCounterpart(provider: any, fallbackUid: string) {
+  return {
+    other_pi_uid: provider?.pi_uid || fallbackUid,
+    other_role: "provider" as const,
+    other_name: provider?.full_name || provider?.pi_username || fallbackUid,
+    other_username: provider?.pi_username || fallbackUid,
+    other_photo_url: provider?.photo_url || null,
+  };
+}
+
+function clientCounterpart(booking: any, fallbackUid: string) {
+  const canUseBookingClient = booking?.client_pi_uid === fallbackUid;
+  return {
+    other_pi_uid: fallbackUid,
+    other_role: "client" as const,
+    other_name: canUseBookingClient ? (booking.customer_name || booking.customer_pi_username || fallbackUid) : fallbackUid,
+    other_username: canUseBookingClient ? (booking.customer_pi_username || fallbackUid) : fallbackUid,
     other_photo_url: null,
-  } : {
-    other_pi_uid: provider.pi_uid,
-    other_role: "provider",
-    other_name: provider.full_name || provider.pi_username || provider.pi_uid,
-    other_username: provider.pi_username || provider.pi_uid,
-    other_photo_url: provider.photo_url || null,
+  };
+}
+
+async function resolveCounterpart(currentUid: string, conversationId: string, booking?: any, knownProvider?: any) {
+  const others = await supabaseRequest(
+    `conversation_participants?select=pi_uid,role&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=neq.${encodeURIComponent(currentUid)}`,
+  );
+  const other = (others as any[]).find((row) => row?.pi_uid && row.pi_uid !== currentUid);
+  if (!other?.pi_uid) return null;
+
+  const providerFromUid = knownProvider?.pi_uid === other.pi_uid
+    ? knownProvider
+    : await lookupProviderByPiUid(other.pi_uid);
+
+  if (other.role === "provider") {
+    return providerCounterpart(providerFromUid, other.pi_uid);
+  }
+  if (other.role === "client" || booking?.client_pi_uid === other.pi_uid) {
+    return clientCounterpart(booking, other.pi_uid);
+  }
+  if (providerFromUid?.pi_uid === other.pi_uid) {
+    return providerCounterpart(providerFromUid, other.pi_uid);
+  }
+  return {
+    other_pi_uid: other.pi_uid,
+    other_role: other.role || null,
+    other_name: other.pi_uid,
+    other_username: other.pi_uid,
+    other_photo_url: null,
   };
 }
 
@@ -110,7 +148,11 @@ router.post("/pi/chat/conversations/for-booking", async (req, res) => {
     const isProvider = provider.pi_uid === user.uid;
     if (!isClient && !isProvider) return void res.status(403).json({ error: "You are not authorized to access this booking chat." });
     const ensured = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: booking.status === "In Progress" });
-    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, participant: participantView(user, booking, provider) });
+    const counterpart = await resolveCounterpart(user.uid, ensured.conversationId, ensured.booking, ensured.provider)
+      || (ensured.provider.pi_uid === user.uid
+        ? clientCounterpart(ensured.booking, ensured.booking.client_pi_uid)
+        : providerCounterpart(ensured.provider, ensured.provider.pi_uid));
+    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, participant: counterpart });
   } catch (err: any) {
     req.log.error({ err, bookingId }, "Failed to open booking chat");
     return void res.status(500).json({ error: "Unable to open this chat right now. Please try again." });
@@ -129,17 +171,10 @@ router.post("/pi/chat/conversations", async (req, res) => {
       const conversationRows = await supabaseRequest(`conversations?select=id,booking_id,updated_at&id=eq.${encodeURIComponent(conversationId)}&limit=1`);
       const conversation = conversationRows[0];
       if (!conversation) continue;
-      const others = await supabaseRequest(`conversation_participants?select=pi_uid,role&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=neq.${encodeURIComponent(user.uid)}&limit=1`);
-      const other = others[0];
-      if (!other) continue;
-
       const bookings = await supabaseRequest(`bookings?select=client_pi_uid,customer_pi_username,customer_name,provider_id&id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`);
       const booking = bookings[0];
-      const providers = booking?.provider_id ? await supabaseRequest(`providers?select=full_name,pi_username,photo_url,pi_uid&pi_uid=eq.${encodeURIComponent(booking.provider_id)}&limit=1`) : [];
-      const provider = providers[0] || null;
-      const otherInfo = provider?.pi_uid === other.pi_uid
-        ? { other_name: provider.full_name || provider.pi_username || other.pi_uid, other_username: provider.pi_username || other.pi_uid, other_photo_url: provider.photo_url || null }
-        : { other_name: booking?.customer_name || booking?.customer_pi_username || other.pi_uid, other_username: booking?.customer_pi_username || other.pi_uid, other_photo_url: null };
+      const counterpart = await resolveCounterpart(user.uid, conversationId, booking);
+      if (!counterpart) continue;
 
       const messages = await supabaseRequest(`messages?select=id,content,message_type,created_at,sender_pi_uid&conversation_id=eq.${encodeURIComponent(conversationId)}&order=created_at.desc&limit=1`);
       const lastMessage = messages[0] || null;
@@ -147,7 +182,7 @@ router.post("/pi/chat/conversations", async (req, res) => {
         ? `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&created_at=gt.${encodeURIComponent(participant.last_read_at)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`
         : `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`;
       const unread = await supabaseRequest(unreadQuery);
-      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, other_pi_uid: other.pi_uid, other_role: other.role, ...otherInfo, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
+      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, ...counterpart, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
     }
     conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
     return void res.json({ conversations });
