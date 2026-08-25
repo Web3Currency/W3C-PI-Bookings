@@ -4,6 +4,7 @@
   "buildCommand": "npm run build --workspace=@workspace/pibooking && npm run build --workspace=@workspace/api-server",
   "outputDirectory": "artifacts/pibooking/dist/public",
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
