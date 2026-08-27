@@ -11,6 +11,11 @@ export interface PortfolioItem {
   caption?: string;
 }
 
+export interface SocialLink {
+  platform: string;
+  url: string;
+}
+
 export interface Provider {
   id: string;
   fullName: string;
@@ -111,6 +116,7 @@ export interface Booking {
   released_at?: string;
   refunded_at?: string;
   cancelled_at?: string;
+  acceptance_deadline?: string;
   platform_fee_pi?: number;
   provider_payout_pi?: number;
   rejection_reason?: string;
@@ -141,4 +147,55 @@ export interface Customer {
   currency: string;
   lastActiveAt: string;
   createdAt: string;
+}
+
+export interface PiUser {
+  uid: string;
+  username: string;
+  accessToken?: string;
+}
+
+export interface PiPaymentResult {
+  identifier: string;
+  txHash: string;
+  amount: number;
+  memo: string;
+}
+
+export interface ClientDetails {
+  clientName: string;
+  clientPiUsername: string;
+  clientPhone: string;
+  clientEmail?: string;
+  notes?: string;
+  attachments?: BookingAttachment[];
+}
+
+export interface BecomeProviderDetails {
+  fullName: string;
+  piUsername?: string;
+  roleTitle: string;
+  headline?: string;
+  bio?: string;
+  photoUrl?: string;
+  piWalletAddress?: string;
+  location?: string;
+  specialties?: string[];
+  skills?: string[];
+  experienceLevel?: string;
+  yearsExperience?: number;
+  availabilityStatus?: string;
+  responseTime?: string;
+  languages?: string[];
+  serviceMode?: string;
+  website?: string;
+  socialLinks?: SocialLink[];
+  portfolioImages?: string[];
+  portfolioItems?: PortfolioItem[];
+}
+
+export interface BusinessProfile {
+  id?: string;
+  name: string;
+  [key: string]: any;
 }
