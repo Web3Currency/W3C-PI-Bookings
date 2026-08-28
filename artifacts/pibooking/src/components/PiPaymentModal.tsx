@@ -32,6 +32,11 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({ service, busines
           clientPhone: clientDetails.clientPhone,
           clientEmail: clientDetails.clientEmail,
           notes: clientDetails.notes,
+          // Server needs these for bookings NOT NULL columns (price_ngn, duration_minutes, currency).
+          basePrice: service.basePrice || service.priceNGN || 0,
+          priceNGN: service.basePrice || service.priceNGN || 0,
+          currency: service.currency || 'NGN',
+          durationMinutes: service.durationMinutes || 60,
           amountPi: service.pricePi,
         },
       });
