@@ -106,8 +106,9 @@ export async function executeAutomaticClientRefund(
 
   const now = new Date().toISOString();
 
-  // Claim the refund slot atomically when still held in escrow.
-  // If already refund_processing from a crashed attempt, continue (retry).
+  // Claim is intentional minimal: only flip escrow to refund_processing.
+  // Do NOT set status=Cancelled or payment_status=Refunded here — those violate
+  // DB check constraints and must wait until Pi A2U completes successfully.
   if (booking.escrow_status === "paid_escrowed") {
     const claim = await sb(
       `bookings?id=eq.${encodeURIComponent(bookingId)}&escrow_status=eq.paid_escrowed`,
@@ -115,15 +116,9 @@ export async function executeAutomaticClientRefund(
         method: "PATCH",
         body: JSON.stringify({
           escrow_status: "refund_processing",
-          ...(cancelBooking
-            ? {
-                status: "Cancelled",
-                cancelled_at: now,
-                rejection_reason: reason,
-              }
-            : {}),
-          acceptance_deadline: null,
           updated_at: now,
+          // Clear acceptance window so auto-expire cannot race the in-flight refund.
+          acceptance_deadline: null,
         }),
       },
     );
@@ -144,18 +139,11 @@ export async function executeAutomaticClientRefund(
       }
     }
   } else if (booking.escrow_status === "refund_failed" || booking.escrow_status === "refund_processing") {
-    // Allow retry: mark processing again and cancel if needed.
+    // Allow retry: re-enter processing without cancelling until Pi succeeds.
     await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
       method: "PATCH",
       body: JSON.stringify({
         escrow_status: "refund_processing",
-        ...(cancelBooking
-          ? {
-              status: "Cancelled",
-              cancelled_at: booking.status === "Cancelled" ? undefined : now,
-              rejection_reason: reason,
-            }
-          : {}),
         acceptance_deadline: null,
         updated_at: now,
       }),
@@ -212,6 +200,7 @@ export async function executeAutomaticClientRefund(
         ...(cancelBooking
           ? {
               status: "Cancelled",
+              cancelled_at: new Date().toISOString(),
               rejection_reason: reason,
             }
           : {}),
@@ -255,13 +244,13 @@ export async function executeAutomaticClientRefund(
 
 async function markRefundFailed(bookingId: string, error: string, paymentId?: string, txid?: string) {
   const now = new Date().toISOString();
-  // Keep booking cancelled if already cancelled; do NOT mark escrow as refunded.
+  // Keep booking in refund_failed; do NOT mark escrow as refunded or invent success.
+  // Avoid setting status=Cancelled here — claim/finalize own that after successful Pi A2U.
   await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
     method: "PATCH",
     body: JSON.stringify({
       escrow_status: "refund_failed",
       updated_at: now,
-      // Preserve forensic detail without inventing a refund.
       rejection_reason: `Refund failed: ${error}`.slice(0, 500),
       ...(txid ? { payout_tx_hash: txid } : {}),
     }),
