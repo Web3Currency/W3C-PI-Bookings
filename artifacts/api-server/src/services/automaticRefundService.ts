@@ -9,8 +9,6 @@
  * 4) Only then mark escrow_status = refunded and store refund identifiers.
  */
 
-import Pi from "pi-backend";
-
 export type RefundResult = {
   status: "completed" | "failed" | "recovered" | "skipped";
   paymentId?: string;
@@ -18,6 +16,21 @@ export type RefundResult = {
   error?: string;
   bookingId?: string;
 };
+
+/** Resolve PiNetwork constructor under CJS/ESM interop (Vercel may nest .default). */
+async function createPiClient(apiKey: string, walletPrivateSeed: string) {
+  const mod: any = await import("pi-backend");
+  let PiNetworkClass = mod?.default ?? mod;
+  // Double-default interop: { default: { default: PiNetwork } }
+  if (PiNetworkClass && typeof PiNetworkClass !== "function" && typeof PiNetworkClass.default === "function") {
+    PiNetworkClass = PiNetworkClass.default;
+  }
+  if (typeof PiNetworkClass !== "function") {
+    throw new Error("pi-backend PiNetwork constructor is not available (import interop failure).");
+  }
+  // Official SDK: new PiNetwork(apiKey, walletPrivateSeed) — there is no Pi.init().
+  return new PiNetworkClass(apiKey, walletPrivateSeed);
+}
 
 function config() {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
@@ -165,27 +178,29 @@ export async function executeAutomaticClientRefund(
   let txid = "";
 
   try {
-    Pi.init({ apiKey, walletPrivateSeed: seed });
-    const payment: any = await Pi.createPayment({
+    // Same pattern as routes/pi-payouts.ts: construct SDK instance, no Pi.init().
+    const pi = await createPiClient(apiKey, seed);
+    const created: any = await pi.createPayment({
       amount,
       memo: `Refund for booking ${bookingId}`.slice(0, 25),
       metadata: { bookingId, type: "client_refund", reason },
       uid: clientUid,
     });
-    paymentId = String(payment?.identifier || payment?.id || "");
+    // SDK returns payment identifier string (or object with identifier).
+    paymentId = String(typeof created === "string" ? created : (created?.identifier || created?.id || ""));
     if (!paymentId) {
       await markRefundFailed(bookingId, "Pi did not return a refund payment identifier.", paymentId, txid);
       return { status: "failed", bookingId, error: "Pi did not return a refund payment identifier." };
     }
 
-    const submitted = await Pi.submitPayment(paymentId);
+    const submitted = await pi.submitPayment(paymentId);
     txid = typeof submitted === "string" ? submitted : String((submitted as any)?.txid || (submitted as any)?.transaction?.txid || "");
     if (!txid) {
       await markRefundFailed(bookingId, "Pi did not return a refund transaction ID.", paymentId, txid);
       return { status: "failed", bookingId, paymentId, error: "Pi did not return a refund transaction ID." };
     }
 
-    await Pi.completePayment(paymentId, txid);
+    await pi.completePayment(paymentId, txid);
 
     const finalize = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&escrow_status=eq.refund_processing`, {
       method: "PATCH",

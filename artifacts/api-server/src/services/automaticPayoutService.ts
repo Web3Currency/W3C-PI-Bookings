@@ -1,4 +1,19 @@
-import Pi from "pi-backend";
+/**
+ * Server-side App-to-User (A2U) provider payout after completion confirmation.
+ * Uses the same pi-backend constructor pattern as pi-payouts.ts (no Pi.init).
+ */
+
+async function createPiClient(apiKey: string, walletPrivateSeed: string) {
+  const mod: any = await import("pi-backend");
+  let PiNetworkClass = mod?.default ?? mod;
+  if (PiNetworkClass && typeof PiNetworkClass !== "function" && typeof PiNetworkClass.default === "function") {
+    PiNetworkClass = PiNetworkClass.default;
+  }
+  if (typeof PiNetworkClass !== "function") {
+    throw new Error("pi-backend PiNetwork constructor is not available (import interop failure).");
+  }
+  return new PiNetworkClass(apiKey, walletPrivateSeed);
+}
 
 type PayoutResult = { status: "completed" | "failed" | "recovered"; paymentId?: string; txid?: string; error?: string };
 
@@ -25,42 +40,43 @@ export async function executeAutomaticProviderPayout(bookingId: string): Promise
   const amount = Number(booking.provider_payout_pi ?? Number(booking.price_pi || 0) * 0.9);
   if (!Number.isFinite(amount) || amount <= 0) return { status: "failed", error: "Provider payout amount is invalid." };
 
-  const existingRes = await sb(`payouts?booking_id=eq.${encodeURIComponent(bookingId)}&select=id,status,pi_payment_id,pi_txid,failure_reason&limit=1`);
-  if (!existingRes?.ok) return { status: "failed", error: "Payout lookup failed." };
-  const existing = (await existingRes.json())[0];
-  if (existing?.status === "completed") return reconcile(bookingId, existing.pi_payment_id, existing.pi_txid);
-  if (existing && ["pending", "submitted"].includes(existing.status)) return { status: "failed", error: existing.failure_reason || "A payout is already unresolved for this booking.", paymentId: existing.pi_payment_id, txid: existing.pi_txid };
-
-  const ins = await sb("payouts", { method: "POST", body: JSON.stringify({ booking_id: bookingId, provider_id: provider.id, amount_pi: amount, provider_wallet_address: wallet, status: "pending" }) });
-  if (!ins?.ok) return { status: "failed", error: "Failed to create payout record." };
-  const payout = (await ins.json())[0];
-  const fail = async (error: string, paymentId?: string, txid?: string): Promise<PayoutResult> => { await sb(`payouts?id=eq.${encodeURIComponent(payout.id)}`, { method: "PATCH", body: JSON.stringify({ status: "failed", failure_reason: error, pi_payment_id: paymentId || null, pi_txid: txid || null }) }).catch(() => undefined); return { status: "failed", error, paymentId, txid }; };
+  const existingRes = await sb(`payouts?booking_id=eq.${encodeURIComponent(bookingId)}&select=id,status,pi_payment_id,txid&limit=1`);
+  if (existingRes?.ok) {
+    const existing = (await existingRes.json())[0];
+    if (existing?.status === "completed") return { status: "recovered", paymentId: existing.pi_payment_id, txid: existing.txid };
+  }
 
   const apiKey = process.env.PI_API_KEY?.trim();
   const seed = (process.env.PI_WALLET_PRIVATE_SEED || process.env.PI_PRIVATE_SEED || "").trim();
-  if (!apiKey) return fail("PI_API_KEY is missing.");
-  if (!seed) return fail("Pi app wallet private seed is missing.");
+  if (!apiKey) return { status: "failed", error: "PI_API_KEY is missing." };
+  if (!seed) return { status: "failed", error: "Pi app wallet private seed is missing." };
 
+  let paymentId = "";
+  let txid = "";
   try {
-    Pi.init({ apiKey, walletPrivateSeed: seed });
-    const payment: any = await Pi.createPayment({ amount, memo: `Escrow payout for booking ${bookingId}`, metadata: { bookingId, type: "provider_payout", providerWallet: wallet }, uid });
-    const paymentId = payment.identifier || payment.id;
-    const paymentWallet = String(payment.to_address || payment.toAddress || "").trim();
-    if (!paymentId) return fail("Pi did not return a payment identifier.");
-    if (paymentWallet && paymentWallet !== wallet) return fail("Pi payment destination does not match the provider's registered wallet.", paymentId);
-    const txid = await Pi.submitPayment(paymentId);
-    const tx = typeof txid === "string" ? txid : (txid as any)?.txid;
-    if (!tx) return fail("Pi did not return a transaction ID.", paymentId);
-    await sb(`payouts?id=eq.${encodeURIComponent(payout.id)}`, { method: "PATCH", body: JSON.stringify({ status: "submitted", pi_payment_id: paymentId, pi_txid: tx }) });
-    await Pi.completePayment(paymentId, tx);
-    await sb(`payouts?id=eq.${encodeURIComponent(payout.id)}`, { method: "PATCH", body: JSON.stringify({ status: "completed", pi_payment_id: paymentId, pi_txid: tx, failure_reason: null, completed_at: new Date().toISOString() }) });
-    return reconcile(bookingId, paymentId, tx);
-  } catch (e: any) { return fail(e?.message || "Automatic Pi payout failed."); }
-}
+    const pi = await createPiClient(apiKey, seed);
+    const payment: any = await pi.createPayment({ amount, memo: `Escrow payout for booking ${bookingId}`, metadata: { bookingId, type: "provider_payout", providerWallet: wallet }, uid });
+    paymentId = String(typeof payment === "string" ? payment : (payment?.identifier || payment?.id || ""));
+    if (!paymentId) return { status: "failed", error: "Pi did not return a payout payment identifier." };
+    const submitted = await pi.submitPayment(paymentId);
+    txid = typeof submitted === "string" ? submitted : String((submitted as any)?.txid || (submitted as any)?.transaction?.txid || "");
+    if (!txid) return { status: "failed", paymentId, error: "Pi did not return a payout transaction ID." };
+    await pi.completePayment(paymentId, txid);
 
-async function reconcile(bookingId: string, paymentId?: string, txid?: string): Promise<PayoutResult> {
-  const now = new Date().toISOString();
-  const r = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&escrow_status=eq.completion_confirmed`, { method: "PATCH", body: JSON.stringify({ status: "Completed", escrow_status: "released", released_at: now, updated_at: now }) });
-  if (!r?.ok) return { status: "failed", error: "Payout succeeded but booking release update failed.", paymentId, txid };
-  return { status: "completed", paymentId, txid };
+    const now = new Date().toISOString();
+    await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        escrow_status: "released",
+        status: "Completed",
+        payout_tx_hash: txid,
+        released_at: now,
+        updated_at: now,
+      }),
+    });
+
+    return { status: "completed", paymentId, txid };
+  } catch (e: any) {
+    return { status: "failed", paymentId: paymentId || undefined, txid: txid || undefined, error: e?.message || "Automatic Pi A2U payout failed." };
+  }
 }
