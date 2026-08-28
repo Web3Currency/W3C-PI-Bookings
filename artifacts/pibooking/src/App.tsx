@@ -1,15 +1,463 @@
 import { useState, useEffect } from 'react';
 import { Service, Booking, BusinessProfile, Provider } from './types';
-import { useBusiness } from './hooks/useBusiness'; import { useServices } from './hooks/useServices'; import { useBookings } from './hooks/useBookings'; import { usePiAuth } from './hooks/usePiAuth'; import { usePullToRefresh } from './hooks/usePullToRefresh'; import { bookingService } from './services/bookingService';
-import { Navbar } from './components/Navbar'; import { Footer } from './components/Footer'; import { PullToRefreshIndicator } from './components/PullToRefreshIndicator'; import { ServiceBrowser } from './components/ServiceBrowser'; import { SearchView } from './components/SearchView'; import { ServiceDetail } from './components/ServiceDetail'; import { SelectDetailsStep } from './components/SelectDetailsStep'; import { SelectScheduleStep } from './components/SelectScheduleStep'; import { BookingSummaryStep } from './components/BookingSummaryStep'; import { PiPaymentModal } from './components/PiPaymentModal'; import { BookingConfirmationStep } from './components/BookingConfirmationStep'; import { BookingStatusView } from './components/BookingStatusView'; import { PublicProfileView } from './components/PublicProfileView'; import { BecomeProviderStep, BecomeProviderDetails } from './components/BecomeProviderStep'; import { BecomeProviderModal } from './components/BecomeProviderModal'; import { ProviderDashboardView } from './features/provider/ProviderDashboardView'; import { ProviderServicesView } from './features/provider/ProviderServicesView'; import { ChatView } from './components/ChatView'; import { FeedbackWidget } from './components/FeedbackWidget'; import { providerService } from './services/providerService'; import { settingsService } from './services/settingsService';
+import { useBusiness } from './hooks/useBusiness';
+import { useServices } from './hooks/useServices';
+import { useBookings } from './hooks/useBookings';
+import { usePiAuth } from './hooks/usePiAuth';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
+import { bookingService } from './services/bookingService';
+import { Navbar } from './components/Navbar';
+import { Footer } from './components/Footer';
+import { PullToRefreshIndicator } from './components/PullToRefreshIndicator';
+import { ServiceBrowser } from './components/ServiceBrowser';
+import { SearchView } from './components/SearchView';
+import { ServiceDetail } from './components/ServiceDetail';
+import { SelectDetailsStep } from './components/SelectDetailsStep';
+import { BookingSummaryStep } from './components/BookingSummaryStep';
+import { PiPaymentModal } from './components/PiPaymentModal';
+import { BookingStatusView } from './components/BookingStatusView';
+import { PublicProfileView } from './components/PublicProfileView';
+import { BecomeProviderStep, BecomeProviderDetails } from './components/BecomeProviderStep';
+import { BecomeProviderModal } from './components/BecomeProviderModal';
+import { ProviderDashboardView } from './features/provider/ProviderDashboardView';
+import { ProviderServicesView } from './features/provider/ProviderServicesView';
+import { ChatView } from './components/ChatView';
+import { FeedbackWidget } from './components/FeedbackWidget';
+import { providerService } from './services/providerService';
+import { settingsService } from './services/settingsService';
 
-type FlowStep = 'browse'|'about'|'detail'|'select_details'|'select_schedule'|'review_summary'|'payment'|'confirmation'|'status'|'become_provider'|'provider_console'|'provider_services';
-type ClientDetails = { clientName:string; clientPiUsername:string; clientPhone:string; clientEmail?:string; notes:string; attachments?:{id:string;name:string;size:string;type:string;dataUrl?:string}[] };
+type FlowStep =
+  | 'browse'
+  | 'about'
+  | 'detail'
+  | 'select_details'
+  | 'review_summary'
+  | 'payment'
+  | 'status'
+  | 'become_provider'
+  | 'provider_console'
+  | 'provider_services';
+
+type ClientDetails = {
+  clientName: string;
+  clientPiUsername: string;
+  clientPhone: string;
+  clientEmail?: string;
+  notes: string;
+  attachments?: { id: string; name: string; size: string; type: string; dataUrl?: string }[];
+};
+
 export default function App() {
-  const { business, loading: loadingBusiness, refreshBusiness } = useBusiness(); const { services, refreshServices } = useServices(); const { bookings, refreshBookings } = useBookings(); const { piUser, loading: piAuthLoading, signIn: signInWithPi, signOut: signOutPi } = usePiAuth(); const [activeTab, setActiveTab] = useState<'browse'|'search'|'bookings'|'chat'>('browse'); const [currentFlow, setCurrentFlow] = useState<FlowStep>('browse'); const [searchQuery, setSearchQuery] = useState(''); const [searchCategory, setSearchCategory] = useState('all'); const [selectedService, setSelectedService] = useState<Service|null>(null); const [selectedDate, setSelectedDate] = useState(''); const [selectedTimeSlot, setSelectedTimeSlot] = useState(''); const [clientDetails, setClientDetails] = useState<ClientDetails>({clientName:'',clientPiUsername:'',clientPhone:'',clientEmail:'',notes:''}); const [confirmedBooking, setConfirmedBooking] = useState<Booking|null>(null); const [selectedProfile, setSelectedProfile] = useState<BusinessProfile|Provider|null>(null); const [myProviderId, setMyProviderId] = useState<string|null>(null); const [providerCheckDone, setProviderCheckDone] = useState(false); const [showBecomeProviderModal, setShowBecomeProviderModal] = useState(false); const [becomeProviderPopupEnabled, setBecomeProviderPopupEnabled] = useState(false); const [hasDismissedProviderModal, setHasDismissedProviderModal] = useState(() => sessionStorage.getItem('pibooking_dismissed_provider_modal') === 'true'); const [isSubmittingProvider, setIsSubmittingProvider] = useState(false);
-  const handleRefreshAll = async () => { await Promise.all([refreshBusiness(), refreshServices(), refreshBookings()]); }; const { isPulling, isRefreshing, pullDistance, pullProgress, isThresholdReached } = usePullToRefresh({ onRefresh: handleRefreshAll });
-  useEffect(() => { settingsService.getSettings().then((settings) => setBecomeProviderPopupEnabled(settings.become_provider_popup_enabled)); }, []); useEffect(() => { const scrollToTop=()=>{window.scrollTo({top:0,left:0,behavior:'instant' as ScrollBehavior});document.documentElement.scrollTop=0;document.body.scrollTop=0;const mainEl=document.querySelector('main');if(mainEl)mainEl.scrollTop=0;};scrollToTop();const frameId=requestAnimationFrame(scrollToTop);return()=>cancelAnimationFrame(frameId); }, [activeTab,currentFlow,selectedService?.id,(selectedProfile as any)?.id]); useEffect(() => { if(!piUser)return;setClientDetails((prev)=>({...prev,clientPiUsername:piUser.username?(piUser.username.startsWith('@')?piUser.username:`@${piUser.username}`):prev.clientPiUsername})); }, [piUser]); useEffect(() => { if(!piUser?.uid){setMyProviderId(null);setProviderCheckDone(false);return;} providerService.getProviderByPiUid(piUser.uid).then((provider)=>{setMyProviderId(provider?provider.id:null);setProviderCheckDone(true);}); }, [piUser]); useEffect(() => { if(!becomeProviderPopupEnabled||!piUser?.uid||!providerCheckDone||myProviderId!==null||hasDismissedProviderModal)return;const timer=setTimeout(()=>{if(becomeProviderPopupEnabled&&piUser?.uid&&myProviderId===null&&!hasDismissedProviderModal)setShowBecomeProviderModal(true);},7000);return()=>clearTimeout(timer); }, [becomeProviderPopupEnabled,piUser,providerCheckDone,myProviderId,hasDismissedProviderModal]);
-  const handleDismissProviderModal=()=>{setShowBecomeProviderModal(false);setHasDismissedProviderModal(true);sessionStorage.setItem('pibooking_dismissed_provider_modal','true');}; const handleOpenBecomeProvider=()=>{setActiveTab('browse');setCurrentFlow('become_provider');}; const handleOpenProviderServices=()=>{setActiveTab('browse');setCurrentFlow('provider_services');}; const handleSubmitProvider=async(details:BecomeProviderDetails)=>{if(!piUser?.uid||!piUser.accessToken)return;setIsSubmittingProvider(true);try{const created=await providerService.addProvider({fullName:details.fullName,piUsername:details.piUsername||undefined,piUid:piUser.uid,roleTitle:details.roleTitle,headline:details.headline||undefined,bio:details.bio,photoUrl:details.photoUrl||undefined,piWalletAddress:details.piWalletAddress||undefined,location:details.location||undefined,specialties:details.specialties||[],skills:details.skills||[],experienceLevel:details.experienceLevel||undefined,yearsExperience:details.yearsExperience||undefined,availabilityStatus:details.availabilityStatus||'available',responseTime:details.responseTime||undefined,languages:details.languages||[],serviceMode:details.serviceMode||undefined,website:details.website||undefined,socialLinks:details.socialLinks||[],portfolioImages:details.portfolioImages||[],portfolioItems:details.portfolioItems||[],status:'Approved'},piUser.accessToken);setMyProviderId(created.id);setCurrentFlow('browse');}finally{setIsSubmittingProvider(false);}}; const handleSelectService=(service:Service)=>{setActiveTab('browse');setSelectedService(service);setCurrentFlow('detail');}; const handleOpenSearch=(query?:string,category?:string)=>{setSearchQuery(query||'');setSearchCategory(category||'all');setActiveTab('search');}; const handleStartBooking=()=>{setActiveTab('browse');setCurrentFlow('select_details');}; const handleConfirmDetails=(details:ClientDetails)=>{setActiveTab('browse');setClientDetails(details);setCurrentFlow('select_schedule');}; const handleConfirmSchedule=(date:string,timeSlot:string)=>{setActiveTab('browse');setSelectedDate(date);setSelectedTimeSlot(timeSlot);setCurrentFlow('review_summary');}; const handleProceedToPayment=()=>{setActiveTab('browse');setCurrentFlow('payment');}; const handlePaymentSuccess=async(newBooking:Booking)=>{setActiveTab('browse');try{const created=await bookingService.saveBookingAsync({...newBooking,escrow_status:'paid_escrowed',paid_at:new Date().toISOString(),status:'Pending',paymentStatus:'Paid',acceptance_deadline:new Date(Date.now()+24*60*60*1000).toISOString()});setConfirmedBooking(created);try{const token=piUser?.accessToken||(await import('./services/piAuthService')).piAuthService.getStoredUser()?.accessToken;if(token&&created.id){await fetch('/api/pi/chat/conversations/for-booking',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({accessToken:token,bookingId:created.id})});}}catch(chatErr){console.warn('[Booking] Chat seed after payment failed (non-blocking):',chatErr);}await handleRefreshAll();setCurrentFlow('confirmation');}catch(error){console.error('[Booking] Paid booking persistence failed:',error);setCurrentFlow('payment');throw error;}}; const handleGoToMyBookings=()=>{setActiveTab('bookings');setCurrentFlow('status');}; const handleCancelBooking=async(bookingId:string)=>{await bookingService.updateBookingStatusAsync(bookingId,'Cancelled');await refreshBookings();}; const handleRescheduleBooking=(booking:Booking)=>{setActiveTab('browse');if(business){const srv=services.find((s)=>s.id===booking.serviceId)||services[0];setSelectedService(srv);setCurrentFlow('select_details');}}; const handleConfirmCompletion=async(bookingId:string)=>{await bookingService.updateBookingEscrowStatusAsync(bookingId,'completion_confirmed');await refreshBookings();}; const handleAcceptBooking=async(bookingId:string)=>{await bookingService.updateBookingStatusAsync(bookingId,'In Progress');await refreshBookings();}; const handleRejectBooking=async(bookingId:string,reason:string,payoutTxHash?:string)=>{await bookingService.updateBookingStatusAsync(bookingId,'Cancelled',reason,payoutTxHash);await refreshBookings();}; const handleNavigateHome=()=>{setActiveTab('browse');setCurrentFlow('browse');}; const handleNavigateSearch=()=>{setActiveTab('search');}; const handleNavigateBookings=()=>{setActiveTab('bookings');setCurrentFlow('status');}; const handleNavigateChat=()=>{setActiveTab('chat');}; const handleOpenBookingChat=(bookingId:string)=>{sessionStorage.setItem('w3c_open_chat_booking',bookingId);setActiveTab('chat');setCurrentFlow('browse');}; const handleOpenAboutBusiness=()=>{setActiveTab('browse');setSelectedProfile(businessWithServices);setCurrentFlow('about');}; const handleOpenProviderProfile=async(provider:Provider)=>{setActiveTab('browse');try{const providers=await providerService.getProvidersAsync();const completeProvider=providers.find((item)=>item.id===provider.id)||provider;setSelectedProfile(completeProvider);}catch{setSelectedProfile(provider);}setCurrentFlow('about');}; const businessWithServices={...business,services};
-  if(loadingBusiness&&!business)return <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 text-center space-y-3"><div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin mx-auto"/><span className="text-xs font-bold text-zinc-600">Loading Pi Business OS...</span></div>;
-  return <div className="min-h-screen w-full flex flex-col bg-white text-zinc-900 font-sans selection:bg-amber-500 selection:text-white transition-colors overflow-x-hidden"><PullToRefreshIndicator isPulling={isPulling} isRefreshing={isRefreshing} pullDistance={pullDistance} pullProgress={pullProgress} isThresholdReached={isThresholdReached}/><Navbar currentBusiness={businessWithServices} piUser={piUser} piAuthLoading={piAuthLoading} onSignIn={signInWithPi} onSignOut={signOutPi} hasProvider={!!myProviderId} onOpenBecomeProvider={handleOpenBecomeProvider} onOpenProviderConsole={()=>{setActiveTab('browse');setCurrentFlow('provider_console');}} onOpenProviderServices={handleOpenProviderServices} activeTab={activeTab} currentFlow={currentFlow} bookingsCount={bookings.filter((b)=>piUser&&(b.clientPiUsername===`@${piUser.username}`||b.clientPiUsername===piUser.username)&&(b.status==='Confirmed'||b.status==='Pending'||b.status==='In Progress')).length} onNavigateHome={handleNavigateHome} onNavigateSearch={handleNavigateSearch} onNavigateBookings={handleNavigateBookings} onNavigateChat={handleNavigateChat} onOpenAboutBusiness={handleOpenAboutBusiness}/><FeedbackWidget /><main className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">{activeTab==='search'?<SearchView services={services} onSelectService={handleSelectService} onSelectProvider={handleOpenProviderProfile} onBecomeProvider={handleOpenBecomeProvider} initialQuery={searchQuery}/>:activeTab==='chat'?<ChatView onNavigateHome={handleNavigateHome}/>:activeTab==='browse'?(currentFlow==='browse'?<ServiceBrowser business={businessWithServices} services={services} onSelectService={handleSelectService} onOpenAbout={(merchant)=>{setSelectedProfile(merchant||null);setCurrentFlow('about');}} onOpenSearch={handleOpenSearch}/>:currentFlow==='about'?<PublicProfileView merchant={selectedProfile||businessWithServices} services={services} onBack={()=>setCurrentFlow('browse')} onSelectService={handleSelectService}/>:currentFlow==='detail'&&selectedService?<ServiceDetail service={selectedService} business={businessWithServices} onBack={()=>setCurrentFlow('browse')} onProceedToBooking={handleStartBooking} onOpenProviderProfile={handleOpenProviderProfile}/>:currentFlow==='select_details'&&selectedService?<SelectDetailsStep service={selectedService} initialDetails={clientDetails} onBack={()=>setCurrentFlow('detail')} onProceedToSchedule={handleConfirmDetails}/>:currentFlow==='select_schedule'&&selectedService?<SelectScheduleStep service={selectedService} initialDate={selectedDate} initialTimeSlot={selectedTimeSlot} onBack={()=>setCurrentFlow('select_details')} onConfirmSchedule={handleConfirmSchedule}/>:currentFlow==='review_summary'&&selectedService?<BookingSummaryStep service={selectedService} business={businessWithServices} selectedDate={selectedDate} selectedTimeSlot={selectedTimeSlot} clientDetails={clientDetails} piUser={piUser} onBack={()=>setCurrentFlow('select_schedule')} onProceedToPayment={handleProceedToPayment}/>:currentFlow==='payment'&&selectedService?<PiPaymentModal service={selectedService} business={businessWithServices} date={selectedDate} timeSlot={selectedTimeSlot} clientDetails={clientDetails} piUser={piUser} onBack={()=>setCurrentFlow('review_summary')} onPaymentComplete={handlePaymentSuccess}/>:currentFlow==='confirmation'&&confirmedBooking?<BookingConfirmationStep booking={confirmedBooking} onGoToBookings={handleGoToMyBookings} onOpenChat={handleOpenBookingChat}/>:currentFlow==='become_provider'?<BecomeProviderStep piUser={piUser} onBack={()=>setCurrentFlow('browse')} onSubmit={handleSubmitProvider} submitting={isSubmittingProvider}/>:currentFlow==='provider_console'?<ProviderDashboardView piUser={piUser} providerId={myProviderId||''} bookings={bookings} onBack={()=>setCurrentFlow('browse')} onAcceptBooking={handleAcceptBooking} onRejectBooking={handleRejectBooking} onProviderUpdated={handleRefreshAll}/>:currentFlow==='provider_services'?<ProviderServicesView onBack={()=>setCurrentFlow('browse')}/>:<ServiceBrowser business={businessWithServices} services={services} onSelectService={handleSelectService} onOpenAbout={(merchant)=>{setSelectedProfile(merchant||null);setCurrentFlow('browse');}}/>):<BookingStatusView bookings={bookings.filter((b)=>piUser&&(b.clientPiUsername===`@${piUser.username}`||b.clientPiUsername===piUser.username))} onBrowseServices={()=>{setActiveTab('browse');setCurrentFlow('browse')}} onCancelBooking={handleCancelBooking} onRescheduleBooking={handleRescheduleBooking} onAddReview={bookingService.submitBookingReviewAsync} onConfirmCompletion={handleConfirmCompletion} onOpenChat={handleOpenBookingChat}/>}</main>{(activeTab==='search'||activeTab==='bookings'||(activeTab==='browse'&&currentFlow==='browse'))&&<Footer currentBusiness={businessWithServices}/>}<BecomeProviderModal isOpen={showBecomeProviderModal} onClose={handleDismissProviderModal} onBecomeProvider={handleOpenBecomeProvider}/></div>;
+  const { business, loading: loadingBusiness, refreshBusiness } = useBusiness();
+  const { services, refreshServices } = useServices();
+  const { bookings, refreshBookings } = useBookings();
+  const { piUser, loading: piAuthLoading, signIn: signInWithPi, signOut: signOutPi } = usePiAuth();
+  const [activeTab, setActiveTab] = useState<'browse' | 'search' | 'bookings' | 'chat'>('browse');
+  const [currentFlow, setCurrentFlow] = useState<FlowStep>('browse');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCategory, setSearchCategory] = useState('all');
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [clientDetails, setClientDetails] = useState<ClientDetails>({
+    clientName: '',
+    clientPiUsername: '',
+    clientPhone: '',
+    clientEmail: '',
+    notes: '',
+  });
+  const [selectedProfile, setSelectedProfile] = useState<BusinessProfile | Provider | null>(null);
+  const [myProviderId, setMyProviderId] = useState<string | null>(null);
+  const [providerCheckDone, setProviderCheckDone] = useState(false);
+  const [showBecomeProviderModal, setShowBecomeProviderModal] = useState(false);
+  const [becomeProviderPopupEnabled, setBecomeProviderPopupEnabled] = useState(false);
+  const [hasDismissedProviderModal, setHasDismissedProviderModal] = useState(
+    () => sessionStorage.getItem('pibooking_dismissed_provider_modal') === 'true',
+  );
+  const [isSubmittingProvider, setIsSubmittingProvider] = useState(false);
+
+  const handleRefreshAll = async () => {
+    await Promise.all([refreshBusiness(), refreshServices(), refreshBookings()]);
+  };
+  const { isPulling, isRefreshing, pullDistance, pullProgress, isThresholdReached } = usePullToRefresh({
+    onRefresh: handleRefreshAll,
+  });
+
+  useEffect(() => {
+    settingsService.getSettings().then((settings) => setBecomeProviderPopupEnabled(settings.become_provider_popup_enabled));
+  }, []);
+
+  useEffect(() => {
+    const scrollToTop = () => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' as ScrollBehavior });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      const mainEl = document.querySelector('main');
+      if (mainEl) mainEl.scrollTop = 0;
+    };
+    scrollToTop();
+    const frameId = requestAnimationFrame(scrollToTop);
+    return () => cancelAnimationFrame(frameId);
+  }, [activeTab, currentFlow, selectedService?.id, (selectedProfile as any)?.id]);
+
+  useEffect(() => {
+    if (!piUser) return;
+    setClientDetails((prev) => ({
+      ...prev,
+      clientPiUsername: piUser.username
+        ? piUser.username.startsWith('@')
+          ? piUser.username
+          : `@${piUser.username}`
+        : prev.clientPiUsername,
+    }));
+  }, [piUser]);
+
+  useEffect(() => {
+    if (!piUser?.uid) {
+      setMyProviderId(null);
+      setProviderCheckDone(false);
+      return;
+    }
+    providerService.getProviderByPiUid(piUser.uid).then((provider) => {
+      setMyProviderId(provider ? provider.id : null);
+      setProviderCheckDone(true);
+    });
+  }, [piUser]);
+
+  useEffect(() => {
+    if (!becomeProviderPopupEnabled || !piUser?.uid || !providerCheckDone || myProviderId !== null || hasDismissedProviderModal)
+      return;
+    const timer = setTimeout(() => {
+      if (becomeProviderPopupEnabled && piUser?.uid && myProviderId === null && !hasDismissedProviderModal)
+        setShowBecomeProviderModal(true);
+    }, 7000);
+    return () => clearTimeout(timer);
+  }, [becomeProviderPopupEnabled, piUser, providerCheckDone, myProviderId, hasDismissedProviderModal]);
+
+  const handleDismissProviderModal = () => {
+    setShowBecomeProviderModal(false);
+    setHasDismissedProviderModal(true);
+    sessionStorage.setItem('pibooking_dismissed_provider_modal', 'true');
+  };
+  const handleOpenBecomeProvider = () => {
+    setActiveTab('browse');
+    setCurrentFlow('become_provider');
+  };
+  const handleOpenProviderServices = () => {
+    setActiveTab('browse');
+    setCurrentFlow('provider_services');
+  };
+  const handleSubmitProvider = async (details: BecomeProviderDetails) => {
+    if (!piUser?.uid || !piUser.accessToken) return;
+    setIsSubmittingProvider(true);
+    try {
+      const created = await providerService.addProvider(
+        {
+          fullName: details.fullName,
+          piUsername: details.piUsername || undefined,
+          piUid: piUser.uid,
+          roleTitle: details.roleTitle,
+          headline: details.headline || undefined,
+          bio: details.bio,
+          photoUrl: details.photoUrl || undefined,
+          piWalletAddress: details.piWalletAddress || undefined,
+          location: details.location || undefined,
+          specialties: details.specialties || [],
+          skills: details.skills || [],
+          experienceLevel: details.experienceLevel || undefined,
+          yearsExperience: details.yearsExperience || undefined,
+          availabilityStatus: details.availabilityStatus || 'available',
+          responseTime: details.responseTime || undefined,
+          languages: details.languages || [],
+          serviceMode: details.serviceMode || undefined,
+          website: details.website || undefined,
+          socialLinks: details.socialLinks || [],
+          portfolioImages: details.portfolioImages || [],
+          portfolioItems: details.portfolioItems || [],
+          status: 'Approved',
+        },
+        piUser.accessToken,
+      );
+      setMyProviderId(created.id);
+      setCurrentFlow('browse');
+    } finally {
+      setIsSubmittingProvider(false);
+    }
+  };
+  const handleSelectService = (service: Service) => {
+    setActiveTab('browse');
+    setSelectedService(service);
+    setCurrentFlow('detail');
+  };
+  const handleOpenSearch = (query?: string, category?: string) => {
+    setSearchQuery(query || '');
+    setSearchCategory(category || 'all');
+    setActiveTab('search');
+  };
+  const handleStartBooking = () => {
+    setActiveTab('browse');
+    setCurrentFlow('select_details');
+  };
+  const handleConfirmDetails = (details: ClientDetails) => {
+    setActiveTab('browse');
+    setClientDetails(details);
+    setCurrentFlow('review_summary');
+  };
+  const handleProceedToPayment = () => {
+    setActiveTab('browse');
+    setCurrentFlow('payment');
+  };
+  const handlePaymentSuccess = async (newBooking: Booking) => {
+    try {
+      const alreadyPersisted = Boolean(newBooking.piPaymentId && newBooking.id && !String(newBooking.id).startsWith('bk_'));
+      let bookingId = newBooking.id;
+      if (!alreadyPersisted) {
+        const created = await bookingService.saveBookingAsync({
+          ...newBooking,
+          escrow_status: 'paid_escrowed',
+          paid_at: new Date().toISOString(),
+          status: 'Pending',
+          paymentStatus: 'Paid',
+          acceptance_deadline: newBooking.acceptance_deadline || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        });
+        bookingId = created.id;
+      }
+      try {
+        const token = piUser?.accessToken || (await import('./services/piAuthService')).piAuthService.getStoredUser()?.accessToken;
+        if (token && bookingId) {
+          await fetch('/api/pi/chat/conversations/for-booking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accessToken: token, bookingId }),
+          });
+        }
+      } catch (chatErr) {
+        console.warn('[Booking] Chat seed after payment failed (non-blocking):', chatErr);
+      }
+      await handleRefreshAll();
+      setActiveTab('bookings');
+      setCurrentFlow('status');
+    } catch (error) {
+      console.error('[Booking] Paid booking persistence failed:', error);
+      setCurrentFlow('payment');
+      throw error;
+    }
+  };
+  const handleCancelBooking = async (bookingId: string) => {
+    await bookingService.updateBookingStatusAsync(bookingId, 'Cancelled');
+    await refreshBookings();
+  };
+  const handleConfirmCompletion = async (bookingId: string) => {
+    await bookingService.updateBookingEscrowStatusAsync(bookingId, 'completion_confirmed');
+    await refreshBookings();
+  };
+  const handleAcceptBooking = async (bookingId: string) => {
+    await bookingService.updateBookingStatusAsync(bookingId, 'In Progress');
+    await refreshBookings();
+  };
+  const handleRejectBooking = async (bookingId: string, reason: string, payoutTxHash?: string) => {
+    await bookingService.updateBookingStatusAsync(bookingId, 'Cancelled', reason, payoutTxHash);
+    await refreshBookings();
+  };
+  const handleNavigateHome = () => {
+    setActiveTab('browse');
+    setCurrentFlow('browse');
+  };
+  const handleNavigateSearch = () => {
+    setActiveTab('search');
+  };
+  const handleNavigateBookings = () => {
+    setActiveTab('bookings');
+    setCurrentFlow('status');
+  };
+  const handleNavigateChat = () => {
+    setActiveTab('chat');
+  };
+  const handleOpenBookingChat = (bookingId: string) => {
+    sessionStorage.setItem('w3c_open_chat_booking', bookingId);
+    setActiveTab('chat');
+    setCurrentFlow('browse');
+  };
+  const handleOpenAboutBusiness = () => {
+    setActiveTab('browse');
+    setSelectedProfile(businessWithServices);
+    setCurrentFlow('about');
+  };
+  const handleOpenProviderProfile = async (provider: Provider) => {
+    setActiveTab('browse');
+    try {
+      const providers = await providerService.getProvidersAsync();
+      const completeProvider = providers.find((item) => item.id === provider.id) || provider;
+      setSelectedProfile(completeProvider);
+    } catch {
+      setSelectedProfile(provider);
+    }
+    setCurrentFlow('about');
+  };
+  const businessWithServices = { ...business, services };
+
+  if (loadingBusiness && !business)
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 text-center space-y-3">
+        <div className="w-8 h-8 rounded-full border-2 border-amber-500 border-t-transparent animate-spin mx-auto" />
+        <span className="text-xs font-bold text-zinc-600">Loading Pi Business OS...</span>
+      </div>
+    );
+
+  return (
+    <div className="min-h-screen w-full flex flex-col bg-white text-zinc-900 font-sans selection:bg-amber-500 selection:text-white transition-colors overflow-x-hidden">
+      <PullToRefreshIndicator
+        isPulling={isPulling}
+        isRefreshing={isRefreshing}
+        pullDistance={pullDistance}
+        pullProgress={pullProgress}
+        isThresholdReached={isThresholdReached}
+      />
+      <Navbar
+        currentBusiness={businessWithServices}
+        piUser={piUser}
+        piAuthLoading={piAuthLoading}
+        onSignIn={signInWithPi}
+        onSignOut={signOutPi}
+        hasProvider={!!myProviderId}
+        onOpenBecomeProvider={handleOpenBecomeProvider}
+        onOpenProviderConsole={() => {
+          setActiveTab('browse');
+          setCurrentFlow('provider_console');
+        }}
+        onOpenProviderServices={handleOpenProviderServices}
+        activeTab={activeTab}
+        currentFlow={currentFlow}
+        bookingsCount={
+          bookings.filter(
+            (b) =>
+              piUser &&
+              (b.clientPiUsername === `@${piUser.username}` || b.clientPiUsername === piUser.username) &&
+              (b.status === 'Confirmed' || b.status === 'Pending' || b.status === 'In Progress'),
+          ).length
+        }
+        onNavigateHome={handleNavigateHome}
+        onNavigateSearch={handleNavigateSearch}
+        onNavigateBookings={handleNavigateBookings}
+        onNavigateChat={handleNavigateChat}
+        onOpenAboutBusiness={handleOpenAboutBusiness}
+      />
+      <FeedbackWidget />
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1">
+        {activeTab === 'search' ? (
+          <SearchView
+            services={services}
+            onSelectService={handleSelectService}
+            onSelectProvider={handleOpenProviderProfile}
+            onBecomeProvider={handleOpenBecomeProvider}
+            initialQuery={searchQuery}
+          />
+        ) : activeTab === 'chat' ? (
+          <ChatView onNavigateHome={handleNavigateHome} />
+        ) : activeTab === 'browse' ? (
+          currentFlow === 'browse' ? (
+            <ServiceBrowser
+              business={businessWithServices}
+              services={services}
+              onSelectService={handleSelectService}
+              onOpenAbout={(merchant) => {
+                setSelectedProfile(merchant || null);
+                setCurrentFlow('about');
+              }}
+              onOpenSearch={handleOpenSearch}
+            />
+          ) : currentFlow === 'about' ? (
+            <PublicProfileView
+              merchant={selectedProfile || businessWithServices}
+              services={services}
+              onBack={() => setCurrentFlow('browse')}
+              onSelectService={handleSelectService}
+            />
+          ) : currentFlow === 'detail' && selectedService ? (
+            <ServiceDetail
+              service={selectedService}
+              business={businessWithServices}
+              onBack={() => setCurrentFlow('browse')}
+              onProceedToBooking={handleStartBooking}
+              onOpenProviderProfile={handleOpenProviderProfile}
+            />
+          ) : currentFlow === 'select_details' && selectedService ? (
+            <SelectDetailsStep
+              service={selectedService}
+              initialDetails={clientDetails}
+              onBack={() => setCurrentFlow('detail')}
+              onProceedToSummary={handleConfirmDetails}
+            />
+          ) : currentFlow === 'review_summary' && selectedService ? (
+            <BookingSummaryStep
+              service={selectedService}
+              business={businessWithServices}
+              clientDetails={clientDetails}
+              piUser={piUser}
+              onBack={() => setCurrentFlow('select_details')}
+              onProceedToPayment={handleProceedToPayment}
+            />
+          ) : currentFlow === 'payment' && selectedService ? (
+            <PiPaymentModal
+              service={selectedService}
+              business={businessWithServices}
+              clientDetails={clientDetails}
+              piUser={piUser}
+              onBack={() => setCurrentFlow('review_summary')}
+              onPaymentComplete={handlePaymentSuccess}
+            />
+          ) : currentFlow === 'become_provider' ? (
+            <BecomeProviderStep
+              piUser={piUser}
+              onBack={() => setCurrentFlow('browse')}
+              onSubmit={handleSubmitProvider}
+              submitting={isSubmittingProvider}
+            />
+          ) : currentFlow === 'provider_console' ? (
+            <ProviderDashboardView
+              piUser={piUser}
+              providerId={myProviderId || ''}
+              bookings={bookings}
+              onBack={() => setCurrentFlow('browse')}
+              onAcceptBooking={handleAcceptBooking}
+              onRejectBooking={handleRejectBooking}
+              onProviderUpdated={handleRefreshAll}
+            />
+          ) : currentFlow === 'provider_services' ? (
+            <ProviderServicesView onBack={() => setCurrentFlow('browse')} />
+          ) : (
+            <ServiceBrowser
+              business={businessWithServices}
+              services={services}
+              onSelectService={handleSelectService}
+              onOpenAbout={(merchant) => {
+                setSelectedProfile(merchant || null);
+                setCurrentFlow('browse');
+              }}
+            />
+          )
+        ) : (
+          <BookingStatusView
+            bookings={bookings.filter(
+              (b) => piUser && (b.clientPiUsername === `@${piUser.username}` || b.clientPiUsername === piUser.username),
+            )}
+            onBrowseServices={() => {
+              setActiveTab('browse');
+              setCurrentFlow('browse');
+            }}
+            onCancelBooking={handleCancelBooking}
+            onAddReview={bookingService.submitBookingReviewAsync}
+            onConfirmCompletion={handleConfirmCompletion}
+            onOpenChat={handleOpenBookingChat}
+          />
+        )}
+      </main>
+      {(activeTab === 'search' || activeTab === 'bookings' || (activeTab === 'browse' && currentFlow === 'browse')) && (
+        <Footer currentBusiness={businessWithServices} />
+      )}
+      <BecomeProviderModal
+        isOpen={showBecomeProviderModal}
+        onClose={handleDismissProviderModal}
+        onBecomeProvider={handleOpenBecomeProvider}
+      />
+    </div>
+  );
 }

@@ -71,8 +71,9 @@ export interface Booking {
   currency: string;
   priceNGN: number;
   pricePi: number;
-  date: string;
-  timeSlot: string;
+  /** Legacy client-selected schedule fields — no longer used in the booking flow. */
+  date?: string;
+  timeSlot?: string;
   clientName: string;
   clientPiUsername: string;
   clientPiUid?: string;
@@ -98,6 +99,7 @@ export interface Booking {
   providerPhotoUrl?: string;
   providerWalletAddress?: string;
   payoutTxHash?: string;
+  /** Authoritative server/database booking creation timestamp. */
   createdAt: string;
   updatedAt?: string;
   piTxHash?: string;

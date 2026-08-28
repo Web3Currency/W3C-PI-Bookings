@@ -88,8 +88,6 @@ async function upsertPaymentIntent(payment: any, extra?: { txid?: string; status
     service_id: meta.serviceId || meta.service_id || null,
     provider_id: meta.providerId || meta.provider_id || null,
     service_title: String(meta.serviceName || meta.service_title || payment?.memo || "").slice(0, 200) || null,
-    booking_date: meta.date || meta.booking_date || null,
-    booking_time: meta.timeSlot || meta.booking_time || null,
     metadata: meta,
     updated_at: now,
   };
@@ -165,12 +163,6 @@ async function finalizeBookingFromPayment(
   const serviceTitle = String(
     intent?.service_title || meta.serviceName || meta.service_title || intentMeta.serviceName || payment?.memo || "Service",
   ).slice(0, 200);
-  let bookingDate = String(
-    intent?.booking_date || meta.date || meta.booking_date || intentMeta.date || "",
-  ).trim();
-  let bookingTime = String(
-    intent?.booking_time || meta.timeSlot || meta.booking_time || intentMeta.timeSlot || "",
-  ).trim();
   let providerId =
     intent?.provider_id || meta.providerId || meta.provider_id || intentMeta.providerId || null;
   let serviceId =
@@ -262,8 +254,6 @@ async function finalizeBookingFromPayment(
     customer_telegram_username: customerPhone || null,
     customer_email: customerEmail || null,
     service_title: serviceTitle,
-    booking_date: bookingDate || null,
-    booking_time: bookingTime || null,
     notes: notes || null,
     provider_id: providerId || null,
     pi_tx_hash: txid || payment?.transaction?.txid || null,
@@ -277,8 +267,6 @@ async function finalizeBookingFromPayment(
     paymentId,
     hasClientUid: Boolean(clientUid),
     hasProviderId: Boolean(providerId),
-    hasDate: Boolean(bookingDate),
-    hasTime: Boolean(bookingTime),
     price_ngn: basePrice,
     duration_minutes: durationMinutes,
     currency,

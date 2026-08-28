@@ -2,18 +2,11 @@ import React from 'react';
 import { Service, BusinessProfile, PiUser } from '../types';
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
-  User,
-  Phone,
   Lock,
-  ArrowRight,
   ShieldCheck,
   Paperclip,
-  CheckCircle2,
-  ChevronRight
+  ChevronRight,
 } from 'lucide-react';
-import { getUpcomingDays } from './SelectDateStep';
 import { BookingProgressBar } from './BookingProgressBar';
 
 interface AttachedFile {
@@ -27,12 +20,11 @@ interface AttachedFile {
 interface BookingSummaryStepProps {
   service: Service;
   business: BusinessProfile;
-  selectedDate: string;
-  selectedTimeSlot: string;
   clientDetails: {
     clientName: string;
     clientPiUsername: string;
     clientPhone: string;
+    clientEmail?: string;
     notes: string;
     attachments?: AttachedFile[];
   };
@@ -44,26 +36,19 @@ interface BookingSummaryStepProps {
 export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
   service,
   business,
-  selectedDate,
-  selectedTimeSlot,
   clientDetails,
   onBack,
   onProceedToPayment,
 }) => {
-  const availableDays = getUpcomingDays();
-  const dateObj = availableDays.find((d) => d.dateStr === selectedDate) || availableDays[0];
-
   return (
     <div className="max-w-md mx-auto space-y-4 pb-28 animate-in fade-in duration-200">
-      {/* Step Progress Bar */}
-      <BookingProgressBar currentStep={3} />
+      <BookingProgressBar currentStep={2} />
 
-      {/* Navigation & Header */}
       <div className="flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
-          id="btn-back-to-schedule-step"
+          id="btn-back-to-details-step"
           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-bold transition cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5" />
@@ -71,33 +56,27 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
         </button>
 
         <span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/80">
-          Step 3: Final Review
+          Step 2: Summary
         </span>
       </div>
 
-      {/* Section Title */}
       <div className="space-y-1">
-        <h1 className="text-xl font-black text-zinc-900 tracking-tight flex items-center gap-2">
-          <span>Confirm Booking Details</span>
-        </h1>
+        <h1 className="text-xl font-black text-zinc-900 tracking-tight">Confirm Booking Details</h1>
         <p className="text-xs text-zinc-500 font-medium">
-          Preview your provisional appointment pass and verify information before authorizing Pi payment.
+          Review your service order before authorizing Pi payment.
         </p>
       </div>
 
-      {/* PROVISIONAL APPOINTMENT PASS (PRE-CREATION PREVIEW) */}
       <div className="rounded-3xl bg-white border border-zinc-200 shadow-md overflow-hidden">
-        {/* Pass Top Ticket Header */}
-        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 text-white p-4 sm:p-5 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 text-white p-4 sm:p-5">
           <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
             <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-extrabold uppercase tracking-widest border border-amber-500/30">
-              PROVISIONAL PASS PREVIEW
+              Service Order
             </span>
             <span className="text-[10px] font-mono font-bold text-amber-400 bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-800/50">
-              UNCONFIRMED
+              UNPAID
             </span>
           </div>
-
           <div className="mt-3 space-y-1">
             <span className="text-[10px] font-extrabold text-amber-400 uppercase tracking-wider block">
               {business.name}
@@ -106,68 +85,38 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
               {service.name}
             </h2>
             <p className="text-xs text-zinc-400 font-medium">
-              {service.durationMinutes} mins • {service.locationType}
+              {service.providerName || business.name}
             </p>
           </div>
         </div>
 
-        {/* Perforated Edge Divider */}
-        <div className="relative bg-white h-4 border-b border-dashed border-zinc-200/90 flex items-center justify-between px-3">
-          <div className="w-4 h-4 rounded-full bg-zinc-100 -ml-5 border-r border-zinc-200" />
-          <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400">
-            PRE-PAYMENT CHECKOUT
-          </div>
-          <div className="w-4 h-4 rounded-full bg-zinc-100 -mr-5 border-l border-zinc-200" />
-        </div>
-
-        {/* Pass Details Body */}
         <div className="p-4 sm:p-5 space-y-3.5 text-xs">
-          {/* Schedule Grid */}
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-1">
-              <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
-                <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>Selected Date</span>
-              </div>
-              <span className="text-xs font-black text-zinc-900 block truncate">
-                {dateObj.dayName}, {dateObj.monthName} {dateObj.dayNum}
-              </span>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-zinc-50 border border-zinc-200/80 space-y-1">
-              <div className="flex items-center gap-1.5 text-zinc-500 text-[10px] font-bold uppercase">
-                <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>Time Slot</span>
-              </div>
-              <span className="text-xs font-black text-zinc-900 block truncate">{selectedTimeSlot}</span>
-            </div>
-          </div>
-
-          {/* Client Information */}
-          <div className="space-y-2 pt-1 border-t border-zinc-100">
+          <div className="space-y-2">
             <div className="flex items-center justify-between text-xs py-0.5">
               <span className="text-zinc-500 font-medium">Pioneer Client</span>
               <span className="font-bold text-zinc-900 truncate max-w-[200px]">
-                {clientDetails.clientName} <span className="text-zinc-400 font-normal">(@{clientDetails.clientPiUsername})</span>
+                {clientDetails.clientName}{' '}
+                <span className="text-zinc-400 font-normal">({clientDetails.clientPiUsername})</span>
               </span>
             </div>
-
             <div className="flex items-center justify-between text-xs py-0.5">
               <span className="text-zinc-500 font-medium">Client Telegram</span>
-              <span className="font-mono font-bold text-zinc-800">{clientDetails.clientPhone}</span>
+              <span className="font-mono font-bold text-zinc-800">{clientDetails.clientPhone || '—'}</span>
             </div>
-
-            {/* Requirement Notes */}
+            {clientDetails.clientEmail && (
+              <div className="flex items-center justify-between text-xs py-0.5">
+                <span className="text-zinc-500 font-medium">Email</span>
+                <span className="font-medium text-zinc-800 truncate max-w-[200px]">{clientDetails.clientEmail}</span>
+              </div>
+            )}
             {clientDetails.notes && (
               <div className="p-2.5 rounded-xl bg-amber-50/50 border border-amber-200/50 text-[11px] text-zinc-700 space-y-0.5">
                 <span className="font-bold text-amber-800 flex items-center gap-1 text-[10px] uppercase">
-                  <span>Appointment Notes</span>
+                  <span>Project Brief</span>
                 </span>
                 <p className="italic text-zinc-600">"{clientDetails.notes}"</p>
               </div>
             )}
-
-            {/* Attached Files */}
             {clientDetails.attachments && clientDetails.attachments.length > 0 && (
               <div className="pt-2 border-t border-zinc-100">
                 <span className="text-zinc-500 block text-[10px] font-bold uppercase mb-1">
@@ -188,22 +137,18 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
             )}
           </div>
 
-          {/* Payment Breakdown */}
           <div className="pt-3 border-t border-zinc-100 space-y-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">
               Payment Summary
             </span>
-
             <div className="flex justify-between text-xs text-zinc-600">
               <span>Service Rate</span>
               <span className="font-bold text-zinc-900">{service.pricePi.toFixed(2)} π</span>
             </div>
-
             <div className="flex justify-between text-xs text-zinc-600">
               <span>Pi Network Escrow Fee</span>
               <span className="font-bold text-emerald-600">0.00 π (Waived)</span>
             </div>
-
             <div className="pt-2 border-t border-zinc-100 flex justify-between items-center text-sm font-black text-zinc-900">
               <span>Total Payable</span>
               <span className="text-amber-600 text-base font-black">{service.pricePi.toFixed(2)} π</span>
@@ -212,7 +157,6 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
         </div>
       </div>
 
-      {/* Escrow Guarantee Banner */}
       <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3">
         <ShieldCheck className="w-5 h-5 text-amber-600 shrink-0" />
         <div className="text-[11px] text-amber-950">
@@ -223,16 +167,12 @@ export const BookingSummaryStep: React.FC<BookingSummaryStepProps> = ({
         </div>
       </div>
 
-      {/* Fixed Sticky Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 p-3.5 bg-white/95 backdrop-blur-md border-t border-zinc-200/80 z-50 shadow-lg">
         <div className="max-w-md mx-auto flex items-center justify-between gap-3">
           <div className="text-xs">
             <span className="block text-zinc-400 font-bold text-[10px]">TOTAL PRICE</span>
-            <span className="text-lg font-black text-amber-600">
-              {service.pricePi.toFixed(2)} π
-            </span>
+            <span className="text-lg font-black text-amber-600">{service.pricePi.toFixed(2)} π</span>
           </div>
-
           <button
             type="button"
             onClick={onProceedToPayment}
