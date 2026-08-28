@@ -55,13 +55,21 @@ export async function executeAutomaticClientRefund(
     return { status: "failed", bookingId, error: "Supabase server credentials are missing." };
   }
 
+  // Keep select list minimal and aligned with the reject route (which already succeeds).
+  // A wider select previously caused PostgREST 400 when a column was unavailable.
   const bres = await sb(
-    `bookings?id=eq.${encodeURIComponent(bookingId)}&select=id,status,escrow_status,payment_status,price_pi,client_pi_uid,customer_pi_username,provider_id,refunded_at,payout_tx_hash,rejection_reason`,
+    `bookings?id=eq.${encodeURIComponent(bookingId)}&select=id,status,escrow_status,price_pi,client_pi_uid&limit=1`,
   );
   if (!bres?.ok) {
-    return { status: "failed", bookingId, error: `Booking lookup failed${bres ? ` (${bres.status})` : ""}.` };
+    const detail = bres ? await bres.text().catch(() => "") : "";
+    return {
+      status: "failed",
+      bookingId,
+      error: `Booking lookup failed${bres ? ` (${bres.status})` : ""}${detail ? `: ${detail.slice(0, 300)}` : ""}.`,
+    };
   }
-  const booking = (await bres.json() as any[])[0];
+  const bookingRows = await bres.json() as any[];
+  const booking = Array.isArray(bookingRows) ? bookingRows[0] : null;
   if (!booking) return { status: "failed", bookingId, error: "Booking not found." };
 
   // Already successfully refunded — idempotent success.
@@ -120,15 +128,16 @@ export async function executeAutomaticClientRefund(
       },
     );
     if (!claim?.ok) {
-      return { status: "failed", bookingId, error: `Failed to claim booking for refund (${claim?.status}).` };
+      const detail = claim ? await claim.text().catch(() => "") : "";
+      return { status: "failed", bookingId, error: `Failed to claim booking for refund (${claim?.status})${detail ? `: ${detail.slice(0, 300)}` : ""}.` };
     }
     const claimed = (await claim.json() as any[]) || [];
     if (!claimed.length) {
       // Race: another worker claimed it — re-read.
-      const reread = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status,payout_tx_hash`);
+      const reread = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status&limit=1`);
       const row = reread?.ok ? (await reread.json() as any[])[0] : null;
       if (row?.escrow_status === "refunded") {
-        return { status: "recovered", bookingId, txid: row.payout_tx_hash || undefined };
+        return { status: "recovered", bookingId };
       }
       if (row?.escrow_status !== "refund_processing") {
         return { status: "failed", bookingId, error: "Could not claim booking for refund (concurrent update)." };
@@ -210,21 +219,22 @@ export async function executeAutomaticClientRefund(
     });
 
     if (!finalize?.ok) {
+      const detail = finalize ? await finalize.text().catch(() => "") : "";
       return {
         status: "failed",
         bookingId,
         paymentId,
         txid,
-        error: "Pi A2U refund succeeded on-chain, but booking could not be marked refunded. Manual reconciliation required.",
+        error: `Pi A2U refund succeeded on-chain, but booking could not be marked refunded (${finalize?.status})${detail ? `: ${detail.slice(0, 300)}` : ""}. Manual reconciliation required.`,
       };
     }
     const finalized = (await finalize.json() as any[]) || [];
     if (!finalized.length) {
       // Another process may have finalized — treat as recovered if now refunded.
-      const check = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status,payout_tx_hash`);
+      const check = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status&limit=1`);
       const row = check?.ok ? (await check.json() as any[])[0] : null;
       if (row?.escrow_status === "refunded") {
-        return { status: "recovered", bookingId, paymentId, txid: row.payout_tx_hash || txid };
+        return { status: "recovered", bookingId, paymentId, txid };
       }
       return {
         status: "failed",
