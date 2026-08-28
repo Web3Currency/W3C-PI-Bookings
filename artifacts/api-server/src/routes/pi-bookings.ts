@@ -12,9 +12,55 @@ async function updateBookingViaSupabase(bookingId: string, providerId: string, u
 async function verifyPiAccessToken(accessToken: string) { const response = await fetch("https://api.minepi.com/v2/me", { headers: { Authorization: `Bearer ${accessToken.trim()}` } }); if (!response.ok) return null; const user = await response.json() as { uid?: string; username?: string }; return user.uid ? user : null; }
 function normalizePiUsername(username?: string | null) { return String(username || "").trim().replace(/^@+/, "").toLowerCase(); }
 
-router.post("/pi/bookings/:bookingId/accept", async (req, res) => { const bookingId = req.params.bookingId; const { accessToken } = req.body as { accessToken?: string }; if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." }); if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." }); try { const piUser = await verifyPiAccessToken(accessToken); if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." }); const provider = await getProviderByPiUid(piUser.uid); if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." }); const rows = await updateBookingViaSupabase(bookingId, provider.id, { status: "In Progress", updated_at: new Date().toISOString() }); if (rows) { if (!rows.length) return void res.status(409).json({ error: "Booking is not available for acceptance or is not assigned to this provider." }); try { await ensureConversationForBooking(bookingId); } catch (chatErr: any) { req.log.error({ chatErr, bookingId }, "Booking accepted but chat conversation creation failed"); } return void res.json({ success: true, booking: rows[0] }); } return void res.status(500).json({ error: "Booking database connection is not configured on the API server." }); } catch (err: any) { req.log.error({ err, bookingId }, "Provider booking acceptance failed"); return void res.status(500).json({ error: err?.message || "Failed to accept booking." }); } });
+router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
+  const bookingId = req.params.bookingId;
+  const { accessToken } = req.body as { accessToken?: string };
+  if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." });
+  if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." });
+  try {
+    const piUser = await verifyPiAccessToken(accessToken);
+    if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
+    const provider = await getProviderByPiUid(piUser.uid);
+    if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." });
+    const lookup = await supabaseRequest(
+      `bookings?id=eq.${encodeURIComponent(bookingId)}&provider_id=eq.${encodeURIComponent(provider.id)}&select=id,status,escrow_status,acceptance_deadline,provider_id&limit=1`
+    );
+    if (!lookup?.ok) throw new Error((await lookup?.text().catch(() => "")) || "Booking lookup failed.");
+    const currentRows = await lookup.json() as any[];
+    if (!currentRows.length) return void res.status(409).json({ error: "Booking is not available for acceptance or is not assigned to this provider." });
+    const current = currentRows[0];
+    const statusOk = current.status === "Pending" || current.status === "Confirmed";
+    const escrowOk = current.escrow_status === "paid_escrowed";
+    if (!statusOk || !escrowOk) {
+      return void res.status(409).json({ error: "Booking is not in the provider acceptance window." });
+    }
+    if (current.acceptance_deadline) {
+      const deadlineMs = new Date(current.acceptance_deadline).getTime();
+      if (!Number.isNaN(deadlineMs) && deadlineMs <= Date.now()) {
+        return void res.status(409).json({ error: "The 24-hour acceptance window has expired. This booking can no longer be accepted." });
+      }
+    }
+    const now = new Date().toISOString();
+    const rows = await updateBookingViaSupabase(bookingId, provider.id, {
+      status: "In Progress",
+      updated_at: now,
+      acceptance_deadline: null,
+    });
+    if (rows) {
+      if (!rows.length) return void res.status(409).json({ error: "Booking is not available for acceptance or is not assigned to this provider." });
+      try { await ensureConversationForBooking(bookingId); } catch (chatErr: any) {
+        req.log.error({ chatErr, bookingId }, "Booking accepted but chat conversation creation failed");
+      }
+      return void res.json({ success: true, booking: rows[0] });
+    }
+    return void res.status(500).json({ error: "Booking database connection is not configured on the API server." });
+  } catch (err: any) {
+    req.log.error({ err, bookingId }, "Provider booking acceptance failed");
+    return void res.status(500).json({ error: err?.message || "Failed to accept booking." });
+  }
+});
 
-router.post("/pi/bookings/:bookingId/reject", async (req, res) => { const bookingId = req.params.bookingId; const { accessToken, rejectionReason } = req.body as { accessToken?: string; rejectionReason?: string }; if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." }); if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." }); if (!rejectionReason?.trim()) return void res.status(400).json({ error: "A rejection reason is required." }); try { const piUser = await verifyPiAccessToken(accessToken); if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." }); const provider = await getProviderByPiUid(piUser.uid); if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." }); const now = new Date().toISOString(); const rows = await updateBookingViaSupabase(bookingId, provider.id, { status: "Cancelled", rejection_reason: rejectionReason.trim(), cancelled_at: now, updated_at: now }); if (!rows?.length) return void res.status(409).json({ error: "Booking is not available for rejection or is not assigned to this provider." }); return void res.json({ success: true, booking: rows[0] }); } catch (err: any) { req.log.error({ err, bookingId }, "Provider booking rejection failed"); return void res.status(500).json({ error: err?.message || "Failed to reject booking." }); } });
+router.post("/pi/bookings/:bookingId/reject", async (req, res) => { const bookingId = req.params.bookingId; const { accessToken, rejectionReason } = req.body as { accessToken?: string; rejectionReason?: string }; if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." }); if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." }); if (!rejectionReason?.trim()) return void res.status(400).json({ error: "A rejection reason is required." }); try { const piUser = await verifyPiAccessToken(accessToken); if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." }); const provider = await getProviderByPiUid(piUser.uid); if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." }); const now = new Date().toISOString(); const rows = await updateBookingViaSupabase(bookingId, provider.id, { status: "Cancelled", rejection_reason: rejectionReason.trim(), cancelled_at: now, updated_at: now, escrow_status: "refunded", refunded_at: now, acceptance_deadline: null }); if (!rows?.length) return void res.status(409).json({ error: "Booking is not available for rejection or is not assigned to this provider." }); return void res.json({ success: true, booking: rows[0] }); } catch (err: any) { req.log.error({ err, bookingId }, "Provider booking rejection failed"); return void res.status(500).json({ error: err?.message || "Failed to reject booking." }); } });
 
 router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
   const bookingId = req.params.bookingId; const { accessToken } = req.body as { accessToken?: string };
@@ -42,6 +88,40 @@ router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
     const finalRows = finalBookingResponse?.ok ? await finalBookingResponse.json() as any[] : [];
     return void res.json({ success: true, booking: finalRows[0] || confirmedRows[0], payout: { status: payout.status, paymentId: payout.paymentId, txid: payout.txid } });
   } catch (err: any) { req.log.error({ err, bookingId }, "Client booking completion and automatic payout failed"); return void res.status(500).json({ error: err?.message || "Failed to confirm booking completion." }); }
+});
+
+router.post("/pi/bookings/expire-unaccepted", async (req, res) => {
+  try {
+    const now = new Date().toISOString();
+    const lookup = await supabaseRequest(
+      `bookings?select=id&status=in.(Pending,Confirmed)&escrow_status=eq.paid_escrowed&acceptance_deadline=lt.${encodeURIComponent(now)}`
+    );
+    if (!lookup?.ok) throw new Error((await lookup?.text().catch(() => "")) || "Expire lookup failed.");
+    const rows = await lookup.json() as Array<{ id: string }>;
+    let expired = 0;
+    for (const row of rows) {
+      const patch = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(row.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          status: "Cancelled",
+          escrow_status: "refunded",
+          rejection_reason: "Provider did not accept within 24 hours",
+          cancelled_at: now,
+          refunded_at: now,
+          updated_at: now,
+          acceptance_deadline: null,
+        }),
+      });
+      if (patch?.ok) {
+        const updated = await patch.json() as any[];
+        if (updated?.length) expired += 1;
+      }
+    }
+    return void res.json({ success: true, expired });
+  } catch (err: any) {
+    req.log.error({ err }, "Expire unaccepted bookings failed");
+    return void res.status(500).json({ error: err?.message || "Failed to expire bookings." });
+  }
 });
 
 export default router;

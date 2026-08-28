@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { isPendingAcceptance, getRemainingMs, formatCountdown, isAcceptanceExpired } from '../lib/acceptanceCountdown';
 import { Booking } from '../types';
 import { CheckCircle2, Calendar, Clock, Copy, QrCode, Download, ShieldCheck, Check, MessageSquare, User, ChevronRight, FileText } from 'lucide-react';
 
@@ -24,12 +25,19 @@ export const BookingConfirmationStep: React.FC<BookingConfirmationStepProps> = (
     const blob = new Blob([icsData], { type: 'text/calendar;charset=utf-8' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.setAttribute('download', `appointment-${booking.id}.ics`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
   };
 
+  const [tick, setTick] = useState(0);
+  useEffect(() => { const id = setInterval(() => setTick((n) => n + 1), 1000); return () => clearInterval(id); }, []);
+  void tick;
+  const pendingAccept = isPendingAcceptance(booking);
+  const expired = isAcceptanceExpired(booking.acceptance_deadline);
+  const remain = formatCountdown(getRemainingMs(booking.acceptance_deadline));
   const providerDisplayName = booking.providerName || booking.businessName || 'W3C Verified Merchant';
 
   return (
     <div className="max-w-md mx-auto space-y-4 pb-28 animate-in fade-in duration-200">
       <div className="text-center pt-1 space-y-2"><div className="relative inline-flex items-center justify-center"><div className="w-14 h-14 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center ring-8 ring-emerald-500/5"><CheckCircle2 className="w-8 h-8 stroke-[2.5]" /></div></div><div className="space-y-0.5"><div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-[11px] font-black uppercase tracking-wider border border-emerald-200/80 shadow-2xs"><ShieldCheck className="w-3.5 h-3.5 text-emerald-600" /><span>Escrow Payment Confirmed</span></div><div className="pt-1 flex items-baseline justify-center gap-1"><span className="text-3xl font-black text-zinc-900 tracking-tight">{booking.pricePi.toFixed(2)}</span><span className="text-lg font-black text-amber-600">π</span></div><p className="text-[11px] text-zinc-500 font-medium">Booking Pass issued for <strong className="text-zinc-800 font-bold">{providerDisplayName}</strong></p></div></div>
 
+      {pendingAccept && <div className={`p-3.5 rounded-2xl border space-y-1 ${expired ? 'bg-rose-50 border-rose-200' : 'bg-amber-50 border-amber-200'}`}><div className={`text-[11px] font-black uppercase tracking-wider ${expired ? 'text-rose-800' : 'text-amber-900'}`}>{expired ? 'Acceptance window expired' : 'Awaiting provider acceptance'}</div><p className={`text-sm font-black tabular-nums ${expired ? 'text-rose-900' : 'text-amber-950'}`}>{expired ? 'This booking will cancel and your escrow refund will be initiated.' : `${remain} for the provider to accept`}</p></div>}
       <div className="rounded-3xl bg-white border border-zinc-200 shadow-md overflow-hidden">
         <div className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 text-white p-4 sm:p-5 relative overflow-hidden"><div className="absolute -top-10 -right-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" /><div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-3"><span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-extrabold uppercase tracking-widest border border-amber-500/30 shrink-0">APPOINTMENT PASS</span><button type="button" onClick={() => copyToClipboard(booking.id, 'ref')} className="flex items-center gap-1 text-[11px] font-mono text-zinc-400 hover:text-white transition shrink-0 bg-zinc-800/80 px-2 py-0.5 rounded-md" title="Click to copy Reference ID"><span>#{booking.id}</span>{copiedRefId ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}</button></div><div className="mt-3 space-y-1"><h2 className="text-base sm:text-lg font-black text-white leading-snug tracking-tight">{booking.serviceName}</h2><div className="flex items-center gap-2 text-xs text-zinc-300 font-medium"><User className="w-3.5 h-3.5 text-amber-400 shrink-0" /><span className="truncate">{providerDisplayName}</span></div></div></div>
         <div className="relative bg-white h-4 border-b border-dashed border-zinc-200/90 flex items-center justify-between px-3"><div className="w-4 h-4 rounded-full bg-zinc-100 -ml-5 border-r border-zinc-200" /><div className="text-[9px] font-mono font-bold uppercase tracking-widest text-zinc-400">W3C VERIFIED RECEIPT</div><div className="w-4 h-4 rounded-full bg-zinc-100 -mr-5 border-l border-zinc-200" /></div>
