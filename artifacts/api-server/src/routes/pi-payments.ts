@@ -242,7 +242,8 @@ async function finalizeBookingFromPayment(
         serviceRow?.duration ||
         60,
     ) || 60;
-  const currency = String(intentMeta.currency || meta.currency || "NGN").slice(0, 10) || "NGN";
+  // currency intentionally omitted from insert — column does not exist on production bookings (PGRST204)
+  const currency = String(intentMeta.currency || meta.currency || "NGN").slice(0, 10) || "NGN"; // log only
 
   const payload: Record<string, any> = {
     status: "Pending",
@@ -252,7 +253,6 @@ async function finalizeBookingFromPayment(
     acceptance_deadline: acceptanceDeadline,
     price_pi: amount,
     price_ngn: basePrice,
-    currency,
     duration_minutes: durationMinutes,
     platform_fee_pi: Number((amount * 0.1).toFixed(7)),
     provider_payout_pi: Number((amount * 0.9).toFixed(7)),
