@@ -6,7 +6,7 @@ import { BookingProgressBar } from './BookingProgressBar';
 
 interface PiPaymentModalProps { service: Service; business: BusinessProfile; date: string; timeSlot: string; clientDetails: { clientName: string; clientPiUsername: string; clientPhone: string; clientEmail?: string; notes: string; attachments?: { id: string; name: string; size: string; type: string; dataUrl?: string }[] }; piUser: PiUser | null; onBack: () => void; onPaymentComplete: (booking: Booking) => void; }
 
-export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({ service, business, date, timeSlot, clientDetails, onBack, onPaymentComplete }) => {
+export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({ service, business, date, timeSlot, clientDetails, piUser, onBack, onPaymentComplete }) => {
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'confirming' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [simulatedTxHash, setSimulatedTxHash] = useState<string | null>(null);
@@ -14,9 +14,64 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({ service, busines
     setPaymentStatus('processing'); setErrorMessage(null);
     try {
       const memo = `Booking: ${service.name} with ${business.name} (${date} @ ${timeSlot})`;
-      const paymentResult = await piPaymentService.executePayment({ amountPi: service.pricePi, memo, metadata: { serviceId: service.id, businessId: business.id, date, timeSlot } });
+      const paymentResult = await piPaymentService.executePayment({
+        amountPi: service.pricePi,
+        memo,
+        metadata: {
+          type: 'booking',
+          serviceId: service.id,
+          serviceName: service.name,
+          businessId: business.id,
+          providerId: service.providerId || (business as any).providerId || business.id,
+          providerName: service.providerName || business.name,
+          date,
+          timeSlot,
+          clientName: clientDetails.clientName,
+          clientPiUsername: clientDetails.clientPiUsername,
+          clientPiUid: piUser?.uid || undefined,
+          clientPhone: clientDetails.clientPhone,
+          clientEmail: clientDetails.clientEmail,
+          notes: clientDetails.notes,
+          amountPi: service.pricePi,
+        },
+      });
       setSimulatedTxHash(paymentResult.txHash); setPaymentStatus('success');
-      const newBooking: Booking = { id: 'bk_' + Date.now() + '_' + Math.floor(1000 + Math.random() * 9000), serviceId: service.id, serviceName: service.name, providerId: service.providerId, providerName: service.providerName, providerPiUsername: service.provider?.piUsername, providerWalletAddress: service.provider?.piWalletAddress, durationMinutes: service.durationMinutes, basePrice: service.basePrice || service.priceNGN, currency: service.currency || 'NGN', priceNGN: service.basePrice || service.priceNGN, pricePi: service.pricePi, platform_fee_pi: Number((service.pricePi * 0.10).toFixed(7)), provider_payout_pi: Number((service.pricePi * 0.90).toFixed(7)), date, timeSlot, clientName: clientDetails.clientName, clientPiUsername: clientDetails.clientPiUsername, clientPhone: clientDetails.clientPhone, clientEmail: clientDetails.clientEmail, notes: clientDetails.notes, attachments: clientDetails.attachments, status: 'Pending', paymentStatus: 'Paid', createdAt: new Date().toISOString(), piTxHash: paymentResult.txHash };
+      const acceptanceDeadline =
+        (paymentResult as any).acceptanceDeadline ||
+        new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      const newBooking: Booking = {
+        id: paymentResult.bookingId || ('bk_' + Date.now() + '_' + Math.floor(1000 + Math.random() * 9000)),
+        serviceId: service.id,
+        serviceName: service.name,
+        providerId: service.providerId,
+        providerName: service.providerName,
+        providerPiUsername: service.provider?.piUsername,
+        providerWalletAddress: service.provider?.piWalletAddress,
+        durationMinutes: service.durationMinutes,
+        basePrice: service.basePrice || service.priceNGN,
+        currency: service.currency || 'NGN',
+        priceNGN: service.basePrice || service.priceNGN,
+        pricePi: service.pricePi,
+        platform_fee_pi: Number((service.pricePi * 0.10).toFixed(7)),
+        provider_payout_pi: Number((service.pricePi * 0.90).toFixed(7)),
+        date,
+        timeSlot,
+        clientName: clientDetails.clientName,
+        clientPiUsername: clientDetails.clientPiUsername,
+        clientPiUid: piUser?.uid,
+        clientPhone: clientDetails.clientPhone,
+        clientEmail: clientDetails.clientEmail,
+        notes: clientDetails.notes,
+        attachments: clientDetails.attachments,
+        status: 'Pending',
+        paymentStatus: 'Paid',
+        escrow_status: 'paid_escrowed',
+        paid_at: new Date().toISOString(),
+        acceptance_deadline: acceptanceDeadline,
+        createdAt: new Date().toISOString(),
+        piTxHash: paymentResult.txHash,
+        piPaymentId: paymentResult.identifier,
+      };
       setTimeout(() => onPaymentComplete(newBooking), 1000);
     } catch (err: unknown) { setPaymentStatus('error'); setErrorMessage(err instanceof Error ? err.message : 'Pi Wallet payment failed. Please try again.'); }
   };

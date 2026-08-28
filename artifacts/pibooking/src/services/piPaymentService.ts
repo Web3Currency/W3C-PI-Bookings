@@ -6,7 +6,7 @@ export const piPaymentService = {
     amountPi: number;
     memo: string;
     metadata: Record<string, any>;
-  }): Promise<PiPaymentResult> {
+  }): Promise<PiPaymentResult & { acceptanceDeadline?: string }> {
     if (typeof window === 'undefined' || !window.Pi) {
       throw new Error('Pi SDK not detected. Payments require the Pi Browser.');
     }
@@ -16,7 +16,7 @@ export const piPaymentService = {
       throw new Error('Pi SDK failed to initialize. Please reopen the app in Pi Browser.');
     }
 
-    return new Promise<PiPaymentResult>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       try {
         window.Pi!.createPayment(
           {
@@ -55,11 +55,24 @@ export const piPaymentService = {
                   reject(new Error(`Payment completion failed: ${msg}`));
                   return;
                 }
+                const completeData = await res.json().catch(() => ({} as any));
+                // If server could not finalize booking, surface error — do not fake success.
+                if (completeData?.bookingReconciled === false) {
+                  reject(
+                    new Error(
+                      completeData.bookingError ||
+                        'Payment succeeded on Pi but booking was not created. Use reconcile or contact support with your payment ID.',
+                    ),
+                  );
+                  return;
+                }
                 resolve({
                   identifier: paymentId,
                   txHash: txid,
                   amount: params.amountPi,
                   memo: params.memo,
+                  bookingId: completeData?.bookingId || undefined,
+                  acceptanceDeadline: completeData?.acceptanceDeadline || undefined,
                 });
               } catch (err: any) {
                 reject(new Error(`Network error during payment completion: ${err?.message || String(err)}`));

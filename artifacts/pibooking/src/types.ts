@@ -4,16 +4,32 @@ export type CategoryId = ServiceCategory | string;
 export type ServiceStatus = 'Draft' | 'Published' | 'Archived';
 export type ProviderProfileStatus = 'Draft' | 'Published' | 'Archived';
 
-export interface PortfolioItem {
-  id?: string;
-  imageUrl: string;
-  path?: string;
-  caption?: string;
-}
+export type BookingStatus =
+  | 'Pending'
+  | 'Confirmed'
+  | 'Completed'
+  | 'Cancelled'
+  | 'Disputed'
+  | 'Refunded';
 
-export interface SocialLink {
-  platform: string;
-  url: string;
+export type PaymentStatus = 'Unpaid' | 'Paid' | 'Refunded' | 'Released';
+
+export type EscrowStatus =
+  | 'pending_payment'
+  | 'paid_escrowed'
+  | 'completion_confirmed'
+  | 'released'
+  | 'refund_processing'
+  | 'refunded'
+  | 'refund_failed'
+  | 'disputed';
+
+export interface BookingAttachment {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  dataUrl: string;
 }
 
 export interface Provider {
@@ -21,79 +37,35 @@ export interface Provider {
   fullName: string;
   piUsername?: string;
   piUid?: string;
-  piWalletAddress?: string;
-  roleTitle: string;
-  bio?: string;
   photoUrl?: string;
-  portfolioImages?: string[];
-  portfolioItems?: PortfolioItem[];
-  rating?: number;
-  reviewsCount?: number;
-  contactEmail?: string;
-  contactPhone?: string;
-  status: 'Pending' | 'Approved' | 'Rejected' | 'Suspended';
-  profileStatus?: ProviderProfileStatus;
-  createdAt?: string;
-  updatedAt?: string;
-  usernameSlug?: string;
-  headline?: string;
-  specialties?: string[];
+  piWalletAddress?: string;
+  bio?: string;
   skills?: string[];
-  experienceLevel?: string;
-  yearsExperience?: number;
-  availabilityStatus?: 'available' | 'busy' | 'away' | string;
-  responseTime?: string;
-  languages?: string[];
-  serviceMode?: string;
-  profileVerified?: boolean;
-  piVerified?: boolean;
-  location?: string;
-  website?: string;
-  socialLinks?: SocialLink[];
-  profileVisibility?: 'public' | 'private' | string;
+  status?: ProviderProfileStatus;
+  [key: string]: any;
 }
 
 export interface Service {
   id: string;
   name: string;
-  category: ServiceCategory | string;
-  description: string;
-  fullDescription?: string;
-  coverImageUrl: string;
-  included: string[];
+  description?: string;
+  category?: ServiceCategory | string;
+  providerId?: string;
+  providerName?: string;
+  provider?: Provider;
   durationMinutes: number;
-  basePrice: number;
-  currency: string;
+  basePrice?: number;
   priceNGN: number;
   pricePi: number;
-  featured: boolean;
-  providerName: string;
-  providerRole: string;
-  providerId?: string;
-  provider?: Provider;
-  locationType: string;
-  status: ServiceStatus;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export type BookingStatus = 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled';
-export type PaymentStatus = 'Paid' | 'Unpaid' | 'Refunded';
-
-export interface BookingAttachment {
-  id?: string;
-  name: string;
-  url?: string;
-  size?: string;
-  type?: string;
-  dataUrl?: string;
+  currency?: string;
+  status?: ServiceStatus;
+  [key: string]: any;
 }
 
 export interface Booking {
   id: string;
   serviceId: string;
   serviceName: string;
-  businessName?: string;
   durationMinutes: number;
   basePrice: number;
   currency: string;
@@ -110,7 +82,7 @@ export interface Booking {
   attachments?: BookingAttachment[];
   status: BookingStatus;
   paymentStatus: PaymentStatus;
-  escrow_status?: string;
+  escrow_status?: EscrowStatus | string;
   paid_at?: string;
   confirmed_at?: string;
   released_at?: string;
@@ -129,6 +101,7 @@ export interface Booking {
   createdAt: string;
   updatedAt?: string;
   piTxHash?: string;
+  piPaymentId?: string;
   qrCodeUrl?: string;
   rating?: number;
   reviewComment?: string;
@@ -160,6 +133,8 @@ export interface PiPaymentResult {
   txHash: string;
   amount: number;
   memo: string;
+  /** Server-created booking id when /complete finalized the booking. */
+  bookingId?: string;
 }
 
 export interface ClientDetails {
@@ -173,29 +148,5 @@ export interface ClientDetails {
 
 export interface BecomeProviderDetails {
   fullName: string;
-  piUsername?: string;
-  roleTitle: string;
-  headline?: string;
-  bio?: string;
-  photoUrl?: string;
-  piWalletAddress?: string;
-  location?: string;
-  specialties?: string[];
-  skills?: string[];
-  experienceLevel?: string;
-  yearsExperience?: number;
-  availabilityStatus?: string;
-  responseTime?: string;
-  languages?: string[];
-  serviceMode?: string;
-  website?: string;
-  socialLinks?: SocialLink[];
-  portfolioImages?: string[];
-  portfolioItems?: PortfolioItem[];
-}
-
-export interface BusinessProfile {
-  id?: string;
-  name: string;
   [key: string]: any;
 }

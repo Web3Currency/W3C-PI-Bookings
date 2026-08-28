@@ -56,13 +56,27 @@ export const piAuthService = {
     const auth = await window.Pi.authenticate(['username', 'payments'], (incompletePayment) => {
       const paymentId = incompletePayment?.identifier || incompletePayment?.paymentId;
       const txid = incompletePayment?.transaction?.txid || incompletePayment?.txid;
-      if (paymentId && txid) {
-        fetch('/api/pi/payments/complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ paymentId, txid }),
-        }).catch((err) => console.error('[Pi] Failed to resolve incomplete payment:', err));
-      }
+      if (!paymentId) return;
+      const run = async () => {
+        try {
+          if (txid) {
+            await fetch('/api/pi/payments/complete', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ paymentId, txid }),
+            });
+          }
+          // Always attempt durable server reconcile (idempotent).
+          await fetch('/api/pi/payments/reconcile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ paymentId }),
+          });
+        } catch (err) {
+          console.error('[Pi] Failed to resolve incomplete payment:', err);
+        }
+      };
+      void run();
     });
 
     if (!auth?.user) {
@@ -87,7 +101,6 @@ export const piAuthService = {
       uid: validated.uid,
       username: validated.username,
       accessToken: auth.accessToken,
-      verified: true,
     };
 
     sessionStorage.setItem(PI_USER_KEY, JSON.stringify(piUser));
