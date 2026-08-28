@@ -166,7 +166,7 @@ async function finalizeBookingFromPayment(
 
   const customerName = String(meta.clientName || meta.client_name || "Pi User").slice(0, 200);
   const customerPiUsername = String(meta.clientPiUsername || meta.client_pi_username || "").slice(0, 100);
-  const basePriceRaw = meta.basePrice ?? meta.priceNGN ?? meta.base_price;
+  const basePriceRaw = meta.basePrice ?? meta.priceNGN ?? meta.base_price ?? meta.price_ngn;
   const basePrice = Number.isFinite(Number(basePriceRaw)) ? Number(basePriceRaw) : 0;
 
   const missing: string[] = [];
@@ -175,6 +175,7 @@ async function finalizeBookingFromPayment(
   if (!bookingDate) missing.push("booking_date");
   if (!bookingTime) missing.push("booking_time");
 
+  // Only columns known to exist on production public.bookings (match bookingService inserts).
   const payload: Record<string, any> = {
     status: "Pending",
     payment_status: "Paid",
@@ -182,8 +183,9 @@ async function finalizeBookingFromPayment(
     paid_at: now,
     acceptance_deadline: acceptanceDeadline,
     price_pi: amount,
-    base_price: basePrice,
+    price_ngn: basePrice,
     currency: String(meta.currency || "NGN"),
+    duration_minutes: Number(meta.durationMinutes || meta.duration_minutes || 60),
     platform_fee_pi: Number((amount * 0.1).toFixed(7)),
     provider_payout_pi: Number((amount * 0.9).toFixed(7)),
     customer_name: customerName,
@@ -256,21 +258,17 @@ async function finalizeBookingFromPayment(
 
 router.post("/pi/payments/approve", async (req, res) => {
   const { paymentId } = req.body as { paymentId?: string };
-
   if (!paymentId || typeof paymentId !== "string" || paymentId.trim() === "") {
     res.status(400).json({ error: "paymentId is required." });
     return;
   }
-
   const apiKey = piApiKey();
   if (!apiKey) {
     req.log.error("PI_API_KEY environment variable is not set on the server.");
     res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
     return;
   }
-
   const cleanPaymentId = paymentId.trim();
-
   let piResponse: Response;
   try {
     piResponse = await piFetch(`/payments/${encodeURIComponent(cleanPaymentId)}/approve`, {
@@ -282,7 +280,6 @@ router.post("/pi/payments/approve", async (req, res) => {
     res.status(500).json({ error: "Could not reach Pi Network API." });
     return;
   }
-
   let responseData: any;
   const rawText = await piResponse.text().catch(() => "");
   try {
@@ -290,50 +287,38 @@ router.post("/pi/payments/approve", async (req, res) => {
   } catch {
     responseData = { message: rawText };
   }
-
   if (!piResponse.ok) {
-    req.log.warn(
-      { status: piResponse.status, paymentId: cleanPaymentId, responseData },
-      "Pi API rejected payment approval",
-    );
+    req.log.warn({ status: piResponse.status, paymentId: cleanPaymentId, responseData }, "Pi API rejected payment approval");
     res.status(piResponse.status).json(responseData);
     return;
   }
-
   req.log.info({ paymentId: cleanPaymentId }, "Pi payment approved successfully");
-
   try {
     const payment = responseData?.identifier ? responseData : await fetchPiPayment(cleanPaymentId);
     await upsertPaymentIntent(payment, { status: "approved" });
   } catch (e: any) {
     req.log.warn({ err: e?.message, paymentId: cleanPaymentId }, "Could not persist payment_intent after approve");
   }
-
   res.status(piResponse.status).json(responseData);
 });
 
 router.post("/pi/payments/complete", async (req, res) => {
   const { paymentId, txid } = req.body as { paymentId?: string; txid?: string };
-
   if (!paymentId || typeof paymentId !== "string" || paymentId.trim() === "") {
     res.status(400).json({ error: "paymentId is required." });
     return;
   }
-
   if (!txid || typeof txid !== "string" || txid.trim() === "") {
     res.status(400).json({ error: "txid is required." });
     return;
   }
-
   if (!piApiKey()) {
     req.log.error("PI_API_KEY environment variable is not set on the server.");
     res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
     return;
   }
-
   const cleanPaymentId = paymentId.trim();
   const cleanTxid = txid.trim();
-
   let piResponse: Response;
   try {
     piResponse = await piFetch(`/payments/${encodeURIComponent(cleanPaymentId)}/complete`, {
@@ -345,7 +330,6 @@ router.post("/pi/payments/complete", async (req, res) => {
     res.status(500).json({ error: "Could not reach Pi Network API." });
     return;
   }
-
   let responseData: any;
   const rawText = await piResponse.text().catch(() => "");
   try {
@@ -353,38 +337,28 @@ router.post("/pi/payments/complete", async (req, res) => {
   } catch {
     responseData = { message: rawText };
   }
-
   const alreadyDone =
     !piResponse.ok &&
     (piResponse.status === 400 || piResponse.status === 409) &&
     String(JSON.stringify(responseData)).toLowerCase().includes("already");
-
   if (!piResponse.ok && !alreadyDone) {
-    req.log.warn(
-      { status: piResponse.status, paymentId: cleanPaymentId, txid: cleanTxid, responseData },
-      "Pi API rejected payment completion",
-    );
+    req.log.warn({ status: piResponse.status, paymentId: cleanPaymentId, txid: cleanTxid, responseData }, "Pi API rejected payment completion");
     res.status(piResponse.status).json(responseData);
     return;
   }
-
   req.log.info({ paymentId: cleanPaymentId, txid: cleanTxid, alreadyDone }, "Pi payment completed successfully");
-
   let payment = responseData?.identifier ? responseData : null;
   try {
     if (!payment) payment = await fetchPiPayment(cleanPaymentId);
   } catch (e: any) {
     req.log.warn({ err: e?.message }, "Could not re-fetch payment after complete");
   }
-
   if (payment) {
     await upsertPaymentIntent(payment, { txid: cleanTxid, status: "completed" });
   }
-
   const finalized = payment
     ? await finalizeBookingFromPayment(payment, cleanTxid, req.log)
     : { status: "failed" as const, error: "No payment object to finalize booking." };
-
   if (finalized.status === "failed") {
     req.log.error({ paymentId: cleanPaymentId, finalized }, "Booking finalize after complete failed");
     res.status(200).json({
@@ -396,7 +370,6 @@ router.post("/pi/payments/complete", async (req, res) => {
     });
     return;
   }
-
   res.status(200).json({
     ...responseData,
     bookingReconciled: true,
@@ -417,9 +390,7 @@ router.post("/pi/payments/reconcile", async (req, res) => {
     res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." });
     return;
   }
-
   const cleanPaymentId = paymentId.trim();
-
   let payment: any;
   try {
     payment = await fetchPiPayment(cleanPaymentId);
@@ -428,21 +399,12 @@ router.post("/pi/payments/reconcile", async (req, res) => {
     res.status(e?.status || 502).json({ error: e?.message || "Could not fetch payment from Pi.", piBody: e?.body });
     return;
   }
-
   const txid = String(payment?.transaction?.txid || "").trim();
   const completed = paymentCompletedOnPi(payment);
-
   req.log.info(
-    {
-      paymentId: cleanPaymentId,
-      completed,
-      hasTxid: Boolean(txid),
-      amount: payment?.amount,
-      user_uid: payment?.user_uid ? "[present]" : null,
-    },
+    { paymentId: cleanPaymentId, completed, hasTxid: Boolean(txid), amount: payment?.amount, user_uid: payment?.user_uid ? "[present]" : null },
     "Reconcile: Pi payment status",
   );
-
   if (!completed || !txid) {
     res.status(409).json({
       success: false,
@@ -453,7 +415,6 @@ router.post("/pi/payments/reconcile", async (req, res) => {
     });
     return;
   }
-
   try {
     const st = payment?.status;
     if (st && typeof st === "object" && st.developer_completed !== true) {
@@ -466,20 +427,12 @@ router.post("/pi/payments/reconcile", async (req, res) => {
   } catch (e: any) {
     req.log.warn({ err: e?.message }, "Reconcile: complete call optional failure");
   }
-
   await upsertPaymentIntent(payment, { txid, status: "completed" });
   const finalized = await finalizeBookingFromPayment(payment, txid, req.log);
-
   if (finalized.status === "failed") {
-    res.status(502).json({
-      success: false,
-      error: finalized.error,
-      paymentId: cleanPaymentId,
-      txid,
-    });
+    res.status(502).json({ success: false, error: finalized.error, paymentId: cleanPaymentId, txid });
     return;
   }
-
   res.status(200).json({
     success: true,
     paymentId: cleanPaymentId,
