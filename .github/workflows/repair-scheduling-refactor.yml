@@ -1,0 +1,29 @@
+name: repair-scheduling-refactor
+on:
+  push:
+    branches: [stage-3-remove-booking-scheduling]
+    paths: ['.github/workflows/repair-scheduling-refactor.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fix one-time refactor workflow
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/remove-booking-scheduling.yml')
+          s = p.read_text()
+          old = "['components/SelectScheduleStep.tsx','components/SelectDateStep.tsx','components/DateTimePicker.tsx','components/BookingConfirmationStep.tsx']"
+          new = "['components/SelectScheduleStep.tsx','components/SelectTimeStep.tsx','components/SelectDateStep.tsx','components/DateTimePicker.tsx','components/BookingConfirmationStep.tsx']"
+          if old not in s:
+              raise SystemExit('expected deletion list not found')
+          p.write_text(s.replace(old, new))
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/remove-booking-scheduling.yml
+          git commit -m "fix: remove remaining scheduling component reference"
+          git push origin stage-3-remove-booking-scheduling
