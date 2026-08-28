@@ -2,6 +2,9 @@ import { PiUser } from '../types';
 
 const PI_SANDBOX = import.meta.env.VITE_PI_SANDBOX === 'true';
 const PI_USER_KEY = 'pi_authenticated_user';
+const PI_SCOPE_VERSION_KEY = 'pi_auth_scope_version';
+const PI_SCOPE_VERSION = 'wallet-address-v1';
+const PI_SCOPES = ['username', 'payments', 'wallet_address'] as const;
 
 /**
  * Singleton init promise — Pi.init() is treated as a Promise and awaited
@@ -20,15 +23,21 @@ async function ensureInit(): Promise<boolean> {
     return true;
   } catch (e) {
     console.warn('[Pi] SDK init failed:', e);
-    initPromise = null; // allow retry
+    initPromise = null;
     return false;
   }
 }
 
 export const piAuthService = {
-  /** Retrieve cached user from session storage (survives page refresh within tab). */
+  /** Retrieve cached user only when it was authenticated with the current required scope set. */
   getStoredUser(): PiUser | null {
     try {
+      const scopeVersion = sessionStorage.getItem(PI_SCOPE_VERSION_KEY);
+      if (scopeVersion !== PI_SCOPE_VERSION) {
+        sessionStorage.removeItem(PI_USER_KEY);
+        sessionStorage.setItem(PI_SCOPE_VERSION_KEY, PI_SCOPE_VERSION);
+        return null;
+      }
       const raw = sessionStorage.getItem(PI_USER_KEY);
       return raw ? (JSON.parse(raw) as PiUser) : null;
     } catch {
@@ -37,15 +46,20 @@ export const piAuthService = {
   },
 
   clearStoredUser(): void {
-    sessionStorage.removeItem(PI_USER_KEY);
+    try {
+      sessionStorage.removeItem(PI_USER_KEY);
+      sessionStorage.removeItem(PI_SCOPE_VERSION_KEY);
+    } catch {
+      // Ignore storage failures; next sign-in will authenticate afresh.
+    }
   },
 
   /**
    * Full authentication flow:
    *  1. Await Pi.init()
-   *  2. Call Pi.authenticate(['username', 'payments'], ...)
+   *  2. Request username, payments and wallet_address scopes
    *  3. POST access token to /api/pi/auth for backend validation
-   *  4. Cache and return the verified PiUser
+   *  4. Cache the verified PiUser only after validation succeeds
    */
   async signIn(): Promise<PiUser> {
     const ready = await ensureInit();
@@ -53,7 +67,7 @@ export const piAuthService = {
       throw new Error('Pi SDK not available. Open this app in Pi Browser to sign in.');
     }
 
-    const auth = await window.Pi.authenticate(['username', 'payments'], (incompletePayment) => {
+    const auth = await window.Pi.authenticate([...PI_SCOPES], (incompletePayment) => {
       const paymentId = incompletePayment?.identifier || incompletePayment?.paymentId;
       const txid = incompletePayment?.transaction?.txid || incompletePayment?.txid;
       if (!paymentId) return;
@@ -66,7 +80,6 @@ export const piAuthService = {
               body: JSON.stringify({ paymentId, txid }),
             });
           }
-          // Always attempt durable server reconcile (idempotent).
           await fetch('/api/pi/payments/reconcile', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -83,7 +96,6 @@ export const piAuthService = {
       throw new Error('Pi authentication returned no user.');
     }
 
-    // Validate access token server-side via /api/pi/auth → api.minepi.com/v2/me
     const resp = await fetch('/api/pi/auth', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -104,6 +116,7 @@ export const piAuthService = {
     };
 
     sessionStorage.setItem(PI_USER_KEY, JSON.stringify(piUser));
+    sessionStorage.setItem(PI_SCOPE_VERSION_KEY, PI_SCOPE_VERSION);
     return piUser;
   },
 
@@ -111,9 +124,6 @@ export const piAuthService = {
     this.clearStoredUser();
   },
 
-  // ── Backward-compat shims used by piPaymentService ──────────────────────────
-
-  /** Ensures SDK is initialised synchronously (fire-and-forget). */
   initSDK(): boolean {
     if (typeof window === 'undefined' || !window.Pi) return false;
     if (!initPromise) {
@@ -122,12 +132,10 @@ export const piAuthService = {
     return true;
   },
 
-  /** Awaits full SDK init — use this before createPayment(), not initSDK(). */
   async ensureSDKReady(): Promise<boolean> {
     return ensureInit();
   },
 
-  /** Legacy alias — payment service calls this before createPayment(). */
   async authenticateUser(): Promise<PiUser> {
     const stored = this.getStoredUser();
     if (stored) return stored;
