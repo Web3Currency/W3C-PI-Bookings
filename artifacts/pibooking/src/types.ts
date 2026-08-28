@@ -1,25 +1,55 @@
-export type BookingStatus = 'Pending' | 'Confirmed' | 'In Progress' | 'Completed' | 'Cancelled' | 'Rejected';
-export type PaymentStatus = 'Unpaid' | 'Paid' | 'Refunded' | 'Partial';
+export type ServiceCategory = 'landing_page' | 'web_dev' | 'ux_design' | 'pi_sdk' | 'consulting';
+export type CategoryId = ServiceCategory | string;
+
+export type ServiceStatus = 'Draft' | 'Published' | 'Archived';
+export type ProviderProfileStatus = 'Draft' | 'Published' | 'Archived';
+
+export type BookingStatus =
+  | 'Pending'
+  | 'Confirmed'
+  | 'Completed'
+  | 'Cancelled'
+  | 'Disputed'
+  | 'Refunded';
+
+export type PaymentStatus = 'Unpaid' | 'Paid' | 'Refunded' | 'Released';
+
+export type EscrowStatus =
+  | 'pending_payment'
+  | 'paid_escrowed'
+  | 'completion_confirmed'
+  | 'released'
+  | 'refund_processing'
+  | 'refunded'
+  | 'refund_failed'
+  | 'disputed';
 
 export interface BookingAttachment {
-  id?: string;
+  id: string;
   name: string;
-  url?: string;
-  type?: string;
+  type: string;
+  size: number;
+  dataUrl: string;
 }
 
 export interface Provider {
   id: string;
   fullName: string;
   piUsername?: string;
+  piUid?: string;
   photoUrl?: string;
   piWalletAddress?: string;
+  bio?: string;
+  skills?: string[];
+  status?: ProviderProfileStatus;
   [key: string]: any;
 }
 
 export interface Service {
   id: string;
   name: string;
+  description?: string;
+  category?: ServiceCategory | string;
   providerId?: string;
   providerName?: string;
   provider?: Provider;
@@ -28,6 +58,7 @@ export interface Service {
   priceNGN: number;
   pricePi: number;
   currency?: string;
+  status?: ServiceStatus;
   [key: string]: any;
 }
 
@@ -51,7 +82,7 @@ export interface Booking {
   attachments?: BookingAttachment[];
   status: BookingStatus;
   paymentStatus: PaymentStatus;
-  escrow_status?: string;
+  escrow_status?: EscrowStatus | string;
   paid_at?: string;
   confirmed_at?: string;
   released_at?: string;
