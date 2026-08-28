@@ -55,16 +55,45 @@ export const piPaymentService = {
                   reject(new Error(`Payment completion failed: ${msg}`));
                   return;
                 }
-                const completeData = await res.json().catch(() => ({} as any));
-                // If server could not finalize booking, surface error — do not fake success.
-                if (completeData?.bookingReconciled === false) {
-                  reject(
-                    new Error(
-                      completeData.bookingError ||
-                        'Payment succeeded on Pi but booking was not created. Use reconcile or contact support with your payment ID.',
-                    ),
-                  );
-                  return;
+                let completeData = await res.json().catch(() => ({} as any));
+                // Pi on-chain may succeed while booking finalize fails — attempt reconcile once.
+                if (completeData?.bookingReconciled === false || !completeData?.bookingId) {
+                  try {
+                    const r = await fetch('/api/pi/payments/reconcile', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ paymentId }),
+                    });
+                    const recon = await r.json().catch(() => ({} as any));
+                    if (r.ok && recon?.bookingId) {
+                      completeData = {
+                        ...completeData,
+                        ...recon,
+                        bookingReconciled: true,
+                        bookingId: recon.bookingId,
+                        acceptanceDeadline: recon.acceptanceDeadline || completeData.acceptanceDeadline,
+                      };
+                    } else if (completeData?.bookingReconciled === false) {
+                      reject(
+                        new Error(
+                          completeData.bookingError ||
+                            recon?.error ||
+                            'Payment succeeded on Pi but booking could not be created. Contact support with your payment id.',
+                        ),
+                      );
+                      return;
+                    }
+                  } catch {
+                    if (completeData?.bookingReconciled === false) {
+                      reject(
+                        new Error(
+                          completeData.bookingError ||
+                            'Payment succeeded on Pi but booking could not be created. Contact support with your payment id.',
+                        ),
+                      );
+                      return;
+                    }
+                  }
                 }
                 resolve({
                   identifier: paymentId,
