@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { pool } from "@workspace/db";
 import { executeAutomaticProviderPayout } from "../services/automaticPayoutService";
+import { executeAutomaticClientRefund } from "../services/automaticRefundService";
 import { ensureConversationForBooking } from "./pi-chat";
 
 const router: IRouter = Router();
@@ -10,7 +11,8 @@ async function supabaseRequest(path: string, init: RequestInit = {}) { const con
 async function getProviderByPiUid(piUid: string) { const response = await supabaseRequest(`providers?select=id,pi_uid&pi_uid=eq.${encodeURIComponent(piUid)}&limit=1`); if (response) { if (!response.ok) throw new Error(`Supabase provider lookup failed (${response.status}).`); const rows = await response.json() as Array<{ id: string; pi_uid: string }>; return rows[0] || null; } if (!pool) return null; const result = await pool.query(`SELECT id, pi_uid FROM public.providers WHERE pi_uid = $1 LIMIT 1`, [piUid]); return result.rows[0] || null; }
 async function updateBookingViaSupabase(bookingId: string, providerId: string, updates: Record<string, unknown>) { const response = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&provider_id=eq.${encodeURIComponent(providerId)}`, { method: "PATCH", body: JSON.stringify(updates) }); if (!response) return null; if (!response.ok) throw new Error((await response.text().catch(() => "")) || `Supabase booking update failed (${response.status}).`); return await response.json() as any[]; }
 async function verifyPiAccessToken(accessToken: string) { const response = await fetch("https://api.minepi.com/v2/me", { headers: { Authorization: `Bearer ${accessToken.trim()}` } }); if (!response.ok) return null; const user = await response.json() as { uid?: string; username?: string }; return user.uid ? user : null; }
-function normalizePiUsername(username?: string | null) { return String(username || "").trim().replace(/^@+/, "").toLowerCase(); }
+function normalizePiUsername(username?: string | null) { return String(username || "").trim().replace(/^@+/, "").toLowerCase();
+}
 
 router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
   const bookingId = req.params.bookingId;
@@ -60,7 +62,61 @@ router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
   }
 });
 
-router.post("/pi/bookings/:bookingId/reject", async (req, res) => { const bookingId = req.params.bookingId; const { accessToken, rejectionReason } = req.body as { accessToken?: string; rejectionReason?: string }; if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." }); if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." }); if (!rejectionReason?.trim()) return void res.status(400).json({ error: "A rejection reason is required." }); try { const piUser = await verifyPiAccessToken(accessToken); if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." }); const provider = await getProviderByPiUid(piUser.uid); if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." }); const now = new Date().toISOString(); const rows = await updateBookingViaSupabase(bookingId, provider.id, { status: "Cancelled", rejection_reason: rejectionReason.trim(), cancelled_at: now, updated_at: now, escrow_status: "refunded", refunded_at: now, acceptance_deadline: null }); if (!rows?.length) return void res.status(409).json({ error: "Booking is not available for rejection or is not assigned to this provider." }); return void res.json({ success: true, booking: rows[0] }); } catch (err: any) { req.log.error({ err, bookingId }, "Provider booking rejection failed"); return void res.status(500).json({ error: err?.message || "Failed to reject booking." }); } });
+router.post("/pi/bookings/:bookingId/reject", async (req, res) => {
+  const bookingId = req.params.bookingId;
+  const { accessToken, rejectionReason } = req.body as { accessToken?: string; rejectionReason?: string };
+  if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." });
+  if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." });
+  if (!rejectionReason?.trim()) return void res.status(400).json({ error: "A rejection reason is required." });
+  try {
+    const piUser = await verifyPiAccessToken(accessToken);
+    if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
+    const provider = await getProviderByPiUid(piUser.uid);
+    if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." });
+
+    const lookup = await supabaseRequest(
+      `bookings?id=eq.${encodeURIComponent(bookingId)}&provider_id=eq.${encodeURIComponent(provider.id)}&select=id,status,escrow_status,price_pi,client_pi_uid&limit=1`
+    );
+    if (!lookup?.ok) throw new Error((await lookup?.text().catch(() => "")) || "Booking lookup failed.");
+    const rows = (await lookup.json()) as any[];
+    if (!rows.length) return void res.status(409).json({ error: "Booking is not available for rejection or is not assigned to this provider." });
+    const current = rows[0];
+    if (current.escrow_status === "released" || current.status === "Completed") {
+      return void res.status(409).json({ error: "Escrow was already released; this booking cannot be rejected/refunded." });
+    }
+    if (current.escrow_status === "refunded") {
+      return void res.json({ success: true, refund: { status: "recovered" }, bookingId });
+    }
+    if (!["paid_escrowed", "refund_processing", "refund_failed"].includes(String(current.escrow_status || ""))) {
+      return void res.status(409).json({ error: "Booking is not in a refundable escrow state." });
+    }
+
+    const refund = await executeAutomaticClientRefund(bookingId, {
+      reason: rejectionReason.trim(),
+      cancelBooking: true,
+    });
+
+    if (refund.status === "completed" || refund.status === "recovered") {
+      const after = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=*&limit=1`);
+      const booking = after?.ok ? ((await after.json()) as any[])[0] : null;
+      return void res.json({
+        success: true,
+        refund: { status: refund.status, paymentId: refund.paymentId, txid: refund.txid },
+        booking,
+      });
+    }
+
+    req.log.error({ bookingId, refund }, "Provider reject refund execution failed");
+    return void res.status(502).json({
+      success: false,
+      error: refund.error || "Pi refund execution failed.",
+      refund: { status: refund.status, paymentId: refund.paymentId, txid: refund.txid },
+    });
+  } catch (err: any) {
+    req.log.error({ err, bookingId }, "Provider booking rejection failed");
+    return void res.status(500).json({ error: err?.message || "Failed to reject booking." });
+  }
+});
 
 router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
   const bookingId = req.params.bookingId; const { accessToken } = req.body as { accessToken?: string };
@@ -97,30 +153,37 @@ router.post("/pi/bookings/expire-unaccepted", async (req, res) => {
       `bookings?select=id&status=in.(Pending,Confirmed)&escrow_status=eq.paid_escrowed&acceptance_deadline=lt.${encodeURIComponent(now)}`
     );
     if (!lookup?.ok) throw new Error((await lookup?.text().catch(() => "")) || "Expire lookup failed.");
-    const rows = await lookup.json() as Array<{ id: string }>;
+    const rows = (await lookup.json()) as Array<{ id: string }>;
     let expired = 0;
+    let refunded = 0;
+    let failed = 0;
+    const results: Array<{ id: string; refundStatus: string; error?: string; txid?: string }> = [];
+
     for (const row of rows) {
-      const patch = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(row.id)}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          status: "Cancelled",
-          escrow_status: "refunded",
-          rejection_reason: "Provider did not accept within 24 hours",
-          cancelled_at: now,
-          refunded_at: now,
-          updated_at: now,
-          acceptance_deadline: null,
-        }),
+      const refund = await executeAutomaticClientRefund(row.id, {
+        reason: "Provider did not accept within 24 hours",
+        cancelBooking: true,
       });
-      if (patch?.ok) {
-        const updated = await patch.json() as any[];
-        if (updated?.length) expired += 1;
+      results.push({
+        id: row.id,
+        refundStatus: refund.status,
+        error: refund.error,
+        txid: refund.txid,
+      });
+      if (refund.status === "completed" || refund.status === "recovered") {
+        refunded += 1;
+        expired += 1;
+      } else if (refund.status === "failed") {
+        failed += 1;
+        expired += 1;
+      } else {
+        expired += 1;
       }
     }
-    return void res.json({ success: true, expired });
+    return void res.json({ success: true, expired, refunded, failed, results });
   } catch (err: any) {
     req.log.error({ err }, "Expire unaccepted bookings failed");
-    return void res.status(500).json({ error: err?.message || "Failed to expire bookings." });
+    return void res.status(500).json({ error: err?.message || "Failed to expire unaccepted bookings." });
   }
 });
 
