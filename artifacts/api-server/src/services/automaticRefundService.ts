@@ -1,12 +1,7 @@
 /**
  * Server-side App-to-User (A2U) client refund.
- * Mirrors automaticPayoutService: authoritative booking data only, idempotent, no client-trusted amounts/UIDs.
- *
- * Flow:
- * 1) Load booking; only refund when escrow is held (paid_escrowed) or a prior attempt is recoverable.
- * 2) Claim the booking with a conditional update (paid_escrowed -> refund_processing) to prevent double refunds.
- * 3) Create/submit/complete A2U payment via pi-backend (app wallet -> client uid).
- * 4) Only then mark escrow_status = refunded and store refund identifiers.
+ * Uses authoritative booking data, is idempotent, and only marks a refund
+ * successful after Pi A2U completion succeeds.
  */
 
 export type RefundResult = {
@@ -17,18 +12,15 @@ export type RefundResult = {
   bookingId?: string;
 };
 
-/** Resolve PiNetwork constructor under CJS/ESM interop (Vercel may nest .default). */
 async function createPiClient(apiKey: string, walletPrivateSeed: string) {
   const mod: any = await import("pi-backend");
   let PiNetworkClass = mod?.default ?? mod;
-  // Double-default interop: { default: { default: PiNetwork } }
   if (PiNetworkClass && typeof PiNetworkClass !== "function" && typeof PiNetworkClass.default === "function") {
     PiNetworkClass = PiNetworkClass.default;
   }
   if (typeof PiNetworkClass !== "function") {
     throw new Error("pi-backend PiNetwork constructor is not available (import interop failure).");
   }
-  // Official SDK: new PiNetwork(apiKey, walletPrivateSeed) — there is no Pi.init().
   return new PiNetworkClass(apiKey, walletPrivateSeed);
 }
 
@@ -53,10 +45,6 @@ function refundableEscrow(status: string | undefined | null) {
   return status === "paid_escrowed" || status === "refund_processing" || status === "refund_failed";
 }
 
-/**
- * Execute a real Pi A2U refund for a booking's held escrow.
- * Safe to call multiple times: already-refunded bookings return recovered; concurrent claims are serialized via conditional PATCH.
- */
 export async function executeAutomaticClientRefund(
   bookingId: string,
   opts?: { reason?: string; cancelBooking?: boolean },
@@ -68,98 +56,57 @@ export async function executeAutomaticClientRefund(
     return { status: "failed", bookingId, error: "Supabase server credentials are missing." };
   }
 
-  // Keep select list minimal and aligned with the reject route (which already succeeds).
-  // A wider select previously caused PostgREST 400 when a column was unavailable.
   const bres = await sb(
-    `bookings?id=eq.${encodeURIComponent(bookingId)}&select=id,status,escrow_status,price_pi,client_pi_uid&limit=1`,
+    `bookings?id=eq.${encodeURIComponent(bookingId)}&select=id,status,escrow_status,price_pi,client_pi_uid,refund_pi_payment_id,refund_pi_txid&limit=1`,
   );
   if (!bres?.ok) {
     const detail = bres ? await bres.text().catch(() => "") : "";
-    return {
-      status: "failed",
-      bookingId,
-      error: `Booking lookup failed${bres ? ` (${bres.status})` : ""}${detail ? `: ${detail.slice(0, 300)}` : ""}.`,
-    };
+    return { status: "failed", bookingId, error: `Booking lookup failed${bres ? ` (${bres.status})` : ""}${detail ? `: ${detail.slice(0, 300)}` : ""}.` };
   }
   const bookingRows = await bres.json() as any[];
   const booking = Array.isArray(bookingRows) ? bookingRows[0] : null;
   if (!booking) return { status: "failed", bookingId, error: "Booking not found." };
 
-  // Already successfully refunded — idempotent success.
   if (booking.escrow_status === "refunded") {
-    return {
-      status: "recovered",
-      bookingId,
-      txid: booking.payout_tx_hash || undefined,
-    };
+    return { status: "recovered", bookingId, paymentId: booking.refund_pi_payment_id || undefined, txid: booking.refund_pi_txid || undefined };
   }
 
-  // Never refund completed/released escrow (funds already paid out to provider).
   if (booking.escrow_status === "released" || booking.status === "Completed") {
     return { status: "skipped", bookingId, error: "Booking escrow was already released to the provider; refund is not allowed." };
   }
 
   if (!refundableEscrow(booking.escrow_status)) {
-    return {
-      status: "failed",
-      bookingId,
-      error: `Booking escrow_status=${booking.escrow_status || "null"} is not eligible for refund.`,
-    };
+    return { status: "failed", bookingId, error: `Booking escrow_status=${booking.escrow_status || "null"} is not eligible for refund.` };
   }
 
   const clientUid = String(booking.client_pi_uid || "").trim().replace(/^@/, "");
-  if (!clientUid) {
-    return { status: "failed", bookingId, error: "Booking is missing client_pi_uid; cannot route A2U refund." };
-  }
+  if (!clientUid) return { status: "failed", bookingId, error: "Booking is missing client_pi_uid; cannot route A2U refund." };
 
   const amount = Number(booking.price_pi);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    return { status: "failed", bookingId, error: "Booking price_pi is invalid; cannot refund." };
-  }
+  if (!Number.isFinite(amount) || amount <= 0) return { status: "failed", bookingId, error: "Booking price_pi is invalid; cannot refund." };
 
   const now = new Date().toISOString();
 
-  // Claim is intentional minimal: only flip escrow to refund_processing.
-  // Do NOT set status=Cancelled or payment_status=Refunded here — those violate
-  // DB check constraints and must wait until Pi A2U completes successfully.
   if (booking.escrow_status === "paid_escrowed") {
-    const claim = await sb(
-      `bookings?id=eq.${encodeURIComponent(bookingId)}&escrow_status=eq.paid_escrowed`,
-      {
-        method: "PATCH",
-        body: JSON.stringify({
-          escrow_status: "refund_processing",
-          updated_at: now,
-          // Clear acceptance window so auto-expire cannot race the in-flight refund.
-          acceptance_deadline: null,
-        }),
-      },
-    );
+    const claim = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&escrow_status=eq.paid_escrowed`, {
+      method: "PATCH",
+      body: JSON.stringify({ escrow_status: "refund_processing", updated_at: now, acceptance_deadline: null }),
+    });
     if (!claim?.ok) {
       const detail = claim ? await claim.text().catch(() => "") : "";
       return { status: "failed", bookingId, error: `Failed to claim booking for refund (${claim?.status})${detail ? `: ${detail.slice(0, 300)}` : ""}.` };
     }
     const claimed = (await claim.json() as any[]) || [];
     if (!claimed.length) {
-      // Race: another worker claimed it — re-read.
       const reread = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status&limit=1`);
       const row = reread?.ok ? (await reread.json() as any[])[0] : null;
-      if (row?.escrow_status === "refunded") {
-        return { status: "recovered", bookingId };
-      }
-      if (row?.escrow_status !== "refund_processing") {
-        return { status: "failed", bookingId, error: "Could not claim booking for refund (concurrent update)." };
-      }
+      if (row?.escrow_status === "refunded") return { status: "recovered", bookingId };
+      if (row?.escrow_status !== "refund_processing") return { status: "failed", bookingId, error: "Could not claim booking for refund (concurrent update)." };
     }
   } else if (booking.escrow_status === "refund_failed" || booking.escrow_status === "refund_processing") {
-    // Allow retry: re-enter processing without cancelling until Pi succeeds.
     await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
       method: "PATCH",
-      body: JSON.stringify({
-        escrow_status: "refund_processing",
-        acceptance_deadline: null,
-        updated_at: now,
-      }),
+      body: JSON.stringify({ escrow_status: "refund_processing", acceptance_deadline: null, updated_at: now }),
     }).catch(() => undefined);
   }
 
@@ -178,7 +125,6 @@ export async function executeAutomaticClientRefund(
   let txid = "";
 
   try {
-    // Same pattern as routes/pi-payouts.ts: construct SDK instance, no Pi.init().
     const pi = await createPiClient(apiKey, seed);
     const created: any = await pi.createPayment({
       amount,
@@ -186,7 +132,6 @@ export async function executeAutomaticClientRefund(
       metadata: { bookingId, type: "client_refund", reason },
       uid: clientUid,
     });
-    // SDK returns payment identifier string (or object with identifier).
     paymentId = String(typeof created === "string" ? created : (created?.identifier || created?.id || ""));
     if (!paymentId) {
       await markRefundFailed(bookingId, "Pi did not return a refund payment identifier.", paymentId, txid);
@@ -202,51 +147,32 @@ export async function executeAutomaticClientRefund(
 
     await pi.completePayment(paymentId, txid);
 
+    const finalizedAt = new Date().toISOString();
     const finalize = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&escrow_status=eq.refund_processing`, {
       method: "PATCH",
       body: JSON.stringify({
         escrow_status: "refunded",
         payment_status: "Refunded",
-        refunded_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        // Reuse payout_tx_hash to store the refund chain tx until dedicated refund columns exist.
-        payout_tx_hash: txid,
+        refunded_at: finalizedAt,
+        updated_at: finalizedAt,
+        refund_pi_payment_id: paymentId,
+        refund_pi_txid: txid,
+        refund_reason: reason,
         acceptance_deadline: null,
-        ...(cancelBooking
-          ? {
-              status: "Cancelled",
-              cancelled_at: new Date().toISOString(),
-              rejection_reason: reason,
-            }
-          : {}),
+        ...(cancelBooking ? { status: "Cancelled", cancelled_at: finalizedAt, rejection_reason: reason } : {}),
       }),
     });
 
     if (!finalize?.ok) {
       const detail = finalize ? await finalize.text().catch(() => "") : "";
-      return {
-        status: "failed",
-        bookingId,
-        paymentId,
-        txid,
-        error: `Pi A2U refund succeeded on-chain, but booking could not be marked refunded (${finalize?.status})${detail ? `: ${detail.slice(0, 300)}` : ""}. Manual reconciliation required.`,
-      };
+      return { status: "failed", bookingId, paymentId, txid, error: `Pi A2U refund succeeded on-chain, but booking could not be marked refunded (${finalize?.status})${detail ? `: ${detail.slice(0, 300)}` : ""}. Manual reconciliation required.` };
     }
     const finalized = (await finalize.json() as any[]) || [];
     if (!finalized.length) {
-      // Another process may have finalized — treat as recovered if now refunded.
-      const check = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status&limit=1`);
+      const check = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=escrow_status,refund_pi_payment_id,refund_pi_txid&limit=1`);
       const row = check?.ok ? (await check.json() as any[])[0] : null;
-      if (row?.escrow_status === "refunded") {
-        return { status: "recovered", bookingId, paymentId, txid };
-      }
-      return {
-        status: "failed",
-        bookingId,
-        paymentId,
-        txid,
-        error: "Pi A2U refund succeeded, but concurrent state update prevented marking refunded.",
-      };
+      if (row?.escrow_status === "refunded") return { status: "recovered", bookingId, paymentId: row.refund_pi_payment_id || paymentId, txid: row.refund_pi_txid || txid };
+      return { status: "failed", bookingId, paymentId, txid, error: "Pi A2U refund succeeded, but concurrent state update prevented marking refunded." };
     }
 
     return { status: "completed", bookingId, paymentId, txid };
@@ -259,15 +185,14 @@ export async function executeAutomaticClientRefund(
 
 async function markRefundFailed(bookingId: string, error: string, paymentId?: string, txid?: string) {
   const now = new Date().toISOString();
-  // Keep booking in refund_failed; do NOT mark escrow as refunded or invent success.
-  // Avoid setting status=Cancelled here — claim/finalize own that after successful Pi A2U.
   await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}`, {
     method: "PATCH",
     body: JSON.stringify({
       escrow_status: "refund_failed",
       updated_at: now,
       rejection_reason: `Refund failed: ${error}`.slice(0, 500),
-      ...(txid ? { payout_tx_hash: txid } : {}),
+      ...(paymentId ? { refund_pi_payment_id: paymentId } : {}),
+      ...(txid ? { refund_pi_txid: txid } : {}),
     }),
   }).catch(() => undefined);
 }
