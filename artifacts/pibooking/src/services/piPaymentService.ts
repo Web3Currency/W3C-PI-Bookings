@@ -55,11 +55,13 @@ export const piPaymentService = {
                   reject(new Error(`Payment completion failed: ${msg}`));
                   return;
                 }
+                const completeData = await res.json().catch(() => ({} as any));
                 resolve({
                   identifier: paymentId,
                   txHash: txid,
                   amount: params.amountPi,
                   memo: params.memo,
+                  bookingId: completeData?.bookingId || undefined,
                 });
               } catch (err: any) {
                 reject(new Error(`Network error during payment completion: ${err?.message || String(err)}`));
