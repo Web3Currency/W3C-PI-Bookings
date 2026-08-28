@@ -84,7 +84,7 @@ async function upsertPaymentIntent(payment: any, extra?: { txid?: string; status
     pi_txid: extra?.txid || payment?.transaction?.txid || null,
     status: extra?.status || "approved",
     amount_pi: Number.isFinite(amount) ? amount : null,
-    client_pi_uid: String(payment?.user_uid || meta.clientPiUid || "").trim() || null,
+    client_pi_uid: String(payment?.user_uid || payment?.uid || meta.clientPiUid || "").trim() || null,
     client_pi_username: String(meta.clientPiUsername || meta.client_pi_username || "").trim() || null,
     client_name: String(meta.clientName || meta.client_name || "").trim() || null,
     client_phone: String(meta.clientPhone || meta.client_phone || "").trim() || null,
@@ -154,13 +154,26 @@ async function finalizeBookingFromPayment(
     return { status: "failed", error: "Pi payment amount is invalid." };
   }
 
-  const clientUid = String(payment?.user_uid || meta.clientPiUid || "").trim();
+  const clientUid = String(
+    payment?.user_uid || payment?.uid || payment?.from_uid || payment?.user?.uid || meta.clientPiUid || "",
+  ).trim();
   const serviceTitle = String(meta.serviceName || meta.service_title || payment?.memo || "Service").slice(0, 200);
   const bookingDate = String(meta.date || meta.booking_date || "").trim();
   const bookingTime = String(meta.timeSlot || meta.booking_time || "").trim();
   const providerId = meta.providerId || meta.provider_id || null;
   const now = new Date().toISOString();
   const acceptanceDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const customerName = String(meta.clientName || meta.client_name || "Pi User").slice(0, 200);
+  const customerPiUsername = String(meta.clientPiUsername || meta.client_pi_username || "").slice(0, 100);
+  const basePriceRaw = meta.basePrice ?? meta.priceNGN ?? meta.base_price;
+  const basePrice = Number.isFinite(Number(basePriceRaw)) ? Number(basePriceRaw) : 0;
+
+  const missing: string[] = [];
+  if (!clientUid) missing.push("client_pi_uid (Pi user_uid)");
+  if (!providerId) missing.push("provider_id (metadata.providerId)");
+  if (!bookingDate) missing.push("booking_date");
+  if (!bookingTime) missing.push("booking_time");
 
   const payload: Record<string, any> = {
     status: "Pending",
@@ -169,10 +182,12 @@ async function finalizeBookingFromPayment(
     paid_at: now,
     acceptance_deadline: acceptanceDeadline,
     price_pi: amount,
+    base_price: basePrice,
+    currency: String(meta.currency || "NGN"),
     platform_fee_pi: Number((amount * 0.1).toFixed(7)),
     provider_payout_pi: Number((amount * 0.9).toFixed(7)),
-    customer_name: String(meta.clientName || meta.client_name || "Pi User").slice(0, 200),
-    customer_pi_username: String(meta.clientPiUsername || meta.client_pi_username || "").slice(0, 100) || null,
+    customer_name: customerName,
+    customer_pi_username: customerPiUsername || null,
     client_pi_uid: clientUid || null,
     customer_telegram_username: String(meta.clientPhone || meta.client_phone || "").slice(0, 100) || null,
     customer_email: String(meta.clientEmail || meta.client_email || "").slice(0, 200) || null,
@@ -180,12 +195,25 @@ async function finalizeBookingFromPayment(
     booking_date: bookingDate || null,
     booking_time: bookingTime || null,
     notes: String(meta.notes || "").slice(0, 2000) || null,
-    provider_id: providerId,
+    provider_id: providerId || null,
     pi_tx_hash: txid || payment?.transaction?.txid || null,
     pi_payment_id: paymentId,
     created_at: now,
     updated_at: now,
   };
+
+  log?.info?.(
+    {
+      paymentId,
+      hasClientUid: Boolean(clientUid),
+      hasProviderId: Boolean(providerId),
+      hasDate: Boolean(bookingDate),
+      hasTime: Boolean(bookingTime),
+      amount,
+      metaKeys: Object.keys(meta),
+    },
+    "finalizeBookingFromPayment payload readiness",
+  );
 
   const insert = await sb(`bookings`, {
     method: "POST",
@@ -203,8 +231,9 @@ async function finalizeBookingFromPayment(
       const rows = again?.ok ? ((await again.json()) as any[]) : [];
       if (rows?.[0]?.id) return { status: "recovered", bookingId: rows[0].id };
     }
-    log?.error?.({ detail: detail.slice(0, 400), paymentId }, "Failed to insert booking from payment");
-    return { status: "failed", error: `Booking insert failed (${insert.status}): ${detail.slice(0, 300)}` };
+    log?.error?.({ detail: detail.slice(0, 400), paymentId, missing }, "Failed to insert booking from payment");
+    const missingHint = missing.length ? ` Missing fields: ${missing.join(", ")}.` : "";
+    return { status: "failed", error: `Booking insert failed (${insert.status}): ${detail.slice(0, 300)}.${missingHint}` };
   }
   const created = (await insert.json()) as any[];
   const bookingId = created?.[0]?.id;
