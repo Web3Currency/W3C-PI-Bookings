@@ -1,0 +1,156 @@
+name: finalize-stage3
+on:
+  push:
+    branches: [stage-3-remove-booking-scheduling]
+    paths: ['.github/workflows/finalize-stage3.yml']
+permissions:
+  contents: write
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Apply scheduling removal
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          R=Path('artifacts/pibooking/src')
+          def edit(rel, fn):
+              p=R/rel
+              if p.exists():
+                  s=p.read_text(); n=fn(s)
+                  if n!=s: p.write_text(n); print('updated',rel)
+
+          # Progress bar.
+          edit('components/BookingProgressBar.tsx', lambda s: re.sub(r".*", '''import React from 'react';
+          import { Check } from 'lucide-react';
+          interface BookingProgressBarProps { currentStep: 1 | 2 | 3; }
+          const STEPS=[{step:1,label:'Contact & Brief'},{step:2,label:'Summary'},{step:3,label:'Payment'}];
+          export const BookingProgressBar:React.FC<BookingProgressBarProps>=({currentStep})=><div className="w-full py-2 px-1 mb-4"><div className="flex items-center justify-between relative"><div className="absolute top-3.5 left-3.5 right-3.5 h-0.5 bg-zinc-200 -z-0"><div className="h-full bg-amber-600 transition-all duration-300" style={{width:`${((currentStep-1)/(STEPS.length-1))*100}%`}}/></div>{STEPS.map(s=>{const c=s.step<currentStep;const cur=s.step===currentStep;return <div key={s.step} className="flex flex-col items-center relative z-10 shrink-0"><div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black border-2 ${c?'bg-amber-600 text-white border-amber-600':cur?'bg-amber-600 text-white border-amber-600 ring-4 ring-amber-600/20 scale-110':'bg-white text-zinc-400 border-zinc-200'}`}>{c?<Check className="w-3.5 h-3.5 stroke-[3]"/>:s.step}</div><span className={`text-[10px] font-bold mt-1.5 ${cur?'text-amber-800 font-extrabold':c?'text-zinc-800':'text-zinc-400'}`}>{s.label}</span></div>})}</div></div>;\n          ''', s, count=1))
+
+          # Details -> Summary.
+          edit('components/SelectDetailsStep.tsx', lambda s:s.replace('onProceedToSchedule:','onProceedToSummary:').replace('onProceedToSchedule({','onProceedToSummary({').replace('Next: Select Date','Next: Summary').replace('STEP 1 OF 4','STEP 1 OF 3').replace('Appointment Notes / Requirements Brief','Project Brief / Requirements').replace('id="btn-proceed-to-schedule"','id="btn-proceed-to-summary"'))
+
+          # Summary: strip date/time imports, props, calculations and display.
+          def summary(s):
+              s=s.replace("import { getUpcomingDays } from './SelectDateStep';\n",'')
+              s=s.replace('  Calendar,\n  Clock,\n','')
+              s=s.replace('  selectedDate: string;\n  selectedTimeSlot: string;\n','')
+              s=s.replace('  selectedDate,\n  selectedTimeSlot,\n','')
+              s=re.sub(r"\n\s*const availableDays = getUpcomingDays\(\);\n\s*const dateObj = availableDays\.find\(.*?\);\n",'\n',s)
+              s=s.replace('<BookingProgressBar currentStep={3} />','<BookingProgressBar currentStep={2} />')
+              s=s.replace('Step 3: Final Review','Step 2: Summary').replace('Preview your provisional appointment pass and verify information before authorizing Pi payment.','Review your booking details before authorizing Pi payment.').replace('PROVISIONAL PASS PREVIEW','BOOKING SUMMARY')
+              s=re.sub(r"\n\s*\{\/\* Schedule Grid \*\/\}.*?\n\s*\{\/\* Client Information \*\/\}", '\n          {/* Client Information */}', s, flags=re.S)
+              s=s.replace('Appointment Notes','Project Brief').replace('id="btn-back-to-schedule-step"','id="btn-back-to-details-step"')
+              return s
+          edit('components/BookingSummaryStep.tsx',summary)
+
+          # Payment component: keep payment logic/metadata except client schedule fields.
+          def payment(s):
+              s=s.replace(' date: string; timeSlot: string;','')
+              s=s.replace(', date, timeSlot','')
+              s=s.replace('const memo = `Booking: ${service.name} with ${business.name} (${date} @ ${timeSlot})`;','const memo = `Booking: ${service.name} with ${business.name}`;')
+              s=s.replace('          date,\n          timeSlot,\n','')
+              s=s.replace('        date,\n        timeSlot,\n','')
+              s=s.replace('<BookingProgressBar currentStep={4} />','<BookingProgressBar currentStep={3} />')
+              return s
+          edit('components/PiPaymentModal.tsx',payment)
+
+          # Types: no client-selected schedule fields.
+          edit('types.ts',lambda s:s.replace('  date: string;\n','').replace('  timeSlot: string;\n',''))
+
+          # Booking service: stop reading/writing client-selected schedule.
+          def booking_service(s):
+              s=re.sub(r"\s*date: row\.booking_date \|\| row\.date, timeSlot: row\.booking_time \|\| row\.time_slot,",'',s)
+              s=s.replace(' booking_date: fullBooking.date, booking_time: fullBooking.timeSlot,','')
+              return s
+          edit('services/bookingService.ts',booking_service)
+
+          # App: remove scheduling state/routing and receipt confirmation route; direct to bookings after persistence.
+          def app(s):
+              s=s.replace("import { SelectScheduleStep } from './components/SelectScheduleStep'; ",'').replace("import { BookingConfirmationStep } from './components/BookingConfirmationStep'; ",'')
+              s=s.replace("|'select_schedule'",'').replace("|'confirmation'",'')
+              s=s.replace(" const [selectedDate, setSelectedDate] = useState(''); const [selectedTimeSlot, setSelectedTimeSlot] = useState('');",'')
+              old="const handleConfirmDetails=(details:ClientDetails)=>{setActiveTab('browse');setClientDetails(details);setCurrentFlow('select_schedule');}; const handleConfirmSchedule=(date:string,timeSlot:string)=>{setActiveTab('browse');setSelectedDate(date);setSelectedTimeSlot(timeSlot);setCurrentFlow('review_summary');};"
+              s=s.replace(old,"const handleConfirmDetails=(details:ClientDetails)=>{setActiveTab('browse');setClientDetails(details);setCurrentFlow('review_summary');};")
+              s=s.replace('onProceedToSchedule={handleConfirmDetails}','onProceedToSummary={handleConfirmDetails}')
+              s=re.sub(r"\:currentFlow==='select_schedule'.*?\:currentFlow==='review_summary'",":currentFlow==='review_summary'",s,flags=re.S)
+              s=s.replace(' selectedDate={selectedDate} selectedTimeSlot={selectedTimeSlot}','').replace(' date={selectedDate} timeSlot={selectedTimeSlot}','')
+              s=s.replace("onBack={()=>setCurrentFlow('select_schedule')}","onBack={()=>setCurrentFlow('select_details')}")
+              s=s.replace("setCurrentFlow('confirmation')","setActiveTab('bookings');setCurrentFlow('status')")
+              s=re.sub(r":currentFlow==='confirmation'&&confirmedBooking\?<BookingConfirmationStep.*?/>",'',s)
+              s=s.replace(' onRescheduleBooking={handleRescheduleBooking}','')
+              return s
+          edit('App.tsx',app)
+
+          # My bookings: remove appointment/date/time and expose authoritative createdAt.
+          def status(s):
+              s=s.replace('  onRescheduleBooking: (booking: Booking) => void;\n','').replace('CalendarCheck, Clock,','CalendarCheck,').replace('onRescheduleBooking, ','')
+              s=s.replace('b.date, b.timeSlot, ','')
+              s=re.sub(r'<div className="grid[^>]*><span[^>]*>Appointment Date</span>.*?</div><div className="grid[^>]*><span[^>]*>Time Slot</span>.*?</div>','',s,flags=re.S)
+              s=s.replace('Request Appointment Cancellation & Refund','Request Cancellation & Refund')
+              marker='</button></div><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 items-start"><span className="text-xs font-medium text-zinc-500">Escrow Amount</span>'
+              row='</button></div><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 items-start"><span className="text-xs font-medium text-zinc-500">Booking Created</span><span className="text-xs font-black text-zinc-900 text-right">{new Date(activeBooking.createdAt).toLocaleString()}</span></div><div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-4 py-3 items-start"><span className="text-xs font-medium text-zinc-500">Escrow Amount</span>'
+              s=s.replace(marker,row)
+              return s
+          edit('components/BookingStatusView.tsx',status)
+
+          # Provider details/dashboard: remove appointment fields; display createdAt.
+          def provider(s):
+              s=s.replace('import { Calendar, Clock,','import {').replace('<Calendar className="w-3.5 h-3.5 mt-0.5 text-amber-600" />','').replace('<Clock className="w-3.5 h-3.5 mt-0.5 text-amber-600" />','')
+              s=re.sub(r'<div className="flex items-start gap-2"><Calendar.*?</div>\n\s*<div className="flex items-start gap-2"><Clock.*?</div>','',s,flags=re.S)
+              s=re.sub(r"[^\n]*booking\.date[^\n]*booking\.timeSlot[^\n]*",lambda m:f'          <p className="text-xs text-zinc-500">Booking created: {{new Date(booking.createdAt).toLocaleString()}}</p>',s)
+              return s
+          edit('features/provider/ProviderBookingDetails.tsx',provider)
+          edit('features/provider/ProviderDashboardView.tsx',provider)
+
+          # Delete obsolete scheduling components.
+          for rel in ['components/SelectScheduleStep.tsx','components/SelectTimeStep.tsx','components/SelectDateStep.tsx','components/DateTimePicker.tsx','components/BookingConfirmationStep.tsx']:
+              p=R/rel
+              if p.exists(): p.unlink(); print('deleted',rel)
+
+          # Backend payment route: new bookings must not depend on client appointment date/time.
+          p=Path('artifacts/api-server/src/routes/pi-payments.ts')
+          if p.exists():
+              s=p.read_text()
+              s=re.sub(r"\n\s*booking_date: meta\.date \|\| meta\.booking_date \|\| null,",'',s)
+              s=re.sub(r"\n\s*booking_time: meta\.timeSlot \|\| meta\.booking_time \|\| null,",'',s)
+              s=re.sub(r"\n\s*let bookingDate = String\(.*?\);",'',s,flags=re.S)
+              s=re.sub(r"\n\s*let bookingTime = String\(.*?\);",'',s,flags=re.S)
+              s=re.sub(r"\n\s*if \(!bookingDate\) missing\.push\(\"booking_date.*?\);",'',s)
+              s=re.sub(r"\n\s*if \(!bookingTime\) missing\.push\(\"booking_time.*?\);",'',s)
+              s=s.replace('    booking_date: bookingDate || null,\n    booking_time: bookingTime || null,\n','')
+              p.write_text(s); print('updated pi-payments.ts')
+
+          PY
+
+          # Hard verification: no client-scheduling implementation may remain in application source.
+          if grep -R -n -E 'SelectScheduleStep|SelectDateStep|SelectTimeStep|DateTimePicker|selectedDate|selectedTimeSlot|Appointment Date|Time Slot|bookingDate|bookingTime' artifacts/pibooking/src artifacts/api-server/src --include='*.ts' --include='*.tsx'; then
+            echo 'ERROR: scheduling references remain'
+            exit 1
+          fi
+
+          # Booking code must still retain legitimate timestamps and acceptance deadline.
+          grep -R -n 'createdAt\|created_at\|acceptance_deadline' artifacts/pibooking/src artifacts/api-server/src --include='*.ts' --include='*.tsx' >/dev/null
+
+          npm install --no-audit --no-fund
+          npm run build
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add artifacts/pibooking/src artifacts/api-server/src
+          git add -u artifacts/pibooking/src artifacts/api-server/src
+          git diff --cached --check
+          git commit -m "refactor: remove appointment scheduling and show booking creation time"
+          git push origin stage-3-remove-booking-scheduling
+
+          # Remove temporary workflows after the refactor commit is pushed.
+          git rm .github/workflows/finalize-stage3.yml .github/workflows/remove-booking-scheduling.yml .github/workflows/repair-scheduling-refactor.yml || true
+          git commit -m "chore: remove temporary stage3 workflows [skip ci]" || true
+          git push origin stage-3-remove-booking-scheduling || true
