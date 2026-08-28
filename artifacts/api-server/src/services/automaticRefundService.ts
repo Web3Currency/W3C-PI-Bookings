@@ -41,6 +41,42 @@ async function sb(path: string, init: RequestInit = {}) {
   return fetch(`${c.url}/rest/v1/${path}`, { ...init, headers: h });
 }
 
+
+async function notifyBookingCancellation(bookingId: string, reason: string) {
+  try {
+    const bookingRes = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=id,client_pi_uid,provider_id,service_title&limit=1`);
+    if (!bookingRes?.ok) return;
+    const booking = ((await bookingRes.json()) as any[])[0];
+    if (!booking?.client_pi_uid || !booking?.provider_id) return;
+    const providerRes = await sb(`providers?id=eq.${encodeURIComponent(booking.provider_id)}&select=pi_uid&limit=1`);
+    if (!providerRes?.ok) return;
+    const provider = ((await providerRes.json()) as any[])[0];
+    if (!provider?.pi_uid) return;
+    const convRes = await sb(`conversations?booking_id=eq.${encodeURIComponent(bookingId)}&select=id&limit=1`);
+    let conversationId = convRes?.ok ? (((await convRes.json()) as any[])[0]?.id as string | undefined) : undefined;
+    if (!conversationId) {
+      const created = await sb('conversations', { method: 'POST', body: JSON.stringify({ booking_id: bookingId }) });
+      conversationId = created?.ok ? (((await created.json()) as any[])[0]?.id as string | undefined) : undefined;
+    }
+    if (!conversationId) return;
+    const participantsRes = await sb(`conversation_participants?conversation_id=eq.${encodeURIComponent(conversationId)}&select=pi_uid`);
+    if (participantsRes?.ok) {
+      const uids = new Set(((await participantsRes.json()) as any[]).map((x:any)=>x.pi_uid));
+      const missing=[];
+      if (!uids.has(booking.client_pi_uid)) missing.push({conversation_id:conversationId,pi_uid:booking.client_pi_uid,role:'client'});
+      if (!uids.has(provider.pi_uid)) missing.push({conversation_id:conversationId,pi_uid:provider.pi_uid,role:'provider'});
+      if (missing.length) await sb('conversation_participants',{method:'POST',body:JSON.stringify(missing)});
+    }
+    const content = `Booking #${bookingId} has been cancelled. Reason: ${reason}`;
+    const existing = await sb(`messages?conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(content)}&select=id&limit=1`);
+    const already = existing?.ok ? (((await existing.json()) as any[]).length > 0) : false;
+    if (!already) await sb('messages',{method:'POST',body:JSON.stringify({conversation_id:conversationId,sender_pi_uid:provider.pi_uid,message_type:'system',content})});
+    await sb(`conversations?id=eq.${encodeURIComponent(conversationId)}`,{method:'PATCH',body:JSON.stringify({updated_at:new Date().toISOString()})});
+  } catch (err) {
+    console.warn('[Refund] Cancellation system message failed (non-blocking):', err);
+  }
+}
+
 function refundableEscrow(status: string | undefined | null) {
   return status === "paid_escrowed" || status === "refund_processing" || status === "refund_failed";
 }
@@ -174,6 +210,8 @@ export async function executeAutomaticClientRefund(
       if (row?.escrow_status === "refunded") return { status: "recovered", bookingId, paymentId: row.refund_pi_payment_id || paymentId, txid: row.refund_pi_txid || txid };
       return { status: "failed", bookingId, paymentId, txid, error: "Pi A2U refund succeeded, but concurrent state update prevented marking refunded." };
     }
+
+    try { await notifyBookingCancellation(bookingId, reason); } catch {}
 
     return { status: "completed", bookingId, paymentId, txid };
   } catch (e: any) {
