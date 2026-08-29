@@ -1,0 +1,91 @@
+name: stage4-chat-header
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/stage4-chat-header.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Stage 4 chat plumbing
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def p(rel): return Path(rel)
+          changed=[]
+
+          # Provider dashboard: expose the existing booking-detail chat opener.
+          f=p('artifacts/pibooking/src/features/provider/ProviderDashboardView.tsx')
+          s=f.read_text()
+          s2=s.replace('onProviderUpdated?: () => void; }','onProviderUpdated?: () => void; onOpenBookingChat?: (bookingId: string) => void; }')
+          s2=s2.replace('onProviderUpdated }) =>','onProviderUpdated, onOpenBookingChat }) =>')
+          if s2==s: raise SystemExit('ProviderDashboardView props pattern not found')
+          # ProviderBookingDetails already accepts onOpenChat; add the prop to its render wherever detailsBooking is rendered.
+          s2=s2.replace('<ProviderBookingDetails booking={detailsBooking} onClose={() => setDetailsBooking(null)} />','<ProviderBookingDetails booking={detailsBooking} onClose={() => setDetailsBooking(null)} onOpenChat={onOpenBookingChat} />')
+          if s2==s: raise SystemExit('ProviderBookingDetails render pattern not found')
+          f.write_text(s2); changed.append(str(f))
+
+          # App: pass the existing top-level booking chat opener into provider dashboard.
+          f=p('artifacts/pibooking/src/App.tsx'); s=f.read_text()
+          matches=list(re.finditer(r'<ProviderDashboardView\b',s))
+          if len(matches)!=1: raise SystemExit(f'Expected exactly 1 ProviderDashboardView, found {len(matches)}')
+          start=matches[0].start(); end=s.find('/>',start)
+          if end<0: raise SystemExit('ProviderDashboardView closing /> not found')
+          block=s[start:end]
+          if 'onOpenBookingChat=' not in block:
+              s=s[:end]+' onOpenBookingChat={handleOpenBookingChat}'+s[end:]
+          f.write_text(s); changed.append(str(f))
+
+          # Chat service models the authoritative booking status/deadline returned by the server.
+          f=p('artifacts/pibooking/src/services/chatService.ts'); s=f.read_text()
+          s=s.replace('last_message_at?: string | null; unread_count: number; updated_at: string;','last_message_at?: string | null; unread_count: number; updated_at: string; booking_status?: string | null; project_deadline?: string | null;')
+          s=s.replace('return request<{ conversationId: string; bookingStatus: string; participant: ChatParticipant }>', 'return request<{ conversationId: string; bookingStatus: string; projectDeadline?: string | null; participant: ChatParticipant }>')
+          f.write_text(s); changed.append(str(f))
+
+          # Chat API: include status + project deadline in booking conversation responses and lists.
+          f=p('artifacts/api-server/src/routes/pi-chat.ts'); s=f.read_text()
+          s=s.replace('select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status& id=', 'select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status,project_deadline& id=')
+          s=s.replace('return { conversationId, booking, provider, bookingStatus: booking.status };','return { conversationId, booking, provider, bookingStatus: booking.status, projectDeadline: booking.project_deadline || null };')
+          s=s.replace('return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, participant: counterpart });','return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, projectDeadline: ensured.booking.project_deadline || null, participant: counterpart });')
+          s=s.replace('select=client_pi_uid,customer_pi_username,customer_name,provider_id&id=', 'select=client_pi_uid,customer_pi_username,customer_name,provider_id,status,project_deadline&id=')
+          s=s.replace('updated_at: conversation.updated_at, ...counterpart,', 'updated_at: conversation.updated_at, booking_status: booking?.status || null, project_deadline: booking?.project_deadline || null, ...counterpart,')
+          f.write_text(s); changed.append(str(f))
+
+          # Chat UI: right-aligned project countdown, active only for In Progress bookings.
+          f=p('artifacts/pibooking/src/components/ChatView.tsx'); s=f.read_text()
+          marker="import { getMediaUrl } from '../services/providerMediaService';"
+          s=s.replace(marker, marker+"\nimport { getProjectRemainingMs, formatProjectCountdown } from '../lib/projectTimer';")
+          marker="const [conversations, setConversations] = useState<ChatConversation[]>([]); const [selected, setSelected] = useState<ChatConversation | null>(null);"
+          s=s.replace(marker, marker+"\n  const [timerTick, setTimerTick] = useState(0);\n  useEffect(() => { const id = setInterval(() => setTimerTick((t) => t + 1), 1000); return () => clearInterval(id); }, []);\n  void timerTick;")
+          s=s.replace('other_photo_url: opened.participant.other_photo_url };', 'other_photo_url: opened.participant.other_photo_url, booking_status: opened.bookingStatus, project_deadline: opened.projectDeadline || null };')
+          s=s.replace('other_photo_url: opened.participant.other_photo_url, last_message: null,', 'other_photo_url: opened.participant.other_photo_url, booking_status: opened.bookingStatus, project_deadline: opened.projectDeadline || null, last_message: null,')
+          old='<div className="min-w-0"><div className="font-black text-sm truncate">{selectedName}</div></div></header>'
+          new='<div className="min-w-0 flex-1"><div className="font-black text-sm truncate">{selectedName}</div></div>{selected.booking_status === \'In Progress\' && selected.project_deadline && <div className="shrink-0 pl-2 text-right font-mono text-sm font-black tabular-nums text-blue-700">{formatProjectCountdown(getProjectRemainingMs(selected.project_deadline))}</div>}</header>'
+          if old not in s: raise SystemExit('Chat header pattern not found')
+          s=s.replace(old,new,1)
+          f.write_text(s); changed.append(str(f))
+
+          print('changed:', *changed, sep='\n- ')
+          PY
+
+          # Verify no attachment UI was changed by this patch and core Stage 4 fields remain referenced.
+          grep -R -n "Attachments coming later\|Client Attachments" artifacts/pibooking/src/components/ChatView.tsx artifacts/pibooking/src/features/provider/ProviderBookingDetails.tsx
+          grep -R -n "project_deadline\|onOpenBookingChat" artifacts/pibooking/src artifacts/api-server/src/routes/pi-chat.ts --include='*.ts' --include='*.tsx' >/dev/null
+          git diff --check
+
+          git config user.name 'W3C CT'
+          git config user.email 'web3currency.info@gmail.com'
+          git add artifacts/pibooking/src/App.tsx artifacts/pibooking/src/components/ChatView.tsx artifacts/pibooking/src/services/chatService.ts artifacts/pibooking/src/features/provider/ProviderDashboardView.tsx artifacts/api-server/src/routes/pi-chat.ts
+          git diff --cached --check
+          git commit -m 'feat: allow provider chat before acceptance and show project timer in chat'
+          git push origin main
+
+          git rm .github/workflows/stage4-chat-header.yml
+          git commit -m 'chore: remove one-time Stage 4 chat workflow [skip ci]'
+          git push origin main
