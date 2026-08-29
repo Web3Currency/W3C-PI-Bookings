@@ -216,7 +216,7 @@ export default function App() {
           paid_at: new Date().toISOString(),
           status: 'Pending',
           paymentStatus: 'Paid',
-          acceptance_deadline: newBooking.acceptance_deadline || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          acceptance_deadline: newBooking.acceptance_deadline || new Date(Date.now() + 5 * 60 * 1000).toISOString(),
         });
         bookingId = created.id;
       }

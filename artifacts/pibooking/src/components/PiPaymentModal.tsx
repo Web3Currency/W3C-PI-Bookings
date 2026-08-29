@@ -63,7 +63,7 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
       setPaymentStatus('success');
       const acceptanceDeadline =
         (paymentResult as any).acceptanceDeadline ||
-        new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        new Date(Date.now() + 5 * 60 * 1000).toISOString();
       const createdAt = new Date().toISOString();
       const newBooking: Booking = {
         id: paymentResult.bookingId || ('bk_' + Date.now() + '_' + Math.floor(1000 + Math.random() * 9000)),
