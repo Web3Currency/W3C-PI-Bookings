@@ -1,0 +1,52 @@
+name: fix-five-minute-runtime-fallback
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/fix-five-minute-runtime-fallback.yml']
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace remaining 24-hour client fallbacks
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          targets = [
+              Path('artifacts/pibooking/src/App.tsx'),
+              Path('artifacts/pibooking/src/components/PiPaymentModal.tsx'),
+          ]
+          old = 'new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()'
+          new = 'new Date(Date.now() + 5 * 60 * 1000).toISOString()'
+          changed = False
+          for p in targets:
+              if not p.exists():
+                  raise SystemExit(f'Missing expected file: {p}')
+              s = p.read_text()
+              if old in s:
+                  p.write_text(s.replace(old, new))
+                  print(f'updated {p}')
+                  changed = True
+              else:
+                  print(f'no 24h fallback in {p}')
+          if not changed:
+              raise SystemExit('No expected 24-hour client fallback was found; refusing to create an unnecessary commit.')
+          PY
+
+          echo 'Remaining runtime 24-hour fallback references:'
+          ! grep -R -n "24 \* 60 \* 60 \* 1000" artifacts/pibooking/src artifacts/api-server/src --include='*.ts' --include='*.tsx'
+          ! grep -R -n "within 24 hours\|24-hour acceptance" artifacts/pibooking/src artifacts/api-server/src --include='*.ts' --include='*.tsx'
+          git diff --check
+
+          git config user.name 'W3C CT'
+          git config user.email 'web3currency.info@gmail.com'
+          git add artifacts/pibooking/src/App.tsx artifacts/pibooking/src/components/PiPaymentModal.tsx
+          git commit -m 'fix: remove remaining 24-hour acceptance fallbacks'
+          git push origin main
+
+          git rm .github/workflows/fix-five-minute-runtime-fallback.yml
+          git commit -m 'chore: remove temporary five-minute fallback workflow [skip ci]'
+          git push origin main
