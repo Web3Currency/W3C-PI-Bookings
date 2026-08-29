@@ -420,7 +420,7 @@ export default function App() {
               onAcceptBooking={handleAcceptBooking}
               onRejectBooking={handleRejectBooking}
               onProviderUpdated={handleRefreshAll}
-            />
+             onOpenBookingChat={handleOpenBookingChat}/>
           ) : currentFlow === 'provider_services' ? (
             <ProviderServicesView onBack={() => setCurrentFlow('browse')} />
           ) : (

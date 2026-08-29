@@ -19,7 +19,7 @@ export type ChatConversation = {
   id: string; booking_id: string; other_pi_uid: string; other_name: string;
   other_username?: string | null; other_photo_url?: string | null; other_role?: 'client' | 'provider' | null;
   last_message?: string | null; last_message_type?: 'user' | 'system' | null;
-  last_message_at?: string | null; unread_count: number; updated_at: string;
+  last_message_at?: string | null; unread_count: number; updated_at: string; booking_status?: string | null; project_deadline?: string | null;
 };
 
 export type ChatParticipant = {
@@ -38,7 +38,7 @@ export const chatService = {
     return data.conversations || [];
   },
   async getConversationForBooking(bookingId: string) {
-    return request<{ conversationId: string; bookingStatus: string; participant: ChatParticipant }>('/pi/chat/conversations/for-booking', authBody({ bookingId }));
+    return request<{ conversationId: string; bookingStatus: string; projectDeadline?: string | null; participant: ChatParticipant }>('/pi/chat/conversations/for-booking', authBody({ bookingId }));
   },
   async getMessages(conversationId: string): Promise<ChatMessage[]> {
     const data = await request<{ messages: ChatMessage[] }>(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/messages/list`, authBody());

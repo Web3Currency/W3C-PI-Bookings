@@ -39,7 +39,7 @@ async function assertParticipant(conversationId: string, piUid: string) {
 }
 
 async function getBookingAndProvider(bookingId: string) {
-  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status& id=", "?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status&id="));
+  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status,project_deadline& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status,project_deadline& id=", "?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status&id="));
   const booking = bookings[0];
   if (!booking) throw new Error("Booking not found.");
   if (!booking.client_pi_uid || !booking.provider_id) throw new Error("Booking is missing a client or provider identity.");
@@ -78,7 +78,7 @@ async function ensureConversationForBooking(bookingId: string, options: { includ
   }
 
   await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
-  return { conversationId, booking, provider, bookingStatus: booking.status };
+  return { conversationId, booking, provider, bookingStatus: booking.status, projectDeadline: booking.project_deadline || null };
 }
 
 async function lookupProviderByPiUid(piUid: string) {
@@ -152,7 +152,7 @@ router.post("/pi/chat/conversations/for-booking", async (req, res) => {
       || (ensured.provider.pi_uid === user.uid
         ? clientCounterpart(ensured.booking, ensured.booking.client_pi_uid)
         : providerCounterpart(ensured.provider, ensured.provider.pi_uid));
-    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, participant: counterpart });
+    return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, projectDeadline: ensured.booking.project_deadline || null, participant: counterpart });
   } catch (err: any) {
     req.log.error({ err, bookingId }, "Failed to open booking chat");
     return void res.status(500).json({ error: "Unable to open this chat right now. Please try again." });
@@ -171,7 +171,7 @@ router.post("/pi/chat/conversations", async (req, res) => {
       const conversationRows = await supabaseRequest(`conversations?select=id,booking_id,updated_at&id=eq.${encodeURIComponent(conversationId)}&limit=1`);
       const conversation = conversationRows[0];
       if (!conversation) continue;
-      const bookings = await supabaseRequest(`bookings?select=client_pi_uid,customer_pi_username,customer_name,provider_id&id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`);
+      const bookings = await supabaseRequest(`bookings?select=client_pi_uid,customer_pi_username,customer_name,provider_id,status,project_deadline&id=eq.${encodeURIComponent(conversation.booking_id)}&limit=1`);
       const booking = bookings[0];
       const counterpart = await resolveCounterpart(user.uid, conversationId, booking);
       if (!counterpart) continue;
@@ -182,7 +182,7 @@ router.post("/pi/chat/conversations", async (req, res) => {
         ? `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&created_at=gt.${encodeURIComponent(participant.last_read_at)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`
         : `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`;
       const unread = await supabaseRequest(unreadQuery);
-      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, ...counterpart, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
+      conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, booking_status: booking?.status || null, project_deadline: booking?.project_deadline || null, ...counterpart, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
     }
     conversations.sort((a, b) => String(b.updated_at || "").localeCompare(String(a.updated_at || "")));
     return void res.json({ conversations });
