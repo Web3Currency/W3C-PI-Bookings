@@ -106,7 +106,7 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
 
   return (
     <div
-      className={`relative rounded-2xl bg-white p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-zinc-900 space-y-4 ${className}`}
+      className={`relative rounded-2xl bg-zinc-50 hover:bg-orange-50/60 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-zinc-900 space-y-4 ${className}`}
     >
       {/* Top Section */}
       <div className="space-y-3">
