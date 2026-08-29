@@ -1,45 +1,16 @@
 name: apply-five-minute-acceptance
 on:
-  push:
-    branches: [main]
-    paths: ['.github/workflows/apply-five-minute-acceptance.yml']
+  workflow_dispatch:
 permissions:
   contents: write
 jobs:
-  patch:
+  verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Apply five-minute acceptance window
+      - name: Verify five-minute acceptance implementation
         run: |
-          python3 <<'PY'
-          from pathlib import Path
-          replacements = {
-            'artifacts/api-server/src/routes/pi-payments.ts': [
-              ('new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()', 'new Date(Date.now() + 5 * 60 * 1000).toISOString()'),
-            ],
-            'artifacts/api-server/src/routes/pi-bookings.ts': [
-              ('The 24-hour acceptance window has expired.', 'The 5-minute acceptance window has expired.'),
-              ('Provider did not accept within 24 hours', 'Provider did not accept within 5 minutes'),
-            ],
-            'artifacts/pibooking/src/lib/acceptanceCountdown.ts': [
-              ('/** Server-driven 24h provider acceptance countdown helpers */', '/** Server-driven provider acceptance countdown helpers */'),
-            ],
-            'vercel.json': []
-          }
-          for name, reps in replacements.items():
-            p=Path(name); s=p.read_text()
-            for old,new in reps: s=s.replace(old,new)
-            p.write_text(s)
-          import json
-          p=Path('vercel.json'); data=json.loads(p.read_text())
-          data['crons']=[{'path':'/api/pi/bookings/expire-unaccepted','schedule':'* * * * *'}]
-          p.write_text(json.dumps(data,indent=2)+'\n')
-          PY
-          grep -R "24 \* 60 \* 60 \* 1000\|within 24 hours\|24-hour acceptance" artifacts/api-server artifacts/pibooking/src/lib/acceptanceCountdown.ts || true
+          grep -R "5 \* 60 \* 1000" artifacts/api-server/src artifacts/pibooking/src --include='*.ts' --include='*.tsx'
+          ! grep -R "24 \* 60 \* 60 \* 1000" artifacts/api-server/src artifacts/pibooking/src --include='*.ts' --include='*.tsx'
+          ! grep -R "within 24 hours\|24-hour acceptance" artifacts/api-server/src artifacts/pibooking/src --include='*.ts' --include='*.tsx'
           git diff --check
-          git config user.name 'W3C CT'
-          git config user.email 'web3currency.info@gmail.com'
-          git add artifacts/api-server/src/routes/pi-payments.ts artifacts/api-server/src/routes/pi-bookings.ts artifacts/pibooking/src/lib/acceptanceCountdown.ts vercel.json
-          git commit -m 'feat: reduce provider acceptance window to five minutes'
-          git push origin main
