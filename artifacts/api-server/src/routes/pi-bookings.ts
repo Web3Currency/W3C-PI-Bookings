@@ -39,7 +39,7 @@ router.post("/pi/bookings/:bookingId/accept", async (req, res) => {
     if (current.acceptance_deadline) {
       const deadlineMs = new Date(current.acceptance_deadline).getTime();
       if (!Number.isNaN(deadlineMs) && deadlineMs <= Date.now()) {
-        return void res.status(409).json({ error: "The 24-hour acceptance window has expired. This booking can no longer be accepted." });
+        return void res.status(409).json({ error: "The 5-minute acceptance window has expired. This booking can no longer be accepted." });
       }
     }
     const now = new Date().toISOString();
@@ -161,7 +161,7 @@ router.post("/pi/bookings/expire-unaccepted", async (req, res) => {
 
     for (const row of rows) {
       const refund = await executeAutomaticClientRefund(row.id, {
-        reason: "Provider did not accept within 24 hours",
+        reason: "Provider did not accept within 5 minutes",
         cancelBooking: true,
       });
       results.push({

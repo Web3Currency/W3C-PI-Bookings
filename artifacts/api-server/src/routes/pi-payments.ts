@@ -178,7 +178,7 @@ async function finalizeBookingFromPayment(
   const notes = String(meta.notes || intentMeta.notes || intent?.notes || "").slice(0, 500).trim() || null;
 
   const now = new Date().toISOString();
-  const acceptanceDeadline = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  const acceptanceDeadline = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   const basePriceRaw =
     intentMeta.basePrice ?? intentMeta.priceNGN ?? intentMeta.base_price ?? intentMeta.price_ngn ??
     meta.basePrice ?? meta.priceNGN ?? meta.base_price ?? meta.price_ngn ?? serviceRow?.base_price_ngn;

@@ -1,4 +1,4 @@
-/** Server-driven 24h provider acceptance countdown helpers */
+/** Server-driven provider acceptance countdown helpers */
 
 export function isPendingAcceptance(booking: {
   status?: string;
