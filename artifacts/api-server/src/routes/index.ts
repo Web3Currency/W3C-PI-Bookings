@@ -8,6 +8,7 @@ import piDeliveryRouter from "./pi-delivery";
 import piServicesRouter from "./pi-services";
 import piChatRouter from "./pi-chat";
 import feedbackRouter from "./feedback";
+import piPricingRouter from "./pi-pricing";
 
 const router: IRouter = Router();
 
@@ -18,6 +19,7 @@ router.use(piPayoutsRouter);
 router.use(piBookingsRouter);
 router.use(piDeliveryRouter);
 router.use(piServicesRouter);
+router.use(piPricingRouter);
 router.use(piChatRouter);
 router.use(feedbackRouter);
 
