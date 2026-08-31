@@ -3,8 +3,9 @@ import { Booking } from '../types';
 import { isPendingAcceptance, getRemainingMs, formatCountdown, isAcceptanceExpired } from '../lib/acceptanceCountdown';
 import { getProjectRemainingMs, formatProjectCountdown } from '../lib/projectTimer';
 import { bookingService } from '../services/bookingService';
+import { Check, MessageSquare } from 'lucide-react';
 
-export function ClientAcceptanceBanner({ booking, compact = false }: { booking: Booking; compact?: boolean }) {
+export function ClientAcceptanceBanner({ booking, compact = false, onOpenChat }: { booking: Booking; compact?: boolean; onOpenChat?: (bookingId: string) => void }) {
   const [tick, setTick] = useState(0);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
@@ -19,11 +20,10 @@ export function ClientAcceptanceBanner({ booking, compact = false }: { booking: 
     };
     if (compact) return <div className="mt-1.5 text-[10px] font-bold text-emerald-700">Delivered — awaiting your confirmation</div>;
     return <div className="p-4 rounded-2xl border border-emerald-200 bg-emerald-50 space-y-2">
-      <div className="text-xs font-black uppercase tracking-wider text-emerald-900">Service delivered</div>
-      <p className="text-sm font-bold text-emerald-950">The provider has marked this service as delivered. Review the work and confirm completion when you are satisfied.</p>
-      {booking.delivered_at && <p className="text-[10px] text-zinc-500">Delivered: {new Date(booking.delivered_at).toLocaleString()}</p>}
-      {booking.delivery_notes && <div className="p-3 rounded-xl bg-white/70 border border-emerald-100 text-xs text-zinc-800 whitespace-pre-wrap">{booking.delivery_notes}</div>}
-      <button type="button" disabled={confirming} onClick={confirmCompletion} className="w-full mt-1 px-3 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black disabled:opacity-50">{confirming ? 'Confirming…' : 'Confirm Completion & Release Payment'}</button>
+      <div className="flex flex-wrap items-center gap-2">
+        {onOpenChat && <button type="button" onClick={() => onOpenChat(booking.id)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black"><MessageSquare className="w-3.5 h-3.5" />Request Revision</button>}
+        <button type="button" disabled={confirming} onClick={confirmCompletion} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black disabled:opacity-50"><Check className="w-3.5 h-3.5" />{confirming ? 'Confirming…' : 'Confirm Completion'}</button>
+      </div>
       {error && <p className="text-[11px] font-semibold text-rose-700">{error}</p>}
     </div>;
   }
