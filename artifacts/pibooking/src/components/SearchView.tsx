@@ -16,24 +16,20 @@ type ViewMode = 'services' | 'providers';
 type ServiceSort = 'featured' | 'newest' | 'price_low' | 'price_high' | 'duration';
 type ProviderSort = 'featured' | 'rating' | 'reviews' | 'newest' | 'name';
 type HeroSlide = { eyebrow: string; title: string; description: string; cta: string; action: 'services' | 'providers' | 'become' };
-
+const PROVIDERS_VIEW_REQUEST = '__providers__';
 const HERO_SLIDES: HeroSlide[] = [
   { eyebrow: 'W3C Digital Network', title: 'Find what you need — or who can provide it.', description: 'Discover bookable digital services and verified Pi Network providers in one marketplace.', cta: 'Explore Services', action: 'services' },
   { eyebrow: 'How W3C Pi Bookings Works', title: 'Discover. Book. Work together.', description: 'Find a service, review the provider, and start a booking through the existing W3C flow.', cta: 'Browse Services', action: 'services' },
   { eyebrow: 'For Providers', title: 'Put your skills in front of clients.', description: 'Build your provider presence and offer services through the W3C marketplace.', cta: 'Become a Provider', action: 'become' },
   { eyebrow: 'Meet the Community', title: 'Search for the right provider directly.', description: 'Switch to Providers to explore people by role, skills, specialties, ratings, and more.', cta: 'Find Providers', action: 'providers' },
 ];
-
-function providerSearchText(provider: Provider): string {
-  return [provider.fullName, provider.piUsername, provider.roleTitle, provider.headline, provider.bio, ...(provider.specialties || []), ...(provider.skills || []), ...(provider.languages || []), provider.location].filter(Boolean).join(' ').toLowerCase();
-}
-function serviceSearchText(service: Service): string {
-  return [service.name, service.description, service.category, service.providerName, service.providerRole, ...(service.included || [])].filter(Boolean).join(' ').toLowerCase();
-}
+function providerSearchText(provider: Provider): string { return [provider.fullName, provider.piUsername, provider.roleTitle, provider.headline, provider.bio, ...(provider.specialties || []), ...(provider.skills || []), ...(provider.languages || []), provider.location].filter(Boolean).join(' ').toLowerCase(); }
+function serviceSearchText(service: Service): string { return [service.name, service.description, service.category, service.providerName, service.providerRole, ...(service.included || [])].filter(Boolean).join(' ').toLowerCase(); }
 
 export const SearchView: React.FC<SearchViewProps> = ({ services = [], onSelectService, onSelectProvider, onBecomeProvider, initialQuery = '' }) => {
-  const [viewMode, setViewMode] = useState<ViewMode>('services');
-  const [query, setQuery] = useState(initialQuery);
+  const initialProvidersView = initialQuery === PROVIDERS_VIEW_REQUEST;
+  const [viewMode, setViewMode] = useState<ViewMode>(initialProvidersView ? 'providers' : 'services');
+  const [query, setQuery] = useState(initialProvidersView ? '' : initialQuery);
   const [serviceSort, setServiceSort] = useState<ServiceSort>('featured');
   const [providerSort, setProviderSort] = useState<ProviderSort>('featured');
   const [providers, setProviders] = useState<Provider[]>([]);
@@ -41,77 +37,26 @@ export const SearchView: React.FC<SearchViewProps> = ({ services = [], onSelectS
   const [providersError, setProvidersError] = useState(false);
   const [slideIndex, setSlideIndex] = useState(0);
 
-  useEffect(() => setQuery(initialQuery || ''), [initialQuery]);
   useEffect(() => {
-    let active = true;
-    setProvidersLoading(true);
-    setProvidersError(false);
-    providerService.getProvidersAsync()
-      .then((data) => {
-        if (active) {
-          setProviders(data.filter((provider) => provider.status === 'Approved' && (provider.profileStatus || 'Published') === 'Published' && provider.profileVisibility !== 'private'));
-        }
-      })
-      .catch(() => { if (active) setProvidersError(true); })
-      .finally(() => { if (active) setProvidersLoading(false); });
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setSlideIndex((current) => (current + 1) % HERO_SLIDES.length), 6500);
-    return () => window.clearInterval(timer);
-  }, []);
-
+    if (initialQuery === PROVIDERS_VIEW_REQUEST) {
+      setViewMode('providers');
+      setQuery('');
+      return;
+    }
+    setViewMode('services');
+    setQuery(initialQuery || '');
+  }, [initialQuery]);
+  useEffect(() => { let active = true; setProvidersLoading(true); setProvidersError(false); providerService.getProvidersAsync().then((data) => { if (active) setProviders(data.filter((provider) => provider.status === 'Approved' && (provider.profileStatus || 'Published') === 'Published' && provider.profileVisibility !== 'private')); }).catch(() => { if (active) setProvidersError(true); }).finally(() => { if (active) setProvidersLoading(false); }); return () => { active = false; }; }, []);
+  useEffect(() => { const timer = window.setInterval(() => setSlideIndex((current) => (current + 1) % HERO_SLIDES.length), 6500); return () => window.clearInterval(timer); }, []);
   const currentSlide = HERO_SLIDES[slideIndex];
   const publishedServices = useMemo(() => services.filter((service) => service.status === 'Published'), [services]);
-  const filteredServices = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return publishedServices.filter((service) => !q || serviceSearchText(service).includes(q));
-  }, [publishedServices, query]);
-  const sortedServices = useMemo(() => [...filteredServices].sort((a, b) => {
-    if (serviceSort === 'price_low') return a.pricePi - b.pricePi;
-    if (serviceSort === 'price_high') return b.pricePi - a.pricePi;
-    if (serviceSort === 'duration') return a.durationMinutes - b.durationMinutes;
-    if (serviceSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
-    if (serviceSort === 'featured') return Number(b.featured) - Number(a.featured);
-    return 0;
-  }), [filteredServices, serviceSort]);
-  const filteredProviders = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return providers.filter((provider) => !q || providerSearchText(provider).includes(q));
-  }, [providers, query]);
-  const sortedProviders = useMemo(() => [...filteredProviders].sort((a, b) => {
-    if (providerSort === 'rating') return (b.rating || 0) - (a.rating || 0);
-    if (providerSort === 'reviews') return (b.reviewsCount || 0) - (a.reviewsCount || 0);
-    if (providerSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
-    if (providerSort === 'name') return a.fullName.localeCompare(b.fullName);
-    const featuredScore = (provider: Provider) => Number(provider.profileVerified || provider.piVerified || provider.status === 'Approved');
-    return featuredScore(b) - featuredScore(a);
-  }), [filteredProviders, providerSort]);
-
+  const filteredServices = useMemo(() => { const q = query.trim().toLowerCase(); return publishedServices.filter((service) => !q || serviceSearchText(service).includes(q)); }, [publishedServices, query]);
+  const sortedServices = useMemo(() => [...filteredServices].sort((a, b) => { if (serviceSort === 'price_low') return a.pricePi - b.pricePi; if (serviceSort === 'price_high') return b.pricePi - a.pricePi; if (serviceSort === 'duration') return a.durationMinutes - b.durationMinutes; if (serviceSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); if (serviceSort === 'featured') return Number(b.featured) - Number(a.featured); return 0; }), [filteredServices, serviceSort]);
+  const filteredProviders = useMemo(() => { const q = query.trim().toLowerCase(); return providers.filter((provider) => !q || providerSearchText(provider).includes(q)); }, [providers, query]);
+  const sortedProviders = useMemo(() => [...filteredProviders].sort((a, b) => { if (providerSort === 'rating') return (b.rating || 0) - (a.rating || 0); if (providerSort === 'reviews') return (b.reviewsCount || 0) - (a.reviewsCount || 0); if (providerSort === 'newest') return String(b.createdAt || '').localeCompare(String(a.createdAt || '')); if (providerSort === 'name') return a.fullName.localeCompare(b.fullName); const featuredScore = (provider: Provider) => Number(provider.profileVerified || provider.piVerified || provider.status === 'Approved'); return featuredScore(b) - featuredScore(a); }), [filteredProviders, providerSort]);
   const handleModeChange = (mode: ViewMode) => { setViewMode(mode); setQuery(''); };
-  const handleSlideAction = () => {
-    if (currentSlide.action === 'services') handleModeChange('services');
-    else if (currentSlide.action === 'providers') handleModeChange('providers');
-    else onBecomeProvider?.();
-  };
-
-  const sortOptions = viewMode === 'services'
-    ? [
-        { value: 'featured', label: 'Featured' },
-        { value: 'newest', label: 'Newest' },
-        { value: 'price_low', label: 'Price: Low to High' },
-        { value: 'price_high', label: 'Price: High to Low' },
-        { value: 'duration', label: 'Fastest Delivery' },
-      ]
-    : [
-        { value: 'featured', label: 'Featured' },
-        { value: 'newest', label: 'Newest' },
-        { value: 'rating', label: 'Highest Rated' },
-        { value: 'reviews', label: 'Most Reviews' },
-        { value: 'name', label: 'A–Z' },
-      ];
-
+  const handleSlideAction = () => { if (currentSlide.action === 'services') handleModeChange('services'); else if (currentSlide.action === 'providers') handleModeChange('providers'); else onBecomeProvider?.(); };
+  const sortOptions = viewMode === 'services' ? [{ value: 'featured', label: 'Featured' }, { value: 'newest', label: 'Newest' }, { value: 'price_low', label: 'Price: Low to High' }, { value: 'price_high', label: 'Price: High to Low' }, { value: 'duration', label: 'Fastest Delivery' }] : [{ value: 'featured', label: 'Featured' }, { value: 'newest', label: 'Newest' }, { value: 'rating', label: 'Highest Rated' }, { value: 'reviews', label: 'Most Reviews' }, { value: 'name', label: 'A–Z' }];
   const selectedSort = viewMode === 'services' ? serviceSort : providerSort;
 
   return <div className="space-y-5 pb-20 animate-in fade-in duration-200">
@@ -120,5 +65,4 @@ export const SearchView: React.FC<SearchViewProps> = ({ services = [], onSelectS
     {viewMode === 'services' ? (sortedServices.length === 0 ? <EmptyState type="services" query={query} onClear={() => setQuery('')} /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{sortedServices.map((service) => <div key={service.id} onClick={() => onSelectService?.(service)} id={`search-service-card-${service.id}`} className="group p-5 rounded-2xl bg-zinc-50 hover:bg-orange-50/60 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between space-y-4 border border-zinc-100/60"><div className="space-y-2"><div className="flex items-center justify-between gap-2"><span className="inline-block px-3 py-1 rounded-full bg-orange-100/70 text-orange-950 text-[10px] font-extrabold uppercase tracking-wider">{String(service.category).replace(/_/g, ' ')}</span><span className="text-[11px] text-zinc-500 font-bold">{service.durationMinutes} mins</span></div><h3 className="font-extrabold text-sm sm:text-base text-zinc-900 group-hover:text-orange-600 transition line-clamp-2 text-left">{service.name}</h3>{service.description && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">{service.description}</p>}</div><div className="pt-3 border-t border-zinc-100 flex items-center justify-between"><div><span className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-wider block">Price</span><span className="text-lg font-black text-orange-600 tracking-tight">{service.pricePi} <span className="text-xs font-bold text-orange-500">π</span></span></div><button type="button" onClick={(event) => { event.stopPropagation(); onSelectService?.(service); }} className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition cursor-pointer shadow-xs">Book Service</button></div></div>)}</div>) : providersLoading ? <div className="py-14 text-center text-xs font-bold text-zinc-500">Loading providers...</div> : providersError ? <div className="py-14 text-center text-xs font-bold text-zinc-500">We couldn't load providers right now. Please try again.</div> : sortedProviders.length === 0 ? <EmptyState type="providers" query={query} onClear={() => setQuery('')} /> : <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{sortedProviders.map((provider) => <MerchantCard key={provider.id} merchant={provider} services={publishedServices} onOpenAbout={(merchant) => { if (merchant && 'fullName' in merchant) onSelectProvider?.(merchant as Provider); }} />)}</div>}
   </div>;
 };
-
 const EmptyState: React.FC<{ type: ViewMode; query: string; onClear: () => void }> = ({ type, query, onClear }) => <div className="py-14 text-center space-y-3"><div className="w-12 h-12 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center mx-auto"><Search className="w-6 h-6" /></div><h3 className="text-base font-black text-zinc-900">No {type} found</h3><p className="text-xs text-zinc-500 font-medium max-w-sm mx-auto leading-relaxed">{query ? `We couldn't find any ${type} matching “${query}”. Try another search.` : `There are no ${type} available right now.`}</p>{query && <button type="button" onClick={onClear} className="px-5 py-2.5 rounded-xl bg-orange-600 text-white font-black text-xs">Clear Search</button>}</div>;
