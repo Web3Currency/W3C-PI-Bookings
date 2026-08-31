@@ -16,7 +16,8 @@ router.post("/pi/bookings/:bookingId/revision", async (req, res) => {
     if (!booking || !isClient) return void res.status(403).json({ error: "Only the booking client can request a revision." });
     if (booking.status !== "Delivered" || booking.escrow_status !== "paid_escrowed") return void res.status(409).json({ error: "This booking is not awaiting client review." });
     const now = new Date().toISOString();
-    const revisionRows = await sb("booking_revision_requests", { method: "POST", body: JSON.stringify({ booking_id: bookingId, requested_by_pi_uid: user.uid, notes: null }) });
+    const revisionNotes = String(req.body?.notes ?? "Client requested a revision.").trim() || "Client requested a revision.";
+    const revisionRows = await sb("booking_revision_requests", { method: "POST", body: JSON.stringify({ booking_id: bookingId, requested_by_pi_uid: user.uid, notes: revisionNotes }) });
     const revision = revisionRows[0];
     const updated = await sb(`bookings?id=eq.${encodeURIComponent(bookingId)}&status=eq.Delivered&escrow_status=eq.paid_escrowed`, { method: "PATCH", body: JSON.stringify({ status: "In Progress", client_review_status: "revision_requested", revision_count: Number(booking.revision_count || 0) + 1, client_review_deadline: null, project_deadline: null, updated_at: now }) });
     if (!updated.length) return void res.status(409).json({ error: "Booking changed state before the revision request could be applied." });
@@ -38,7 +39,7 @@ router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
     const payout = await executeAutomaticProviderPayout(bookingId);
     if (payout.status === "failed") return void res.status(502).json({ error: payout.error || "Automatic provider payout failed.", booking: confirmed[0], payout: { status: payout.status } });
     return void res.json({ success: true, booking: confirmed[0], payout: { status: payout.status, paymentId: payout.paymentId, txid: payout.txid } });
-  } catch (e: any) { req.log.error({ err: e, bookingId }, "Stage 6 completion failed"); return void res.status(500).json({ error: e?.message || "Failed to confirm completion." }); }
+  } catch (e: any) { req.log.error({ err: e, bookingId }, "Stage 6 completion failed"); return void res.status(500).json({ error: e?.message || "Failed to confirm booking completion." }); }
 });
 
 router.post("/pi/bookings/review-expired", async (req, res) => {
