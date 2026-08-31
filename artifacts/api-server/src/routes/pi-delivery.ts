@@ -20,7 +20,14 @@ router.post("/pi/bookings/:bookingId/deliver", async (req, res) => {
     const now = new Date(); const nowIso = now.toISOString(); const reviewDeadline = new Date(now.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString();
     const updated = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&status=eq.In%20Progress&provider_id=eq.${encodeURIComponent(booking.provider_id)}`, { method: "PATCH", body: JSON.stringify({ status: "Delivered", delivered_at: nowIso, delivery_notes: trimmedNotes || null, delivery_attachments: attachments, client_review_status: "pending", client_review_deadline: reviewDeadline, project_deadline: null, updated_at: nowIso }) });
     if (!updated?.length) return void res.status(409).json({ error: "Booking changed state before delivery could be recorded." });
-    try { const { conversationId } = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: false }); const systemContent = "Provider has marked this service as delivered. Please review the deliverables and confirm completion."; const existing = await supabaseRequest(`messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(systemContent)}&limit=1`); if (!existing[0]) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) }); } catch (chatErr: any) { req.log.error({ chatErr, bookingId }, "Delivery recorded but delivery system message failed"); }
+    try {
+      const { conversationId } = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: false });
+      const systemContent = "Provider has marked this service as delivered. Please review the deliverables and confirm completion.";
+      const existingSystem = await supabaseRequest(`messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(systemContent)}&limit=1`);
+      if (!existingSystem[0]) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
+      if (trimmedNotes) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "user", content: trimmedNotes.slice(0, 5000) }) });
+      await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: nowIso }) });
+    } catch (chatErr: any) { req.log.error({ chatErr, bookingId }, "Delivery recorded but delivery chat message failed"); }
     return void res.json({ success: true, booking: updated[0] });
   } catch (err: any) { req.log.error({ err, bookingId }, "Provider delivery submission failed"); return void res.status(500).json({ error: err?.message || "Failed to submit delivery." }); }
 });
