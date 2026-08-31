@@ -4,7 +4,7 @@
   "buildCommand": "npm run build --workspace=@workspace/pibooking && npm run build --workspace=@workspace/api-server",
   "outputDirectory": "artifacts/pibooking/dist/public",
   "crons": [
-    { "path": "/api/pi/bookings/review-expired", "schedule": "*/15 * * * *" }
+    { "path": "/api/pi/bookings/review-expired", "schedule": "0 0 * * *" }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" },
