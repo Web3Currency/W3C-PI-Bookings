@@ -3,29 +3,14 @@
   "installCommand": "npm install --include=dev --workspace=@workspace/pibooking --workspace=@workspace/api-server --include-workspace-root",
   "buildCommand": "npm run build --workspace=@workspace/pibooking && npm run build --workspace=@workspace/api-server",
   "outputDirectory": "artifacts/pibooking/dist/public",
+  "crons": [
+    { "path": "/api/pi/bookings/review-expired", "schedule": "*/15 * * * *" }
+  ],
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/((?!api/|validation-key\\.txt).*)",
-      "destination": "/index.html"
-    }
+    { "source": "/api/(.*)", "destination": "/api/index.js" },
+    { "source": "/((?!api/|validation-key\\.txt).*)", "destination": "/index.html" }
   ],
   "headers": [
-    {
-      "source": "/validation-key.txt",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "text/plain; charset=utf-8"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate"
-        }
-      ]
-    }
+    { "source": "/validation-key.txt", "headers": [ { "key": "Content-Type", "value": "text/plain; charset=utf-8" }, { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" } ] }
   ]
 }
