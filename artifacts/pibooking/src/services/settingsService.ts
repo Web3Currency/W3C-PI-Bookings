@@ -2,10 +2,12 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export interface MarketplaceSettings {
   become_provider_popup_enabled: boolean;
+  become_provider_popup_image_url: string | null;
 }
 
 const DEFAULT_SETTINGS: MarketplaceSettings = {
   become_provider_popup_enabled: false,
+  become_provider_popup_image_url: null,
 };
 
 let cachedSettings: MarketplaceSettings | null = null;
@@ -28,7 +30,7 @@ export const settingsService = {
     try {
       const { data, error } = await supabase
         .from('marketplace_settings')
-        .select('become_provider_popup_enabled')
+        .select('become_provider_popup_enabled, become_provider_popup_image_url')
         .eq('id', 'global')
         .maybeSingle();
 
@@ -45,6 +47,7 @@ export const settingsService = {
 
       cachedSettings = {
         become_provider_popup_enabled: Boolean(data.become_provider_popup_enabled),
+        become_provider_popup_image_url: data.become_provider_popup_image_url || null,
       };
 
       return cachedSettings;
