@@ -1,70 +1,48 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PiUser } from '../types';
 import { piAuthService } from '../services/piAuthService';
+import { userProfileService } from '../services/userProfileService';
 
-interface UsePiAuthReturn {
-  piUser: PiUser | null;
-  loading: boolean;
-  error: string | null;
-  signIn: () => Promise<PiUser | null>;
-  signOut: () => void;
+interface UsePiAuthReturn { piUser: PiUser | null; loading: boolean; error: string | null; signIn: () => Promise<PiUser | null>; signOut: () => void; refreshProfile: () => Promise<void>; }
+
+async function withGlobalProfile(user: PiUser): Promise<PiUser> {
+  if (!user.accessToken) return user;
+  try {
+    const profile = await userProfileService.getProfile(user.accessToken);
+    return userProfileService.applyToPiUser(user, profile);
+  } catch { return user; }
 }
 
 export function usePiAuth(): UsePiAuthReturn {
   const [piUser, setPiUser] = useState<PiUser | null>(() => piAuthService.getStoredUser());
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Auto sign-in on mount if no cached session exists
   useEffect(() => {
-    if (piUser) return; // already authenticated
+    if (!piUser) return;
+    withGlobalProfile(piUser).then((updated) => setPiUser(updated));
+  }, []);
 
+  useEffect(() => {
+    if (piUser) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    piAuthService
-      .signIn()
-      .then((user) => {
-        if (!cancelled) setPiUser(user);
-      })
-      .catch((err: Error) => {
-        if (!cancelled) {
-          // Outside Pi Browser this always fails — not a fatal error for web preview
-          console.warn('[Pi Auth] Auto sign-in skipped:', err.message);
-          setError(err.message);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    setLoading(true); setError(null);
+    piAuthService.signIn().then((user) => { if (!cancelled) withGlobalProfile(user).then((updated) => setPiUser(updated)); }).catch((err: Error) => { if (!cancelled) { console.warn('[Pi Auth] Auto sign-in skipped:', err.message); setError(err.message); } }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, []);
 
-  const signIn = useCallback(async (): Promise<PiUser | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const user = await piAuthService.signIn();
-      setPiUser(user);
-      return user;
-    } catch (err: any) {
-      setError(err.message ?? 'Sign-in failed.');
-      return null;
-    } finally {
-      setLoading(false);
-    }
+  const signIn = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { const user = await piAuthService.signIn(); const updated = await withGlobalProfile(user); setPiUser(updated); return updated; }
+    catch (err: any) { setError(err.message ?? 'Sign-in failed.'); return null; }
+    finally { setLoading(false); }
   }, []);
 
-  const signOut = useCallback(() => {
-    piAuthService.signOut();
-    setPiUser(null);
-    setError(null);
-  }, []);
+  const refreshProfile = useCallback(async () => {
+    if (!piUser?.accessToken) return;
+    const updated = await withGlobalProfile(piUser); setPiUser(updated);
+  }, [piUser]);
 
-  return { piUser, loading, error, signIn, signOut };
+  const signOut = useCallback(() => { piAuthService.signOut(); setPiUser(null); setError(null); }, []);
+  return { piUser, loading, error, signIn, signOut, refreshProfile };
 }
