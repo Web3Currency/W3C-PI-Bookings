@@ -36,62 +36,60 @@ export const BecomeProviderModal: React.FC<BecomeProviderModalProps> = ({
       aria-modal="true"
       aria-labelledby="become-provider-title"
     >
-      <div className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-zinc-200 bg-white text-center shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative flex w-full max-w-sm flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 z-10 rounded-lg px-2 py-1 text-[11px] font-semibold text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
+          className="absolute right-0 top-0 z-10 rounded-lg px-2 py-1 text-[11px] font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
           aria-label="Close modal"
         >
           Close
         </button>
 
-        <div className="px-5 pb-5 pt-7 sm:px-6 sm:pb-6">
-          {imageUrl && (
-            <div className="mb-1 flex w-full justify-center pointer-events-none select-none">
-              <img
-                src={imageUrl}
-                alt=""
-                aria-hidden="true"
-                className="block h-auto max-h-[250px] w-auto max-w-[88%] object-contain object-bottom"
-                onError={() => setImageUrl(null)}
-              />
-            </div>
-          )}
-
-          <div className="space-y-2">
-            <h2
-              id="become-provider-title"
-              className="text-xl font-black tracking-tight text-zinc-900"
-            >
-              Become a Service Provider
-            </h2>
-            <p className="mx-auto max-w-xs text-sm leading-relaxed text-zinc-600">
-              Turn your digital skills into services on Pi Network and connect with clients looking for what you do best.
-            </p>
+        {imageUrl && (
+          <div className="flex w-full justify-center pointer-events-none select-none">
+            <img
+              src={imageUrl}
+              alt=""
+              aria-hidden="true"
+              className="block h-auto max-h-[300px] w-auto max-w-[92%] object-contain object-bottom"
+              onError={() => setImageUrl(null)}
+            />
           </div>
+        )}
 
-          <div className="mt-5 space-y-2">
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onBecomeProvider();
-              }}
-              id="btn-modal-become-provider"
-              className="w-full rounded-xl bg-[#EA580C] px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-500/20 transition hover:bg-[#F97316] active:scale-[0.98]"
-            >
-              Apply to Become a Provider →
-            </button>
+        <div className="mt-1 w-full px-3">
+          <h2
+            id="become-provider-title"
+            className="text-xl font-black tracking-tight text-white drop-shadow-sm"
+          >
+            Become a Service Provider
+          </h2>
+          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-white/90 drop-shadow-sm">
+            Turn your digital skills into services on Pi Network and connect with clients looking for what you do best.
+          </p>
+        </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-2 text-xs font-semibold text-zinc-500 transition hover:text-zinc-800"
-            >
-              Maybe Later
-            </button>
-          </div>
+        <div className="mt-5 w-full px-3 space-y-2">
+          <button
+            type="button"
+            onClick={() => {
+              onClose();
+              onBecomeProvider();
+            }}
+            id="btn-modal-become-provider"
+            className="w-full rounded-xl bg-[#EA580C] px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-500/20 transition hover:bg-[#F97316] active:scale-[0.98]"
+          >
+            Apply to Become a Provider →
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2 text-xs font-semibold text-white/80 transition hover:text-white"
+          >
+            Maybe Later
+          </button>
         </div>
       </div>
     </div>
