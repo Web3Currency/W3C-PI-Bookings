@@ -4,20 +4,11 @@ const router: IRouter = Router();
 
 /**
  * POST /api/pi/auth
- *
- * Validates a Pi Network access token by forwarding it to
- * GET https://api.minepi.com/v2/me with Authorization: Bearer <token>.
- * No Pi API key is required for this endpoint.
- *
- * Body:  { accessToken: string }
- * 200:   { uid: string, username: string }
- * 400:   missing / malformed token
- * 401:   Pi API rejected the token
- * 500:   network / unexpected error
+ * Validates a Pi Network access token and returns the authenticated user's
+ * identity plus wallet address when Pi makes it available.
  */
 router.post("/pi/auth", async (req, res) => {
   const { accessToken } = req.body as { accessToken?: string };
-
   if (!accessToken || typeof accessToken !== "string" || accessToken.trim() === "") {
     res.status(400).json({ error: "accessToken is required." });
     return;
@@ -27,9 +18,7 @@ router.post("/pi/auth", async (req, res) => {
   try {
     piResponse = await fetch("https://api.minepi.com/v2/me", {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${accessToken.trim()}`,
-      },
+      headers: { Authorization: `Bearer ${accessToken.trim()}` },
     });
   } catch (err: any) {
     req.log.error({ err }, "Network error reaching Pi API");
@@ -39,15 +28,12 @@ router.post("/pi/auth", async (req, res) => {
 
   if (!piResponse.ok) {
     const body = await piResponse.text().catch(() => "");
-    req.log.warn(
-      { status: piResponse.status, body },
-      "Pi API rejected access token"
-    );
+    req.log.warn({ status: piResponse.status, body }, "Pi API rejected access token");
     res.status(401).json({ error: "Invalid or expired Pi access token." });
     return;
   }
 
-  let piUser: { uid: string; username: string } & Record<string, unknown>;
+  let piUser: { uid: string; username: string; wallet_address?: string; walletAddress?: string };
   try {
     piUser = await piResponse.json();
   } catch (err: any) {
@@ -62,8 +48,9 @@ router.post("/pi/auth", async (req, res) => {
     return;
   }
 
-  req.log.info({ uid: piUser.uid, username: piUser.username }, "Pi user validated");
-  res.json({ uid: piUser.uid, username: piUser.username });
+  const walletAddress = piUser.wallet_address || piUser.walletAddress || undefined;
+  req.log.info({ uid: piUser.uid, username: piUser.username, hasWalletAddress: Boolean(walletAddress) }, "Pi user validated");
+  res.json({ uid: piUser.uid, username: piUser.username, walletAddress });
 });
 
 export default router;
