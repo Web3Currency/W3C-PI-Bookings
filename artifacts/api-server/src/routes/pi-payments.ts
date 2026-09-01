@@ -19,310 +19,40 @@ async function sb(path: string, init: RequestInit = {}) {
   return fetch(`${c.url}/rest/v1/${path}`, { ...init, headers: h });
 }
 
-function piApiKey() {
-  return process.env.PI_API_KEY?.trim() || "";
-}
+function piApiKey() { return process.env.PI_API_KEY?.trim() || ""; }
+async function piFetch(path: string, init: RequestInit = {}) { const apiKey = piApiKey(); if (!apiKey) throw new Error("PI_API_KEY is missing."); const h = new Headers(init.headers); h.set("Authorization", `Key ${apiKey}`); h.set("Content-Type", "application/json"); return fetch(`https://api.minepi.com/v2${path}`, { ...init, headers: h }); }
+async function fetchPiPayment(paymentId: string): Promise<any | null> { const res = await piFetch(`/payments/${encodeURIComponent(paymentId)}`); const text = await res.text().catch(() => ""); let data: any = {}; try { data = JSON.parse(text); } catch { data = { message: text }; } if (!res.ok) { const err: any = new Error(data?.error || data?.message || `Pi GET payment failed (${res.status})`); err.status = res.status; err.body = data; throw err; } return data; }
+function metaOf(payment: any): Record<string, any> { const m = payment?.metadata; if (m && typeof m === "object") return m; if (typeof m === "string") { try { return JSON.parse(m); } catch { return {}; } } return {}; }
+function paymentCompletedOnPi(payment: any): boolean { const st = payment?.status; if (st && typeof st === "object") { if (st.developer_completed === true) return true; if (st.transaction_verified === true && st.developer_completed !== false) return true; } return Boolean(payment?.transaction?.txid); }
+async function upsertPaymentIntent(payment: any, extra?: { txid?: string; status?: string }) { const paymentId = String(payment?.identifier || payment?.id || "").trim(); if (!paymentId) return; const meta = metaOf(payment); const amount = Number(payment?.amount); const now = new Date().toISOString(); const clientPiUsername = String(meta.clientPiUsername || meta.clientUsername || meta.customer_pi_username || "").trim(); const row: Record<string, any> = { pi_payment_id: paymentId, amount_pi: Number.isFinite(amount) ? amount : null, status: extra?.status || (paymentCompletedOnPi(payment) ? "completed" : "approved"), pi_txid: extra?.txid || payment?.transaction?.txid || null, client_pi_uid: String(payment?.user_uid || payment?.uid || meta.clientPiUid || "").trim() || null, client_pi_username: clientPiUsername || null, client_name: String(meta.clientName || "").trim() || null, client_email: String(meta.clientEmail || "").trim() || null, notes: String(meta.notes || "").trim() || null, service_id: meta.serviceId || meta.service_id || null, provider_id: meta.providerId || meta.provider_id || null, service_title: String(meta.serviceName || meta.service_title || payment?.memo || "").slice(0, 200) || null, business_id: meta.businessId || meta.business_id || null, metadata: meta, updated_at: now }; const existing = await sb(`payment_intents?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=id&limit=1`); if (existing?.ok) { const rows = (await existing.json()) as any[]; if (rows?.[0]?.id) { await sb(`payment_intents?id=eq.${encodeURIComponent(rows[0].id)}`, { method: "PATCH", body: JSON.stringify(row) }); return; } } row.created_at = now; await sb("payment_intents", { method: "POST", body: JSON.stringify(row) }).catch(() => undefined); }
+async function loadPaymentIntent(paymentId: string): Promise<any | null> { const res = await sb(`payment_intents?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=*&limit=1`); if (!res?.ok) return null; const rows = (await res.json()) as any[]; return rows?.[0] || null; }
 
-async function piFetch(path: string, init: RequestInit = {}) {
-  const apiKey = piApiKey();
-  if (!apiKey) throw new Error("PI_API_KEY is missing.");
-  const h = new Headers(init.headers);
-  h.set("Authorization", `Key ${apiKey}`);
-  h.set("Content-Type", "application/json");
-  return fetch(`https://api.minepi.com/v2${path}`, { ...init, headers: h });
-}
-
-async function fetchPiPayment(paymentId: string): Promise<any | null> {
-  const res = await piFetch(`/payments/${encodeURIComponent(paymentId)}`);
-  const text = await res.text().catch(() => "");
-  let data: any = {};
-  try { data = JSON.parse(text); } catch { data = { message: text }; }
-  if (!res.ok) {
-    const err: any = new Error(data?.error || data?.message || `Pi GET payment failed (${res.status})`);
-    err.status = res.status;
-    err.body = data;
-    throw err;
-  }
-  return data;
-}
-
-function metaOf(payment: any): Record<string, any> {
-  const m = payment?.metadata;
-  if (m && typeof m === "object") return m;
-  if (typeof m === "string") { try { return JSON.parse(m); } catch { return {}; } }
-  return {};
-}
-
-function paymentCompletedOnPi(payment: any): boolean {
-  const st = payment?.status;
-  if (st && typeof st === "object") {
-    if (st.developer_completed === true) return true;
-    if (st.transaction_verified === true && st.developer_completed !== false) return true;
-  }
-  return Boolean(payment?.transaction?.txid);
-}
-
-async function upsertPaymentIntent(payment: any, extra?: { txid?: string; status?: string }) {
-  const paymentId = String(payment?.identifier || payment?.id || "").trim();
-  if (!paymentId) return;
-  const meta = metaOf(payment);
-  const amount = Number(payment?.amount);
-  const now = new Date().toISOString();
-  const clientPiUsername = String(
-    meta.clientPiUsername || meta.clientUsername || meta.customer_pi_username || "",
-  ).trim();
-  const row: Record<string, any> = {
-    pi_payment_id: paymentId,
-    amount_pi: Number.isFinite(amount) ? amount : null,
-    status: extra?.status || (paymentCompletedOnPi(payment) ? "completed" : "approved"),
-    pi_txid: extra?.txid || payment?.transaction?.txid || null,
-    client_pi_uid: String(payment?.user_uid || payment?.uid || meta.clientPiUid || "").trim() || null,
-    client_pi_username: clientPiUsername || null,
-    client_name: String(meta.clientName || "").trim() || null,
-    client_phone: String(meta.clientPhone || "").trim() || null,
-    client_email: String(meta.clientEmail || "").trim() || null,
-    notes: String(meta.notes || "").trim() || null,
-    service_id: meta.serviceId || meta.service_id || null,
-    provider_id: meta.providerId || meta.provider_id || null,
-    service_title: String(meta.serviceName || meta.service_title || payment?.memo || "").slice(0, 200) || null,
-    business_id: meta.businessId || meta.business_id || null,
-    metadata: meta,
-    updated_at: now,
-  };
-  const existing = await sb(`payment_intents?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=id&limit=1`);
-  if (existing?.ok) {
-    const rows = (await existing.json()) as any[];
-    if (rows?.[0]?.id) {
-      await sb(`payment_intents?id=eq.${encodeURIComponent(rows[0].id)}`, { method: "PATCH", body: JSON.stringify(row) });
-      return;
-    }
-  }
-  row.created_at = now;
-  await sb("payment_intents", { method: "POST", body: JSON.stringify(row) }).catch(() => undefined);
-}
-
-async function loadPaymentIntent(paymentId: string): Promise<any | null> {
-  const res = await sb(`payment_intents?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=*&limit=1`);
-  if (!res?.ok) return null;
-  const rows = (await res.json()) as any[];
-  return rows?.[0] || null;
-}
-
-async function finalizeBookingFromPayment(
-  payment: any,
-  txid: string,
-  log?: { info: Function; warn: Function; error: Function },
-): Promise<{ bookingId?: string; status: "created" | "recovered" | "failed"; error?: string; acceptanceDeadline?: string }> {
-  const paymentId = String(payment?.identifier || payment?.id || "").trim();
-  if (!paymentId) return { status: "failed", error: "Missing payment identifier." };
-
-  const existing = await sb(`bookings?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=id,status,escrow_status,payment_status,acceptance_deadline&limit=1`);
-  if (existing?.ok) {
-    const rows = (await existing.json()) as any[];
-    if (rows?.[0]?.id) return { status: "recovered", bookingId: rows[0].id, acceptanceDeadline: rows[0].acceptance_deadline };
-  }
-
-  if (txid) {
-    const byTx = await sb(`bookings?pi_tx_hash=eq.${encodeURIComponent(txid)}&select=id,acceptance_deadline&limit=1`);
-    if (byTx?.ok) {
-      const rows = (await byTx.json()) as any[];
-      if (rows?.[0]?.id) {
-        await sb(`bookings?id=eq.${encodeURIComponent(rows[0].id)}`, { method: "PATCH", body: JSON.stringify({ pi_payment_id: paymentId, updated_at: new Date().toISOString() }) }).catch(() => undefined);
-        return { status: "recovered", bookingId: rows[0].id, acceptanceDeadline: rows[0].acceptance_deadline };
-      }
-    }
-  }
-
-  const intent = await loadPaymentIntent(paymentId);
-  const meta = metaOf(payment);
-  const intentMeta = intent?.metadata && typeof intent.metadata === "object" ? intent.metadata : {};
-  const amount = Number(payment?.amount ?? intent?.amount_pi);
-  if (!Number.isFinite(amount) || amount <= 0) return { status: "failed", error: "Pi payment amount is invalid." };
-
-  const clientUid = String(
-    payment?.user_uid || payment?.uid || payment?.from_uid || payment?.user?.uid ||
-    intent?.client_pi_uid || meta.clientPiUid || intentMeta.clientPiUid || "",
-  ).trim();
-  const serviceTitle = String(
-    intent?.service_title || meta.serviceName || meta.service_title || intentMeta.serviceName || payment?.memo || "Service",
-  ).slice(0, 200);
-  let providerId = intent?.provider_id || meta.providerId || meta.provider_id || intentMeta.providerId || null;
-  let serviceId = intent?.service_id || meta.serviceId || meta.service_id || intentMeta.serviceId || null;
-
-  let serviceRow: any = null;
-  if (serviceId) {
-    try {
-      const sres = await sb(`services?id=eq.${encodeURIComponent(String(serviceId))}&select=id,provider_id,title,base_price_ngn,duration,calculated_pi_price&limit=1`);
-      if (sres?.ok) {
-        const srows = (await sres.json()) as any[];
-        serviceRow = srows?.[0] || null;
-        if (serviceRow?.provider_id && !providerId) providerId = serviceRow.provider_id;
-      }
-    } catch { /* non-fatal */ }
-  }
-
-  const customerName = String(
-    meta.clientName || meta.customer_name || intentMeta.clientName || intentMeta.customer_name || intent?.client_name || "Pi User",
-  ).slice(0, 120).trim();
-  const customerPiUsername = String(
-    meta.clientPiUsername || meta.clientUsername || meta.customer_pi_username ||
-    intentMeta.clientPiUsername || intentMeta.clientUsername || intentMeta.customer_pi_username ||
-    intent?.client_pi_username || "",
-  ).trim().slice(0, 80);
-  const customerPhone = String(
-    meta.clientPhone || meta.phone || intentMeta.clientPhone || intent?.client_phone || "",
-  ).slice(0, 40).trim() || null;
-  const customerEmail = String(
-    meta.clientEmail || meta.email || intentMeta.clientEmail || intent?.client_email || "",
-  ).slice(0, 120).trim() || null;
+async function finalizeBookingFromPayment(payment: any, txid: string, log?: { info: Function; warn: Function; error: Function }): Promise<{ bookingId?: string; status: "created" | "recovered" | "failed"; error?: string; acceptanceDeadline?: string }> {
+  const paymentId = String(payment?.identifier || payment?.id || "").trim(); if (!paymentId) return { status: "failed", error: "Missing payment identifier." };
+  const existing = await sb(`bookings?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=id,status,escrow_status,payment_status,acceptance_deadline&limit=1`); if (existing?.ok) { const rows = (await existing.json()) as any[]; if (rows?.[0]?.id) return { status: "recovered", bookingId: rows[0].id, acceptanceDeadline: rows[0].acceptance_deadline }; }
+  if (txid) { const byTx = await sb(`bookings?pi_tx_hash=eq.${encodeURIComponent(txid)}&select=id,acceptance_deadline&limit=1`); if (byTx?.ok) { const rows = (await byTx.json()) as any[]; if (rows?.[0]?.id) { await sb(`bookings?id=eq.${encodeURIComponent(rows[0].id)}`, { method: "PATCH", body: JSON.stringify({ pi_payment_id: paymentId, updated_at: new Date().toISOString() }) }).catch(() => undefined); return { status: "recovered", bookingId: rows[0].id, acceptanceDeadline: rows[0].acceptance_deadline }; } } }
+  const intent = await loadPaymentIntent(paymentId); const meta = metaOf(payment); const intentMeta = intent?.metadata && typeof intent.metadata === "object" ? intent.metadata : {}; const amount = Number(payment?.amount ?? intent?.amount_pi); if (!Number.isFinite(amount) || amount <= 0) return { status: "failed", error: "Pi payment amount is invalid." };
+  const clientUid = String(payment?.user_uid || payment?.uid || payment?.from_uid || payment?.user?.uid || intent?.client_pi_uid || meta.clientPiUid || intentMeta.clientPiUid || "").trim();
+  const serviceTitle = String(intent?.service_title || meta.serviceName || meta.service_title || intentMeta.serviceName || payment?.memo || "Service").slice(0, 200);
+  let providerId = intent?.provider_id || meta.providerId || meta.provider_id || intentMeta.providerId || null; let serviceId = intent?.service_id || meta.serviceId || meta.service_id || intentMeta.serviceId || null; let serviceRow: any = null;
+  if (serviceId) { try { const sres = await sb(`services?id=eq.${encodeURIComponent(String(serviceId))}&select=id,provider_id,title,base_price_ngn,duration,calculated_pi_price&limit=1`); if (sres?.ok) { const srows = (await sres.json()) as any[]; serviceRow = srows?.[0] || null; if (serviceRow?.provider_id && !providerId) providerId = serviceRow.provider_id; } } catch {} }
+  const customerName = String(meta.clientName || meta.customer_name || intentMeta.clientName || intentMeta.customer_name || intent?.client_name || "Pi User").slice(0, 120).trim();
+  const customerPiUsername = String(meta.clientPiUsername || meta.clientUsername || meta.customer_pi_username || intentMeta.clientPiUsername || intentMeta.clientUsername || intentMeta.customer_pi_username || intent?.client_pi_username || "").trim().slice(0, 80);
+  const customerEmail = String(meta.clientEmail || meta.email || intentMeta.clientEmail || intentMeta.email || intent?.client_email || "").slice(0, 120).trim() || null;
   const notes = String(meta.notes || intentMeta.notes || intent?.notes || "").slice(0, 500).trim() || null;
-
-  const now = new Date().toISOString();
-  const acceptanceDeadline = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-  const basePriceRaw =
-    intentMeta.basePrice ?? intentMeta.priceNGN ?? intentMeta.base_price ?? intentMeta.price_ngn ??
-    meta.basePrice ?? meta.priceNGN ?? meta.base_price ?? meta.price_ngn ?? serviceRow?.base_price_ngn;
-  const basePrice = Number.isFinite(Number(basePriceRaw)) ? Number(basePriceRaw) : 0;
-  const durationMinutes = Number(
-    intentMeta.durationMinutes || intentMeta.duration_minutes || meta.durationMinutes || meta.duration_minutes || serviceRow?.duration || 60,
-  ) || 60;
-
-  const payload: Record<string, any> = {
-    status: "Pending",
-    payment_status: "Paid",
-    escrow_status: "paid_escrowed",
-    paid_at: now,
-    acceptance_deadline: acceptanceDeadline,
-    price_pi: amount,
-    price_ngn: basePrice,
-    duration_minutes: durationMinutes,
-    platform_fee_pi: Number((amount * 0.1).toFixed(7)),
-    provider_payout_pi: Number((amount * 0.9).toFixed(7)),
-    customer_name: customerName,
-    customer_pi_username: customerPiUsername || null,
-    client_pi_uid: clientUid || null,
-    customer_telegram_username: customerPhone,
-    customer_email: customerEmail,
-    service_title: serviceTitle,
-    notes,
-    provider_id: providerId || null,
-    pi_tx_hash: txid || payment?.transaction?.txid || null,
-    pi_payment_id: paymentId,
-    created_at: now,
-    updated_at: now,
-  };
+  const now = new Date().toISOString(); const acceptanceDeadline = new Date(Date.now() + 5 * 60 * 1000).toISOString();
+  const basePriceRaw = intentMeta.basePrice ?? intentMeta.priceNGN ?? intentMeta.base_price ?? intentMeta.price_ngn ?? meta.basePrice ?? meta.priceNGN ?? meta.base_price ?? meta.price_ngn ?? serviceRow?.base_price_ngn;
+  const basePrice = Number.isFinite(Number(basePriceRaw)) ? Number(basePriceRaw) : 0; const durationMinutes = Number(intentMeta.durationMinutes || intentMeta.duration_minutes || meta.durationMinutes || meta.duration_minutes || serviceRow?.duration || 60) || 60;
+  const payload: Record<string, any> = { status: "Pending", payment_status: "Paid", escrow_status: "paid_escrowed", paid_at: now, acceptance_deadline: acceptanceDeadline, price_pi: amount, price_ngn: basePrice, duration_minutes: durationMinutes, platform_fee_pi: Number((amount * 0.1).toFixed(7)), provider_payout_pi: Number((amount * 0.9).toFixed(7)), customer_name: customerName, customer_pi_username: customerPiUsername || null, client_pi_uid: clientUid || null, customer_email: customerEmail, service_title: serviceTitle, notes, provider_id: providerId || null, pi_tx_hash: txid || payment?.transaction?.txid || null, pi_payment_id: paymentId, created_at: now, updated_at: now };
   if (serviceId) payload.service_id = serviceId;
-
-  const requiredChecks = {
-    customer_name: Boolean(customerName),
-    customer_pi_username: Boolean(customerPiUsername),
-    service_title: Boolean(serviceTitle),
-    price_ngn: basePrice >= 0,
-    price_pi: amount > 0,
-    duration_minutes: durationMinutes > 0,
-    provider_id: Boolean(providerId),
-    client_pi_uid: Boolean(clientUid),
-  };
-  log?.info?.({ paymentId, requiredChecks, price_ngn: basePrice, duration_minutes: durationMinutes, amount, hasIntent: Boolean(intent) }, "finalizeBookingFromPayment payload readiness");
-
-  if (!providerId || !clientUid || !customerPiUsername) {
-    const missing: string[] = [];
-    if (!providerId) missing.push("provider_id");
-    if (!serviceId) missing.push("service_id");
-    if (!clientUid) missing.push("client_pi_uid");
-    if (!customerPiUsername) missing.push("customer_pi_username");
-    return { status: "failed", error: `Cannot finalize booking: missing required fields: ${missing.join(", ")}.` };
-  }
-
-  const insertRes = await sb("bookings", { method: "POST", body: JSON.stringify(payload), headers: { Prefer: "return=representation" } });
-  if (!insertRes) return { status: "failed", error: "Supabase client unavailable." };
-  const insertText = await insertRes.text().catch(() => "");
-  let insertBody: any = {};
-  try { insertBody = JSON.parse(insertText); } catch { insertBody = { message: insertText }; }
-  if (!insertRes.ok) {
-    log?.error?.({ status: insertRes.status, body: insertBody, paymentId }, "Booking insert failed");
-    const code = insertBody?.code || insertBody?.error_code;
-    if (code === "23505" || String(insertBody?.message || "").includes("duplicate")) {
-      const again = await sb(`bookings?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=id,acceptance_deadline&limit=1`);
-      if (again?.ok) {
-        const rows = (await again.json()) as any[];
-        if (rows?.[0]?.id) return { status: "recovered", bookingId: rows[0].id, acceptanceDeadline: rows[0].acceptance_deadline };
-      }
-    }
-    return { status: "failed", error: insertBody?.message || insertBody?.error || `Booking insert failed (${insertRes.status})` };
-  }
-  const created = Array.isArray(insertBody) ? insertBody[0] : insertBody;
-  const bookingId = created?.id;
-  if (!bookingId) return { status: "failed", error: "Booking insert returned no id." };
-  log?.info?.({ bookingId, paymentId, acceptanceDeadline }, "Booking created from Pi payment");
-  return { status: "created", bookingId, acceptanceDeadline };
+  log?.info?.({ paymentId, amount, providerId, serviceId, clientUid, hasIntent: Boolean(intent) }, "finalizeBookingFromPayment payload readiness");
+  if (!providerId || !clientUid || !customerPiUsername) { const missing: string[] = []; if (!providerId) missing.push("provider_id"); if (!serviceId) missing.push("service_id"); if (!clientUid) missing.push("client_pi_uid"); if (!customerPiUsername) missing.push("customer_pi_username"); return { status: "failed", error: `Cannot finalize booking: missing required fields: ${missing.join(", ")}.` }; }
+  const insertRes = await sb("bookings", { method: "POST", body: JSON.stringify(payload), headers: { Prefer: "return=representation" } }); if (!insertRes) return { status: "failed", error: "Supabase client unavailable." }; const insertText = await insertRes.text().catch(() => ""); let insertBody: any = {}; try { insertBody = JSON.parse(insertText); } catch { insertBody = { message: insertText }; }
+  if (!insertRes.ok) { log?.error?.({ status: insertRes.status, body: insertBody, paymentId }, "Booking insert failed"); const code = insertBody?.code || insertBody?.error_code; if (code === "23505" || String(insertBody?.message || "").includes("duplicate")) { const again = await sb(`bookings?pi_payment_id=eq.${encodeURIComponent(paymentId)}&select=id,acceptance_deadline&limit=1`); if (again?.ok) { const rows = (await again.json()) as any[]; if (rows?.[0]?.id) return { status: "recovered", bookingId: rows[0].id, acceptanceDeadline: rows[0].acceptance_deadline }; } } return { status: "failed", error: insertBody?.message || insertBody?.error || `Booking insert failed (${insertRes.status})` }; }
+  const created = Array.isArray(insertBody) ? insertBody[0] : insertBody; const bookingId = created?.id; if (!bookingId) return { status: "failed", error: "Booking insert returned no id." }; log?.info?.({ bookingId, paymentId, acceptanceDeadline }, "Booking created from Pi payment"); return { status: "created", bookingId, acceptanceDeadline };
 }
 
-router.post("/pi/payments/approve", async (req, res) => {
-  const { paymentId } = req.body as { paymentId?: string };
-  if (!paymentId || typeof paymentId !== "string" || paymentId.trim() === "") {
-    res.status(400).json({ error: "paymentId is required." }); return;
-  }
-  if (!piApiKey()) { res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." }); return; }
-  const cleanPaymentId = paymentId.trim();
-  let payment: any;
-  try { payment = await fetchPiPayment(cleanPaymentId); }
-  catch (e: any) { req.log.warn({ err: e?.message, status: e?.status, paymentId: cleanPaymentId }, "Approve: Pi GET failed"); res.status(e?.status || 502).json({ error: e?.message || "Could not fetch payment from Pi.", piBody: e?.body }); return; }
-  try { await piFetch(`/payments/${encodeURIComponent(cleanPaymentId)}/approve`, { method: "POST", body: "{}" }); }
-  catch (e: any) { req.log.warn({ err: e?.message }, "Approve: Pi approve call failed (may already be approved)"); }
-  let paymentForIntent = payment;
-  try { paymentForIntent = (await fetchPiPayment(cleanPaymentId)) || payment; } catch {}
-  await upsertPaymentIntent(paymentForIntent, { status: paymentCompletedOnPi(paymentForIntent) ? "completed" : "approved" });
-  res.json({ success: true, paymentId: cleanPaymentId });
-});
-
-router.post("/pi/payments/complete", async (req, res) => {
-  const { paymentId, txid } = req.body as { paymentId?: string; txid?: string };
-  if (!paymentId || typeof paymentId !== "string" || !paymentId.trim()) { res.status(400).json({ error: "paymentId is required." }); return; }
-  if (!piApiKey()) { res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." }); return; }
-  const cleanPaymentId = paymentId.trim();
-  let payment: any;
-  try { payment = await fetchPiPayment(cleanPaymentId); }
-  catch (e: any) { req.log.error({ err: e?.message, paymentId: cleanPaymentId }, "Complete: Pi payment lookup failed"); res.status(502).json({ error: e?.message || "Could not fetch payment from Pi." }); return; }
-  let finalTxid = txid || payment?.transaction?.txid || "";
-  try {
-    if (!payment?.status?.developer_completed) {
-      await piFetch(`/payments/${encodeURIComponent(cleanPaymentId)}/complete`, { method: "POST", body: JSON.stringify({ txid: finalTxid }) });
-    }
-    payment = (await fetchPiPayment(cleanPaymentId)) || payment;
-    finalTxid = payment?.transaction?.txid || finalTxid;
-  } catch (e: any) {
-    req.log.error({ err: e?.message, paymentId: cleanPaymentId }, "Complete: Pi complete call failed");
-    res.status(502).json({ error: e?.message || "Pi payment completion failed." }); return;
-  }
-  await upsertPaymentIntent(payment, { txid: finalTxid, status: "completed" });
-  if (!paymentCompletedOnPi(payment) || !finalTxid) { res.status(409).json({ error: "Pi payment is not completed or has no transaction id." }); return; }
-  const result = await finalizeBookingFromPayment(payment, finalTxid, req.log);
-  if (result.status === "failed") { res.status(502).json({ error: result.error || "Booking finalization failed.", bookingReconciled: false }); return; }
-  const intent = await loadPaymentIntent(cleanPaymentId);
-  if (intent) await sb(`payment_intents?id=eq.${encodeURIComponent(intent.id)}`, { method: "PATCH", body: JSON.stringify({ status: "completed", pi_txid: finalTxid, booking_id: result.bookingId, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) }).catch(() => undefined);
-  res.json({ success: true, paymentId: cleanPaymentId, txid: finalTxid, bookingId: result.bookingId, bookingReconciled: true, acceptanceDeadline: result.acceptanceDeadline });
-});
-
-router.post("/pi/payments/reconcile", async (req, res) => {
-  const { paymentId } = req.body as { paymentId?: string };
-  if (!paymentId || typeof paymentId !== "string" || !paymentId.trim()) { res.status(400).json({ error: "paymentId is required." }); return; }
-  if (!piApiKey()) { res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." }); return; }
-  const cleanPaymentId = paymentId.trim();
-  try {
-    const payment = await fetchPiPayment(cleanPaymentId);
-    const completed = paymentCompletedOnPi(payment);
-    const finalTxid = payment?.transaction?.txid || "";
-    await upsertPaymentIntent(payment, { txid: finalTxid || undefined, status: completed ? "completed" : "approved" });
-    if (!completed || !finalTxid) { res.status(409).json({ success: false, paymentId: cleanPaymentId, error: "Pi payment is not completed yet or has no transaction id." }); return; }
-    const result = await finalizeBookingFromPayment(payment, finalTxid, req.log);
-    if (result.status === "failed") { res.status(502).json({ success: false, paymentId: cleanPaymentId, error: result.error || "Booking reconciliation failed.", bookingReconciled: false }); return; }
-    const intent = await loadPaymentIntent(cleanPaymentId);
-    if (intent) await sb(`payment_intents?id=eq.${encodeURIComponent(intent.id)}`, { method: "PATCH", body: JSON.stringify({ status: "completed", pi_txid: finalTxid, booking_id: result.bookingId, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) }).catch(() => undefined);
-    res.json({ success: true, paymentId: cleanPaymentId, txid: finalTxid, bookingId: result.bookingId, bookingStatus: result.status, bookingReconciled: true, acceptanceDeadline: result.acceptanceDeadline });
-  } catch (e: any) {
-    res.status(e?.status || 502).json({ success: false, paymentId: cleanPaymentId, error: e?.message || "Payment reconciliation failed.", piBody: e?.body });
-  }
-});
-
+router.post("/pi/payments/approve", async (req, res) => { const { paymentId } = req.body as { paymentId?: string }; if (!paymentId || typeof paymentId !== "string" || paymentId.trim() === "") { res.status(400).json({ error: "paymentId is required." }); return; } if (!piApiKey()) { res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." }); return; } const cleanPaymentId = paymentId.trim(); let payment: any; try { payment = await fetchPiPayment(cleanPaymentId); } catch (e: any) { req.log.warn({ err: e?.message, status: e?.status, paymentId: cleanPaymentId }, "Approve: Pi GET failed"); res.status(e?.status || 502).json({ error: e?.message || "Could not fetch payment from Pi.", piBody: e?.body }); return; } try { await piFetch(`/payments/${encodeURIComponent(cleanPaymentId)}/approve`, { method: "POST", body: "{}" }); } catch (e: any) { req.log.warn({ err: e?.message }, "Approve: Pi approve call failed (may already be approved)"); } let paymentForIntent = payment; try { paymentForIntent = (await fetchPiPayment(cleanPaymentId)) || payment; } catch {} await upsertPaymentIntent(paymentForIntent, { status: paymentCompletedOnPi(paymentForIntent) ? "completed" : "approved" }); res.json({ success: true, paymentId: cleanPaymentId }); });
+router.post("/pi/payments/complete", async (req, res) => { const { paymentId, txid } = req.body as { paymentId?: string; txid?: string }; if (!paymentId || typeof paymentId !== "string" || !paymentId.trim()) { res.status(400).json({ error: "paymentId is required." }); return; } if (!piApiKey()) { res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." }); return; } const cleanPaymentId = paymentId.trim(); let payment: any; try { payment = await fetchPiPayment(cleanPaymentId); } catch (e: any) { req.log.error({ err: e?.message, paymentId: cleanPaymentId }, "Complete: Pi payment lookup failed"); res.status(502).json({ error: e?.message || "Could not fetch payment from Pi." }); return; } let finalTxid = txid || payment?.transaction?.txid || ""; try { if (!payment?.status?.developer_completed) await piFetch(`/payments/${encodeURIComponent(cleanPaymentId)}/complete`, { method: "POST", body: JSON.stringify({ txid: finalTxid }) }); payment = (await fetchPiPayment(cleanPaymentId)) || payment; finalTxid = payment?.transaction?.txid || finalTxid; } catch (e: any) { req.log.error({ err: e?.message, paymentId: cleanPaymentId }, "Complete: Pi complete call failed"); res.status(502).json({ error: e?.message || "Pi payment completion failed." }); return; } await upsertPaymentIntent(payment, { txid: finalTxid, status: "completed" }); if (!paymentCompletedOnPi(payment) || !finalTxid) { res.status(409).json({ error: "Pi payment is not completed or has no transaction id." }); return; } const result = await finalizeBookingFromPayment(payment, finalTxid, req.log); if (result.status === "failed") { res.status(502).json({ error: result.error || "Booking finalization failed.", bookingReconciled: false }); return; } const intent = await loadPaymentIntent(cleanPaymentId); if (intent) await sb(`payment_intents?id=eq.${encodeURIComponent(intent.id)}`, { method: "PATCH", body: JSON.stringify({ status: "completed", pi_txid: finalTxid, booking_id: result.bookingId, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) }).catch(() => undefined); res.json({ success: true, paymentId: cleanPaymentId, txid: finalTxid, bookingId: result.bookingId, bookingReconciled: true, acceptanceDeadline: result.acceptanceDeadline }); });
+router.post("/pi/payments/reconcile", async (req, res) => { const { paymentId } = req.body as { paymentId?: string }; if (!paymentId || typeof paymentId !== "string" || !paymentId.trim()) { res.status(400).json({ error: "paymentId is required." }); return; } if (!piApiKey()) { res.status(500).json({ error: "Server configuration error: PI_API_KEY missing." }); return; } const cleanPaymentId = paymentId.trim(); try { const payment = await fetchPiPayment(cleanPaymentId); const completed = paymentCompletedOnPi(payment); const finalTxid = payment?.transaction?.txid || ""; await upsertPaymentIntent(payment, { txid: finalTxid || undefined, status: completed ? "completed" : "approved" }); if (!completed || !finalTxid) { res.status(409).json({ success: false, paymentId: cleanPaymentId, error: "Pi payment is not completed yet or has no transaction id." }); return; } const result = await finalizeBookingFromPayment(payment, finalTxid, req.log); if (result.status === "failed") { res.status(502).json({ success: false, paymentId: cleanPaymentId, error: result.error || "Booking reconciliation failed.", bookingReconciled: false }); return; } const intent = await loadPaymentIntent(cleanPaymentId); if (intent) await sb(`payment_intents?id=eq.${encodeURIComponent(intent.id)}`, { method: "PATCH", body: JSON.stringify({ status: "completed", pi_txid: finalTxid, booking_id: result.bookingId, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }) }).catch(() => undefined); res.json({ success: true, paymentId: cleanPaymentId, txid: finalTxid, bookingId: result.bookingId, bookingStatus: result.status, bookingReconciled: true, acceptanceDeadline: result.acceptanceDeadline }); } catch (e: any) { res.status(e?.status || 502).json({ success: false, paymentId: cleanPaymentId, error: e?.message || "Payment reconciliation failed.", piBody: e?.body }); } });
 export default router;
