@@ -1,0 +1,93 @@
+import React from 'react';
+import { Booking } from '../types';
+import { ArrowLeft, Check, Copy, FileText, Hash, MessageSquare, Paperclip, User } from 'lucide-react';
+import { getMediaUrl } from '../services/providerMediaService';
+import { formatBookingCreated } from '../lib/utils';
+import { ClientAcceptanceBanner } from './ClientAcceptanceBanner';
+
+interface ClientBookingReceiptProps {
+  booking: Booking;
+  onBack: () => void;
+  onOpenChat: (bookingId: string) => void;
+  onCancelBooking: (bookingId: string) => void;
+  onConfirmCompletion?: (bookingId: string) => void;
+}
+
+const Detail = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="py-3 border-b border-zinc-100 last:border-0">
+    <p className="text-[9px] font-black uppercase tracking-[0.14em] text-zinc-400">{label}</p>
+    <div className="text-sm font-semibold text-zinc-900 mt-1 break-words">{children}</div>
+  </div>
+);
+
+export const ClientBookingReceipt: React.FC<ClientBookingReceiptProps> = ({ booking, onBack, onOpenChat, onCancelBooking, onConfirmCompletion }) => {
+  const providerName = booking.providerName || 'Service Provider';
+  const providerPhoto = getMediaUrl(booking.providerPhotoUrl);
+  const isDelivered = booking.status === 'Delivered';
+  const isCompleted = booking.status === 'Completed';
+  const copy = async (value: string) => { try { await navigator.clipboard.writeText(value); } catch { /* clipboard unavailable */ } };
+
+  return (
+    <div className="max-w-3xl mx-auto pb-28 animate-in fade-in duration-200">
+      <div className="flex items-center justify-between gap-3 mb-4">
+        <button type="button" onClick={onBack} className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-zinc-100 hover:bg-zinc-200 text-zinc-800 text-xs font-black transition">
+          <ArrowLeft className="w-4 h-4" /> My Bookings
+        </button>
+        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-400">Booking receipt</span>
+      </div>
+
+      <article className="bg-white border border-zinc-200 shadow-sm rounded-sm overflow-hidden">
+        <header className="px-5 sm:px-8 pt-7 pb-6 text-center border-b border-dashed border-zinc-300">
+          <div className="w-11 h-11 mx-auto rounded-full bg-zinc-950 text-white flex items-center justify-center mb-3"><FileText className="w-5 h-5" /></div>
+          <p className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-400">W3C Pi Bookings</p>
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-950 mt-1">Booking Receipt</h1>
+          <p className="text-xs text-zinc-500 mt-1">{booking.serviceName}</p>
+        </header>
+
+        <section className="px-5 sm:px-8 py-5 border-b border-zinc-200">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-11 h-11 rounded-full bg-zinc-100 overflow-hidden flex items-center justify-center shrink-0 border border-zinc-200">
+                {providerPhoto ? <img src={providerPhoto} alt={providerName} className="w-full h-full object-cover" /> : <User className="w-5 h-5 text-zinc-400" />}
+              </div>
+              <div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Provider</p><p className="text-sm font-black text-zinc-950 truncate">{providerName}</p>{booking.providerPiUsername && <p className="text-[10px] text-zinc-500">@{booking.providerPiUsername.replace(/^@/, '')}</p>}</div>
+            </div>
+            <div className="text-right shrink-0"><p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Status</p><span className="inline-flex mt-1 px-2.5 py-1 rounded-full bg-zinc-950 text-white text-[9px] font-black uppercase tracking-wide">{booking.status}</span></div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-zinc-100">
+            <div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Booked</p><p className="text-xs font-bold mt-1">{formatBookingCreated(booking.createdAt)}</p></div>
+            <div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Amount</p><p className="text-xs font-black mt-1">{Number(booking.pricePi || 0).toFixed(2)} π</p></div>
+            <div><p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Payment</p><p className="text-xs font-bold mt-1">{booking.paymentStatus || '—'}</p></div>
+          </div>
+        </section>
+
+        <section className="px-5 sm:px-8 py-6 border-b border-zinc-200">
+          <div className="flex items-center justify-between mb-2"><h2 className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Booking details</h2><span className="text-[9px] font-bold text-zinc-300">01</span></div>
+          <div className="divide-y divide-zinc-100">
+            <Detail label="Booking ID"><button type="button" onClick={() => copy(booking.id)} className="inline-flex items-center gap-1.5 hover:text-amber-700">{booking.id}<Copy className="w-3.5 h-3.5 text-zinc-400" /></button></Detail>
+            <Detail label="Service">{booking.serviceName}</Detail>
+            <Detail label="Price">{Number(booking.pricePi || 0).toFixed(2)} π</Detail>
+            {booking.durationMinutes ? <Detail label="Service duration">{booking.durationMinutes} minutes</Detail> : null}
+          </div>
+        </section>
+
+        {booking.notes && <section className="px-5 sm:px-8 py-6 border-b border-zinc-200"><h2 className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500 mb-2">Your project brief</h2><p className="text-sm leading-6 text-zinc-800 whitespace-pre-wrap">{booking.notes}</p></section>}
+
+        {booking.attachments?.length ? <section className="px-5 sm:px-8 py-6 border-b border-zinc-200"><div className="flex items-center justify-between mb-2"><h2 className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Your attachments</h2><span className="text-[9px] font-bold text-zinc-300">02</span></div><div className="divide-y divide-zinc-100">{booking.attachments.map((file) => <div key={file.id} className="py-2.5 flex items-center gap-2 text-xs"><Paperclip className="w-3.5 h-3.5 text-amber-600 shrink-0" /><span className="truncate font-medium">{file.name}</span></div>)}</div></section> : null}
+
+        {isDelivered && <section className="px-5 sm:px-8 py-6 border-b border-zinc-200"><div className="flex items-center justify-between mb-2"><h2 className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Delivery</h2><span className="text-[9px] font-bold text-zinc-300">03</span></div><p className="text-sm leading-6 text-zinc-700">The provider has marked this service as delivered. Review the delivery before confirming completion.</p>{booking.delivery_notes && <div className="mt-3 pt-3 border-t border-dashed border-zinc-200"><p className="text-[9px] font-black uppercase tracking-wider text-zinc-400">Provider delivery notes</p><p className="text-sm leading-6 mt-1 whitespace-pre-wrap">{booking.delivery_notes}</p></div>}</section>}
+
+        {booking.piTxHash && <section className="px-5 sm:px-8 py-6 border-b border-zinc-200"><div className="flex items-center gap-2 mb-2"><Hash className="w-4 h-4 text-zinc-500" /><h2 className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-500">Pi transaction</h2></div><div className="flex gap-2 items-center bg-zinc-50 rounded-lg px-3 py-2"><span className="font-mono text-[10px] break-all flex-1">{booking.piTxHash}</span><button type="button" onClick={() => copy(booking.piTxHash!)} className="p-1.5 rounded-md bg-white border border-zinc-200"><Copy className="w-3.5 h-3.5" /></button></div></section>}
+
+        {booking.rejection_reason && <section className="px-5 sm:px-8 py-6 border-b border-zinc-200"><h2 className="text-[10px] font-black uppercase tracking-[0.16em] text-rose-700">Cancellation</h2><p className="text-sm leading-6 text-rose-900 mt-2 whitespace-pre-wrap">{booking.rejection_reason}</p></section>}
+
+        <footer className="px-5 sm:px-8 py-5 text-center border-t border-dashed border-zinc-300"><p className="text-[9px] font-black uppercase tracking-[0.18em] text-zinc-400">W3C Pi Bookings · Official booking record</p><p className="text-[10px] text-zinc-400 mt-1">Keep this receipt as a reference for your booking, dispute or appeal.</p></footer>
+      </article>
+
+      <div className="mt-4"><ClientAcceptanceBanner booking={booking} onOpenChat={onOpenChat} /></div>
+      {!isDelivered && !isCompleted && booking.status === 'Confirmed' && <div className="mt-3 text-center"><button type="button" onClick={() => onCancelBooking(booking.id)} className="text-xs font-semibold text-rose-600 hover:text-rose-700 underline">Request Cancellation & Refund</button></div>}
+      {isDelivered && <div className="mt-3 flex justify-center"><button type="button" onClick={() => onOpenChat(booking.id)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-black"><MessageSquare className="w-4 h-4" /> Open Booking Chat</button></div>}
+      {onConfirmCompletion && isCompleted === false && booking.status !== 'Delivered' && null}
+    </div>
+  );
+};
