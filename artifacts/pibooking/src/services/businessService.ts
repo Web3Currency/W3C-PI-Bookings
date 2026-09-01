@@ -37,8 +37,8 @@ export const businessService = {
       const [{ data, error }, dynamicLogoUrl] = await Promise.all([
         supabase
           .from('business_profile')
-          .select('*')
-          .limit(1)
+          .select('id, name, pi_wallet_address, website, phone, email, socials, updated_at')
+          .eq('id', 'w3c_digital')
           .maybeSingle(),
         appBrandingService.getLogoUrl(),
       ]);
@@ -57,56 +57,17 @@ export const businessService = {
 
       console.log('[Supabase Success] Business profile loaded from database:', data.name);
 
-      const fetchedLogo =
-        dynamicLogoUrl ||
-        data.logo_url ||
-        data.logo ||
-        data.app_logo ||
-        data.app_logo_url ||
-        data.avatar_url ||
-        data.avatar ||
-        data.photo_url ||
-        data.image_url ||
-        data.icon ||
-        data.icon_url ||
-        localProfile.logoUrl ||
-        localProfile.avatarUrl ||
-        '';
-
       const remoteProfile: BusinessProfile = {
+        ...localProfile,
         id: data.id || 'w3c_digital',
         name: data.name || localProfile.name || '',
-        tagline: data.tagline || localProfile.tagline || '',
-        category: data.category || localProfile.category || 'web_dev',
-        avatarUrl: fetchedLogo,
-        logoUrl: fetchedLogo,
         piWalletAddress: data.pi_wallet_address || localProfile.piWalletAddress || '',
-        verifiedPiMerchant: data.verified_pi_merchant ?? true,
-        rating: data.rating !== undefined && data.rating !== null ? Number(data.rating) : undefined,
-        reviewsCount: data.reviews_count !== undefined && data.reviews_count !== null ? Number(data.reviews_count) : undefined,
-        location: data.location || localProfile.location || '',
-        bio: data.bio || localProfile.bio || '',
         website: data.website || localProfile.website || '',
         phone: data.phone || localProfile.phone || '',
         email: data.email || localProfile.email || '',
         socials: Array.isArray(data.socials) ? data.socials : (localProfile.socials || []),
-        businessHours: data.business_hours || localProfile.businessHours || EMPTY_BUSINESS_PROFILE.businessHours,
-        blockedDates: Array.isArray(data.blocked_dates) ? data.blocked_dates : [],
-        galleryImages: Array.isArray(data.gallery_images) ? data.gallery_images : [],
-        services: [],
         updatedAt: data.updated_at,
-
-        // Public Profile Fields
-        usernameSlug: data.username_slug || undefined,
-        headline: data.headline || undefined,
-        specialties: Array.isArray(data.specialties) ? data.specialties : [],
-        servicesSummary: data.services_summary || undefined,
-        profileVerified: data.profile_verified ?? undefined,
-        piVerified: data.pi_verified ?? undefined,
-        availabilityStatus: data.availability_status || undefined,
-        responseTime: data.response_time || undefined,
-        socialLinks: Array.isArray(data.social_links) ? data.social_links : [],
-        profileVisibility: data.profile_visibility || 'public',
+        ...(dynamicLogoUrl ? { avatarUrl: dynamicLogoUrl, logoUrl: dynamicLogoUrl } : {}),
       };
 
       localStorage.setItem(LOCAL_BUSINESS_KEY, JSON.stringify(remoteProfile));
@@ -136,37 +97,11 @@ export const businessService = {
         };
 
         if (updated.name !== undefined) payload.name = updated.name;
-        if (updated.tagline !== undefined) payload.tagline = updated.tagline;
-        if (updated.category !== undefined) payload.category = updated.category;
-        if (updated.avatarUrl !== undefined || updated.logoUrl !== undefined) {
-          const logoVal = updated.logoUrl || updated.avatarUrl;
-          payload.avatar_url = logoVal;
-          payload.logo_url = logoVal;
-        }
         if (updated.piWalletAddress !== undefined) payload.pi_wallet_address = updated.piWalletAddress;
-        if (updated.verifiedPiMerchant !== undefined) payload.verified_pi_merchant = updated.verifiedPiMerchant;
-        if (updated.rating !== undefined) payload.rating = updated.rating;
-        if (updated.reviewsCount !== undefined) payload.reviews_count = updated.reviewsCount;
-        if (updated.location !== undefined) payload.location = updated.location;
-        if (updated.bio !== undefined) payload.bio = updated.bio;
         if (updated.website !== undefined) payload.website = updated.website;
         if (updated.phone !== undefined) payload.phone = updated.phone;
         if (updated.email !== undefined) payload.email = updated.email;
         if (updated.socials !== undefined) payload.socials = updated.socials;
-        if (updated.businessHours !== undefined) payload.business_hours = updated.businessHours;
-        if (updated.blockedDates !== undefined) payload.blocked_dates = updated.blockedDates;
-        if (updated.galleryImages !== undefined) payload.gallery_images = updated.galleryImages;
-
-        if (updated.usernameSlug !== undefined) payload.username_slug = updated.usernameSlug;
-        if (updated.headline !== undefined) payload.headline = updated.headline;
-        if (updated.specialties !== undefined) payload.specialties = updated.specialties;
-        if (updated.servicesSummary !== undefined) payload.services_summary = updated.servicesSummary;
-        if (updated.profileVerified !== undefined) payload.profile_verified = updated.profileVerified;
-        if (updated.piVerified !== undefined) payload.pi_verified = updated.piVerified;
-        if (updated.availabilityStatus !== undefined) payload.availability_status = updated.availabilityStatus;
-        if (updated.responseTime !== undefined) payload.response_time = updated.responseTime;
-        if (updated.socialLinks !== undefined) payload.social_links = updated.socialLinks;
-        if (updated.profileVisibility !== undefined) payload.profile_visibility = updated.profileVisibility;
 
         const { data, error } = await safeSupabaseUpsert('business_profile', payload);
 
