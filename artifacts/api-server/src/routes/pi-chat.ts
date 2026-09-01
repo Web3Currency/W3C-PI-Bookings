@@ -15,7 +15,7 @@ async function supabaseRequest(path: string, init: RequestInit = {}) {
   headers.set("apikey", config.key);
   headers.set("Content-Type", "application/json");
   headers.set("Prefer", headers.get("Prefer") || "return=representation");
-  if (config.key.startsWith("eyJ")) headers.set("Authorization", `Bearer ${config.key}`);
+  headers.set("Authorization", `Bearer ${config.key}`);
   const response = await fetch(`${config.url}/rest/v1/${path}`, { ...init, headers });
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -39,7 +39,7 @@ async function assertParticipant(conversationId: string, piUid: string) {
 }
 
 async function getBookingAndProvider(bookingId: string) {
-  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status,project_deadline& id=eq.${encodeURIComponent(bookingId)}&limit=1`.replace("?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status,project_deadline& id=", "?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status&id="));
+  const bookings = await supabaseRequest(`bookings?select=id,client_pi_uid,customer_pi_username,customer_name,provider_id,service_title,status,project_deadline&id=eq.${encodeURIComponent(bookingId)}&limit=1`);
   const booking = bookings[0];
   if (!booking) throw new Error("Booking not found.");
   if (!booking.client_pi_uid || !booking.provider_id) throw new Error("Booking is missing a client or provider identity.");
@@ -72,9 +72,7 @@ async function ensureConversationForBooking(bookingId: string, options: { includ
   if (shouldAddAcceptanceMessage) {
     const systemContent = `Booking #${booking.id} has been accepted. You can now communicate regarding ${booking.service_title || "this service"}.`;
     const existingSystem = await supabaseRequest(`messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&message_type=eq.system&content=eq.${encodeURIComponent(systemContent)}&limit=1`);
-    if (!existingSystem[0]) {
-      await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
-    }
+    if (!existingSystem[0]) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
   }
 
   await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: new Date().toISOString() }) });
@@ -86,54 +84,36 @@ async function lookupProviderByPiUid(piUid: string) {
   return rows[0] || null;
 }
 
-function providerCounterpart(provider: any, fallbackUid: string) {
-  return {
-    other_pi_uid: provider?.pi_uid || fallbackUid,
-    other_role: "provider" as const,
-    other_name: provider?.full_name || provider?.pi_username || fallbackUid,
-    other_username: provider?.pi_username || fallbackUid,
-    other_photo_url: provider?.photo_url || null,
-  };
+async function lookupGlobalProfileByPiUid(piUid: string) {
+  const rows = await supabaseRequest(`user_profiles?select=pi_uid,username,photo_url&pi_uid=eq.${encodeURIComponent(piUid)}&limit=1`);
+  return rows[0] || null;
 }
 
-function clientCounterpart(booking: any, fallbackUid: string) {
+function providerCounterpart(provider: any, fallbackUid: string) {
+  return { other_pi_uid: provider?.pi_uid || fallbackUid, other_role: "provider" as const, other_name: provider?.full_name || provider?.pi_username || fallbackUid, other_username: provider?.pi_username || fallbackUid, other_photo_url: provider?.photo_url || null };
+}
+
+async function clientCounterpart(booking: any, fallbackUid: string) {
   const canUseBookingClient = booking?.client_pi_uid === fallbackUid;
+  const profile = await lookupGlobalProfileByPiUid(fallbackUid);
   return {
     other_pi_uid: fallbackUid,
     other_role: "client" as const,
-    other_name: canUseBookingClient ? (booking.customer_name || booking.customer_pi_username || fallbackUid) : fallbackUid,
-    other_username: canUseBookingClient ? (booking.customer_pi_username || fallbackUid) : fallbackUid,
-    other_photo_url: null,
+    other_name: profile?.username || (canUseBookingClient ? (booking.customer_name || booking.customer_pi_username || fallbackUid) : fallbackUid),
+    other_username: profile?.username || (canUseBookingClient ? (booking.customer_pi_username || fallbackUid) : fallbackUid),
+    other_photo_url: profile?.photo_url || null,
   };
 }
 
 async function resolveCounterpart(currentUid: string, conversationId: string, booking?: any, knownProvider?: any) {
-  const others = await supabaseRequest(
-    `conversation_participants?select=pi_uid,role&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=neq.${encodeURIComponent(currentUid)}`,
-  );
+  const others = await supabaseRequest(`conversation_participants?select=pi_uid,role&conversation_id=eq.${encodeURIComponent(conversationId)}&pi_uid=neq.${encodeURIComponent(currentUid)}`);
   const other = (others as any[]).find((row) => row?.pi_uid && row.pi_uid !== currentUid);
   if (!other?.pi_uid) return null;
-
-  const providerFromUid = knownProvider?.pi_uid === other.pi_uid
-    ? knownProvider
-    : await lookupProviderByPiUid(other.pi_uid);
-
-  if (other.role === "provider") {
-    return providerCounterpart(providerFromUid, other.pi_uid);
-  }
-  if (other.role === "client" || booking?.client_pi_uid === other.pi_uid) {
-    return clientCounterpart(booking, other.pi_uid);
-  }
-  if (providerFromUid?.pi_uid === other.pi_uid) {
-    return providerCounterpart(providerFromUid, other.pi_uid);
-  }
-  return {
-    other_pi_uid: other.pi_uid,
-    other_role: other.role || null,
-    other_name: other.pi_uid,
-    other_username: other.pi_uid,
-    other_photo_url: null,
-  };
+  const providerFromUid = knownProvider?.pi_uid === other.pi_uid ? knownProvider : await lookupProviderByPiUid(other.pi_uid);
+  if (other.role === "provider") return providerCounterpart(providerFromUid, other.pi_uid);
+  if (other.role === "client" || booking?.client_pi_uid === other.pi_uid) return await clientCounterpart(booking, other.pi_uid);
+  if (providerFromUid?.pi_uid === other.pi_uid) return providerCounterpart(providerFromUid, other.pi_uid);
+  return { other_pi_uid: other.pi_uid, other_role: other.role || null, other_name: other.pi_uid, other_username: other.pi_uid, other_photo_url: null };
 }
 
 router.post("/pi/chat/conversations/for-booking", async (req, res) => {
@@ -148,10 +128,7 @@ router.post("/pi/chat/conversations/for-booking", async (req, res) => {
     const isProvider = provider.pi_uid === user.uid;
     if (!isClient && !isProvider) return void res.status(403).json({ error: "You are not authorized to access this booking chat." });
     const ensured = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: booking.status === "In Progress" });
-    const counterpart = await resolveCounterpart(user.uid, ensured.conversationId, ensured.booking, ensured.provider)
-      || (ensured.provider.pi_uid === user.uid
-        ? clientCounterpart(ensured.booking, ensured.booking.client_pi_uid)
-        : providerCounterpart(ensured.provider, ensured.provider.pi_uid));
+    const counterpart = await resolveCounterpart(user.uid, ensured.conversationId, ensured.booking, ensured.provider) || (ensured.provider.pi_uid === user.uid ? await clientCounterpart(ensured.booking, ensured.booking.client_pi_uid) : providerCounterpart(ensured.provider, ensured.provider.pi_uid));
     return void res.json({ conversationId: ensured.conversationId, bookingStatus: ensured.bookingStatus, projectDeadline: ensured.booking.project_deadline || null, participant: counterpart });
   } catch (err: any) {
     req.log.error({ err, bookingId }, "Failed to open booking chat");
@@ -175,12 +152,9 @@ router.post("/pi/chat/conversations", async (req, res) => {
       const booking = bookings[0];
       const counterpart = await resolveCounterpart(user.uid, conversationId, booking);
       if (!counterpart) continue;
-
       const messages = await supabaseRequest(`messages?select=id,content,message_type,created_at,sender_pi_uid&conversation_id=eq.${encodeURIComponent(conversationId)}&order=created_at.desc&limit=1`);
       const lastMessage = messages[0] || null;
-      const unreadQuery = participant.last_read_at
-        ? `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&created_at=gt.${encodeURIComponent(participant.last_read_at)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`
-        : `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`;
+      const unreadQuery = participant.last_read_at ? `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&created_at=gt.${encodeURIComponent(participant.last_read_at)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}` : `messages?select=id&conversation_id=eq.${encodeURIComponent(conversationId)}&sender_pi_uid=neq.${encodeURIComponent(user.uid)}`;
       const unread = await supabaseRequest(unreadQuery);
       conversations.push({ id: conversation.id, booking_id: conversation.booking_id, updated_at: conversation.updated_at, booking_status: booking?.status || null, project_deadline: booking?.project_deadline || null, ...counterpart, last_message: lastMessage?.content || null, last_message_type: lastMessage?.message_type || null, last_message_at: lastMessage?.created_at || null, unread_count: unread.length });
     }
