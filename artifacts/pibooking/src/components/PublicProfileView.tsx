@@ -26,7 +26,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   const isBusiness = 'avatarUrl' in merchant;
   const isProvider = 'fullName' in merchant;
 
-  // Normalize Profile Info
   const name = isBusiness
     ? (merchant as BusinessProfile).name
     : (merchant as Provider).fullName;
@@ -61,25 +60,21 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     ? (merchant as Provider).responseTime
     : (merchant as BusinessProfile).responseTime;
 
-  // Rating
   const rating = merchant.rating;
   const reviewsCount = merchant.reviewsCount;
   const hasRealRating = rating !== undefined && rating !== null && Number(rating) > 0 && reviewsCount !== undefined && Number(reviewsCount) > 0;
 
-  // Specialties & Skills
   const specialties = isBusiness
     ? (merchant as BusinessProfile).specialties || []
     : (merchant as Provider).specialties || [];
   const skills = isProvider ? (merchant as Provider).skills || [] : [];
   const allTags = Array.from(new Set([...specialties, ...skills]));
 
-  // Languages & Experience (Provider specific)
   const languages = isProvider ? (merchant as Provider).languages || [] : [];
   const experienceLevel = isProvider ? (merchant as Provider).experienceLevel : undefined;
   const yearsExperience = isProvider ? (merchant as Provider).yearsExperience : undefined;
   const serviceMode = isProvider ? (merchant as Provider).serviceMode : undefined;
 
-  // Social Links
   const rawSocials: SocialLink[] = isBusiness
     ? (merchant as BusinessProfile).socials || (merchant as BusinessProfile).socialLinks || []
     : (merchant as Provider).socialLinks || [];
@@ -88,7 +83,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
   const email = (merchant as BusinessProfile).email;
   const phone = (merchant as BusinessProfile).phone;
 
-  // Published Services for this Provider
   const publishedServices = services.filter((s) => {
     if (s.status !== 'Published') return false;
     if (isProvider) {
@@ -97,7 +91,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
     return false;
   });
 
-  // Portfolio Items & Images (For Providers)
   const rawPortfolioItems = isProvider
     ? (merchant as Provider).portfolioItems || []
     : [];
@@ -124,7 +117,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
 
   return (
     <div className="space-y-6 pb-24 animate-in fade-in slide-in-from-right-4 duration-200">
-      {/* Navigation Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
@@ -135,7 +127,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         </button>
       </div>
 
-      {/* Hero Header Card - Clean marketplace presentation, no heavy outlines */}
       <div className="relative rounded-3xl bg-profile-hero-gradient p-6 sm:p-8 space-y-4 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           <div className="relative shrink-0">
@@ -196,7 +187,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         </div>
       </div>
 
-      {/* About Overview Section Card */}
       <div className="p-6 rounded-3xl bg-white shadow-sm space-y-3">
         <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">
           About {isBusiness ? name : 'Provider'}
@@ -212,7 +202,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
           </p>
         )}
 
-        {/* Provider Highlights */}
         {isProvider && (experienceLevel || yearsExperience || serviceMode || languages.length > 0) && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-zinc-100 text-xs">
             {experienceLevel && (
@@ -246,7 +235,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         )}
       </div>
 
-      {/* Official Contacts & Links Card */}
       {(email || phone || website || rawSocials.length > 0) && (
         <div className="p-6 rounded-3xl bg-white shadow-sm space-y-4">
           <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">
@@ -273,23 +261,23 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
                 <span className="font-bold text-zinc-900 text-xs truncate block">{phone}</span>
               </a>
             )}
-
-            {website && (
-              <a
-                href={website.startsWith('http') ? website : `https://${website}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="p-3.5 rounded-2xl bg-zinc-50 hover:bg-orange-50/50 transition flex flex-col space-y-0.5 text-zinc-800"
-              >
-                <span className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider block">Website</span>
-                <span className="font-bold text-zinc-900 text-xs truncate block">{website}</span>
-              </a>
-            )}
           </div>
 
-          {/* Social Links */}
-          {rawSocials.length > 0 && (
+          {/* Website and social platforms share the same compact pill treatment. */}
+          {(website || rawSocials.length > 0) && (
             <div className="pt-2 flex items-center gap-2 flex-wrap">
+              {website && (
+                <a
+                  href={website.startsWith('http') ? website : `https://${website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold transition shadow-2xs"
+                  title="Website"
+                >
+                  Website
+                </a>
+              )}
+
               {rawSocials.map((s, idx) => (
                 <a
                   key={idx}
@@ -307,7 +295,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         </div>
       )}
 
-      {/* Skills & Specialties */}
       {allTags.length > 0 && (
         <div className="p-6 rounded-3xl bg-white shadow-sm space-y-3">
           <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">
@@ -326,7 +313,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         </div>
       )}
 
-      {/* Published Services Section */}
       {isProvider && (
         <div id="public-services-section" className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -377,7 +363,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         </div>
       )}
 
-      {/* Portfolio Showcase Section */}
       {isProvider && (
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
@@ -424,7 +409,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({
         </div>
       )}
 
-      {/* Lightbox Modal for Portfolio */}
       {selectedGalleryItem && (
         <div className="fixed inset-0 z-50 bg-zinc-950/85 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="relative max-w-lg w-full rounded-3xl bg-zinc-900 overflow-hidden shadow-2xl space-y-0">
