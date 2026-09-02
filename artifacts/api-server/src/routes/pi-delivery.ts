@@ -23,9 +23,9 @@ router.post("/pi/bookings/:bookingId/deliver", async (req, res) => {
     try {
       const { conversationId } = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: false });
       const systemContent = `Provider has marked this service as delivered${Number(booking.revision_count || 0) > 0 ? " again" : ""}. Please review the deliverables and confirm completion.`;
-      await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
-      if (trimmedNotes) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, sender_pi_uid: provider.pi_uid, message_type: "user", content: trimmedNotes.slice(0, 5000) }) });
-      await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ updated_at: nowIso }) });
+      await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
+      if (trimmedNotes) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "user", content: trimmedNotes.slice(0, 5000) }) });
+      await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ booking_id: bookingId, updated_at: nowIso }) });
     } catch (chatErr: any) { req.log.error({ chatErr, bookingId }, "Delivery recorded but delivery chat messages failed"); }
     return void res.json({ success: true, booking: updated[0] });
   } catch (err: any) { req.log.error({ err, bookingId }, "Provider delivery submission failed"); return void res.status(500).json({ error: err?.message || "Failed to submit delivery." }); }
