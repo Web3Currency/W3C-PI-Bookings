@@ -114,9 +114,6 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <span className="text-xs font-extrabold text-amber-700 tracking-wider uppercase bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/80">
-          Pi Network Secure Checkout
-        </span>
         <div className="w-8" />
       </div>
       <BookingProgressBar currentStep={3} />
@@ -128,7 +125,6 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({
               <span>{service.pricePi}</span>
               <span className="text-lg text-amber-600">π</span>
             </div>
-            <span className="text-xs text-zinc-500">≈ ₦{(service.basePrice || service.priceNGN).toLocaleString()} NGN</span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-2xs">
             <Wallet className="w-6 h-6" />
