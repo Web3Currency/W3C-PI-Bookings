@@ -3,11 +3,13 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 export interface MarketplaceSettings {
   become_provider_popup_enabled: boolean;
   become_provider_popup_image_url: string | null;
+  pi_gas_fee_pi: number;
 }
 
 const DEFAULT_SETTINGS: MarketplaceSettings = {
   become_provider_popup_enabled: false,
   become_provider_popup_image_url: null,
+  pi_gas_fee_pi: 0.01,
 };
 
 let cachedSettings: MarketplaceSettings | null = null;
@@ -30,7 +32,7 @@ export const settingsService = {
     try {
       const { data, error } = await supabase
         .from('marketplace_settings')
-        .select('become_provider_popup_enabled, become_provider_popup_image_url')
+        .select('become_provider_popup_enabled, become_provider_popup_image_url, pi_gas_fee_pi')
         .eq('id', 'global')
         .maybeSingle();
 
@@ -48,6 +50,7 @@ export const settingsService = {
       cachedSettings = {
         become_provider_popup_enabled: Boolean(data.become_provider_popup_enabled),
         become_provider_popup_image_url: data.become_provider_popup_image_url || null,
+        pi_gas_fee_pi: Number(data.pi_gas_fee_pi) > 0 ? Number(data.pi_gas_fee_pi) : DEFAULT_SETTINGS.pi_gas_fee_pi,
       };
 
       return cachedSettings;
