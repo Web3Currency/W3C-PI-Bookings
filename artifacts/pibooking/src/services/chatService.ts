@@ -8,6 +8,8 @@ export type ChatParticipant = { other_pi_uid: string; other_role: 'client' | 'pr
 export type ChatMessage = { id: string; conversation_id: string; booking_id: string; sender_pi_uid: string; message_type: 'user' | 'system'; content: string; created_at: string; };
 export type ChatBookingContext = { id: string; status: string | null; project_deadline: string | null; service_title: string; provider_pi_uid: string; };
 export type ChatPage = { messages: ChatMessage[]; hasMore: boolean; nextCursor: { createdAt: string; id: string } | null; };
+export type ChatMessageReceipt = { message_id: string; pi_uid: string; delivered_at: string | null; read_at: string | null; };
+export type ChatPresence = { pi_uid: string; status: 'online' | 'offline'; last_seen_at: string; typing_until: string | null; };
 const toLocalConversation = (conversation: ChatConversation): Omit<LocalConversation, 'cached_at'> => ({ ...conversation });
 const toLocalMessage = (message: ChatMessage): LocalMessage => ({ ...message, sync_status: message.id.startsWith('pending-') ? 'pending' : 'sent' });
 const fromLocalMessage = (message: LocalMessage): ChatMessage => ({ id: message.id, conversation_id: message.conversation_id, booking_id: message.booking_id, sender_pi_uid: message.sender_pi_uid, message_type: message.message_type, content: message.content, created_at: message.created_at });
