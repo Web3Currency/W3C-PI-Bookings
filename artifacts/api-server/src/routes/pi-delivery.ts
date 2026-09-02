@@ -22,7 +22,7 @@ router.post("/pi/bookings/:bookingId/deliver", async (req, res) => {
     if (!updated?.length) return void res.status(409).json({ error: "Booking changed state before delivery could be recorded." });
     try {
       const { conversationId } = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: false });
-      const systemContent = `Provider has marked this service as delivered${Number(booking.revision_count || 0) > 0 ? " again" : ""}. Please review the deliverables and confirm completion.`;
+      const systemContent = "Provider has marked this service as delivered. Please review the deliverables and confirm completion.";
       await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
       if (trimmedNotes) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "user", content: trimmedNotes.slice(0, 5000) }) });
       await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ booking_id: bookingId, updated_at: nowIso }) });
