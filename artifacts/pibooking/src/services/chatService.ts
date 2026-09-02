@@ -10,6 +10,7 @@ export type ChatBookingContext = { id: string; status: string | null; project_de
 export type ChatPage = { messages: ChatMessage[]; hasMore: boolean; nextCursor: { createdAt: string; id: string } | null; };
 export type ChatMessageReceipt = { message_id: string; pi_uid: string; delivered_at: string | null; read_at: string | null; };
 export type ChatPresence = { pi_uid: string; status: 'online' | 'offline'; last_seen_at: string; typing_until: string | null; };
+export type ChatAttachment = { id: string; conversation_id: string; message_id: string | null; booking_id: string; uploader_pi_uid: string; storage_path: string; file_name: string; mime_type: string; file_size: number; created_at: string; };
 const toLocalConversation = (conversation: ChatConversation): Omit<LocalConversation, 'cached_at'> => ({ ...conversation });
 const toLocalMessage = (message: ChatMessage): LocalMessage => ({ ...message, sync_status: message.id.startsWith('pending-') ? 'pending' : 'sent' });
 const fromLocalMessage = (message: LocalMessage): ChatMessage => ({ id: message.id, conversation_id: message.conversation_id, booking_id: message.booking_id, sender_pi_uid: message.sender_pi_uid, message_type: message.message_type, content: message.content, created_at: message.created_at });
@@ -25,4 +26,9 @@ export const chatService = {
  async removeCachedMessage(id:string):Promise<void> { await chatLocalStore.deleteMessage(id); },
  async sendMessage(conversationId:string,bookingId:string,content:string):Promise<ChatMessage> { const data=await request<{message:ChatMessage}>(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/messages`,authBody({bookingId,content})); const message=data.message; await chatLocalStore.putMessage(toLocalMessage(message)); return message; },
  async markRead(conversationId:string):Promise<void> { await request(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/read`,authBody()); },
+ async updateReceipts(conversationId:string,messageIds:string[],mode:'delivered'|'read'='delivered'):Promise<void> { await request(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/receipts`,authBody({messageIds,mode})); },
+ async getReceipts(conversationId:string,messageIds:string[]):Promise<ChatMessageReceipt[]> { const data=await request<{receipts:ChatMessageReceipt[]}>(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/receipts/list`,authBody({messageIds})); return data.receipts||[]; },
+ async updatePresence(conversationId:string,status:'online'|'offline'='online',typing=false):Promise<ChatPresence[]> { const data=await request<{presence:ChatPresence[]}>(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/presence`,authBody({status,typing})); return data.presence||[]; },
+ async prepareAttachment(conversationId:string,bookingId:string,file:File):Promise<{path:string;token:string;relativePath?:string|null}> { return request(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/attachments/sign`,authBody({bookingId,fileName:file.name,mimeType:file.type,fileSize:file.size})); },
+ async saveAttachment(conversationId:string,bookingId:string,storagePath:string,file:File,messageId?:string|null):Promise<ChatAttachment> { const data=await request<{attachment:ChatAttachment}>(`/pi/chat/conversations/${encodeURIComponent(conversationId)}/attachments`,authBody({bookingId,storagePath,fileName:file.name,mimeType:file.type,fileSize:file.size,messageId:messageId||null})); return data.attachment; },
 };
