@@ -4,6 +4,7 @@ import { useBusiness } from './hooks/useBusiness';
 import { useServices } from './hooks/useServices';
 import { useBookings } from './hooks/useBookings';
 import { usePiAuth } from './hooks/usePiAuth';
+import { usePullToRefresh } from './hooks/usePullToRefresh';
 import { bookingService } from './services/bookingService';
 import { chatService } from './services/chatService';
 import { Navbar } from './components/Navbar';
