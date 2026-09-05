@@ -11,7 +11,7 @@ export function ClientAcceptanceBanner({ booking, compact = false, onOpenChat }:
 
   if (booking.status === 'Delivered') {
     const confirmCompletion = async () => { setConfirming(true); setError(''); try { await bookingService.updateBookingEscrowStatusAsync(booking.id, 'completion_confirmed'); window.location.reload(); } catch (err: any) { setError(err?.message || 'Could not confirm completion right now.'); setConfirming(false); } };
-    const requestRevision = async () => { setRevising(true); setError(''); try { await bookingService.requestRevisionAsync(booking.id); if (onOpenChat) onOpenChat(booking.id); else window.location.reload(); } catch (err: any) { setError(err?.message || 'Could not request a revision right now.'); setRevising(false); } };
+    const requestRevision = async () => { setRevising(true); setError(''); try { await bookingService.requestRevisionAsync(booking.id); if (onOpenChat) { onOpenChat(booking.id); } else { sessionStorage.setItem('w3c_open_chat_booking', booking.id); window.dispatchEvent(new CustomEvent('w3c-open-chat-booking', { detail: { bookingId: booking.id } })); } } catch (err: any) { setError(err?.message || 'Could not request a revision right now.'); setRevising(false); } };
     const appeal = () => { setError('Appeal submission will be available once the W3C review process is connected.'); };
     if (compact) return null;
     const hasRevisionAlready = Number(booking.revision_count || 0) > 0;
