@@ -15,7 +15,23 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({ merchant, services =
   const publishedServicesCount = services.filter(s => s.status === 'Published' && (!isProvider || s.providerId === merchant?.id)).length;
   const serviceMode = isProvider ? ((merchant as Provider).serviceMode || 'Remote') : 'Global / Remote';
   return <div className={`relative rounded-2xl bg-zinc-50 hover:bg-orange-50/60 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-zinc-900 space-y-4 ${className}`}>
-    <div className="space-y-3"><div className="flex flex-col items-center gap-2"><div className="w-14 h-14 rounded-full bg-orange-100 p-0.5 shrink-0 overflow-hidden"><img src={avatarUrl} alt={name} onError={() => setImgError(true)} className="w-full h-full object-cover rounded-full" /></div><h3 className="w-full text-base font-black tracking-tight text-zinc-900 text-center truncate">{name}</h3><div className="w-full text-center space-y-1">{showBadge && availabilityStatus && <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">{availabilityStatus}</span>}<p className="text-xs font-bold text-orange-600 line-clamp-1">{headline}</p><p className="text-[11px] text-zinc-500 font-medium truncate">{serviceMode}</p></div></div>{bio && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal">{bio}</p>}{allTags.length > 0 && <div className="flex items-center gap-1.5 flex-wrap pt-0.5">{allTags.map((tag, idx) => <span key={idx} className="inline-block text-[10px] font-bold text-zinc-700 bg-zinc-100 px-2.5 py-0.5 rounded-full">{tag}</span>)}</div>}</div>
+    <div className="space-y-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
+        <div className="min-w-0 space-y-1 pt-0.5 text-left">
+          {showBadge && availabilityStatus && <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">{availabilityStatus}</span>}
+          <p className="text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>
+          <p className="text-[11px] text-zinc-500 font-medium truncate">{serviceMode}</p>
+        </div>
+        <div className="w-24 shrink-0 flex flex-col items-end gap-2">
+          <div className="w-14 h-14 rounded-full bg-orange-100 p-0.5 overflow-hidden">
+            <img src={avatarUrl} alt={name} onError={() => setImgError(true)} className="w-full h-full object-cover rounded-full" />
+          </div>
+          <h3 className="w-full text-base font-black tracking-tight text-zinc-900 text-right truncate">{name}</h3>
+        </div>
+      </div>
+      {bio && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">{bio}</p>}
+      {allTags.length > 0 && <div className="flex items-center justify-start gap-1.5 flex-wrap pt-0.5">{allTags.map((tag, idx) => <span key={idx} className="inline-block text-[10px] font-bold text-zinc-700 bg-zinc-100 px-2.5 py-0.5 rounded-full">{tag}</span>)}</div>}
+    </div>
     <div className="pt-3 border-t border-zinc-100 flex items-center justify-between text-xs text-zinc-600"><div className="flex items-center gap-2">{hasRealRating ? <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-full"><span className="font-extrabold text-zinc-900">{Number(rating).toFixed(1)} ★</span><span className="text-zinc-500 font-medium text-[11px]">({reviewsCount})</span></div> : <span className="inline-block text-[10px] font-bold text-orange-950 bg-orange-100/70 px-2.5 py-0.5 rounded-full">{publishedServicesCount > 0 ? `${publishedServicesCount} Services` : 'Verified Provider'}</span>}</div>{onOpenAbout && <button onClick={() => onOpenAbout(merchant || undefined)} id={`btn-view-profile-${merchant?.id || 'default'}`} className="px-4 py-1.5 rounded-full bg-orange-600 hover:bg-orange-500 text-white font-black text-xs transition cursor-pointer shrink-0">{actionLabel}</button>}</div>
   </div>;
 };
