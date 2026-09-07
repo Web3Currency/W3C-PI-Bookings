@@ -18,15 +18,15 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({ merchant, services =
     <div className="space-y-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
         <div className="min-w-0 space-y-1 pt-0.5 text-left">
-          {showBadge && availabilityStatus && <span className="inline-block px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider">{availabilityStatus}</span>}
+          <h3 className="text-base font-black tracking-tight text-zinc-900 truncate">{name}</h3>
           <p className="text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>
           <p className="text-[11px] text-zinc-500 font-medium truncate">{serviceMode}</p>
         </div>
-        <div className="w-24 shrink-0 flex flex-col items-end gap-2">
+        <div className="w-24 shrink-0 flex flex-col items-center gap-2">
           <div className="w-14 h-14 rounded-full bg-orange-100 p-0.5 overflow-hidden">
             <img src={avatarUrl} alt={name} onError={() => setImgError(true)} className="w-full h-full object-cover rounded-full" />
           </div>
-          <h3 className="w-full text-base font-black tracking-tight text-zinc-900 text-right truncate">{name}</h3>
+          {showBadge && availabilityStatus && <span className="inline-block max-w-full px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider text-center truncate">{availabilityStatus}</span>}
         </div>
       </div>
       {bio && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">{bio}</p>}
