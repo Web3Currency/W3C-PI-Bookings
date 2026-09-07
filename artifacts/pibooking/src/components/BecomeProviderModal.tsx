@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 import { settingsService } from '../services/settingsService';
 
 interface BecomeProviderModalProps {
@@ -36,41 +37,35 @@ export const BecomeProviderModal: React.FC<BecomeProviderModalProps> = ({
       aria-modal="true"
       aria-labelledby="become-provider-title"
     >
-      <div className="relative flex w-full max-w-sm flex-col items-center text-center animate-in fade-in zoom-in-95 duration-200">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-0 top-0 z-10 rounded-lg px-2 py-1 text-[11px] font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
-          aria-label="Close modal"
-        >
-          Close
-        </button>
+      <div className="relative flex w-full max-w-xs flex-col items-center rounded-2xl bg-white px-4 py-4 text-center shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+        <div className="w-full">
+          <h2
+            id="become-provider-title"
+            className="text-lg font-black tracking-tight text-zinc-900"
+          >
+            Become a Service Provider
+          </h2>
+        </div>
 
         {imageUrl && (
-          <div className="flex w-full justify-center pointer-events-none select-none">
+          <div className="mt-3 flex w-full justify-center pointer-events-none select-none">
             <img
               src={imageUrl}
               alt=""
               aria-hidden="true"
-              className="block h-auto max-h-[300px] w-auto max-w-[92%] object-contain object-bottom"
+              className="block h-auto max-h-[140px] w-auto max-w-[70%] object-contain object-bottom"
               onError={() => setImageUrl(null)}
             />
           </div>
         )}
 
-        <div className="mt-1 w-full px-3">
-          <h2
-            id="become-provider-title"
-            className="text-xl font-black tracking-tight text-white drop-shadow-sm"
-          >
-            Become a Service Provider
-          </h2>
-          <p className="mx-auto mt-2 max-w-xs text-sm leading-relaxed text-white/90 drop-shadow-sm">
+        <div className="mt-3 w-full px-1">
+          <p className="mx-auto max-w-xs text-xs leading-relaxed text-zinc-600">
             Turn your digital skills into services on Pi Network and connect with clients looking for what you do best.
           </p>
         </div>
 
-        <div className="mt-5 w-full px-3 space-y-2">
+        <div className="mt-4 w-full space-y-2">
           <button
             type="button"
             onClick={() => {
@@ -78,19 +73,20 @@ export const BecomeProviderModal: React.FC<BecomeProviderModalProps> = ({
               onBecomeProvider();
             }}
             id="btn-modal-become-provider"
-            className="w-full rounded-xl bg-[#EA580C] px-4 py-3 text-sm font-extrabold text-white shadow-md shadow-orange-500/20 transition hover:bg-[#F97316] active:scale-[0.98]"
+            className="w-full rounded-xl bg-[#EA580C] px-4 py-2.5 text-xs font-extrabold text-white shadow-md shadow-orange-500/20 transition hover:bg-[#F97316] active:scale-[0.98]"
           >
             Apply to Become a Provider →
           </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full py-2 text-xs font-semibold text-white/80 transition hover:text-white"
-          >
-            Maybe Later
-          </button>
         </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
+          aria-label="Close modal"
+        >
+          <X className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
