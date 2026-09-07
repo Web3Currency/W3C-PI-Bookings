@@ -28,15 +28,15 @@ export const PiWatermark: React.FC<PiWatermarkProps> = ({ variant = 'light-hero'
       draggable={false}
       className="pointer-events-none absolute z-0 select-none"
       style={{
-        width: 'clamp(260px, 46vw, 520px)',
-        height: 'clamp(260px, 46vw, 520px)',
-        right: '-7%',
-        bottom: '-30%',
+        width: 'clamp(260px, 42vw, 460px)',
+        height: 'clamp(260px, 42vw, 460px)',
+        right: '2%',
+        bottom: '2%',
         objectFit: 'contain',
-        opacity: isDark ? 0.105 : 0.14,
+        opacity: isDark ? 0.17 : 0.22,
         filter: isDark ? 'brightness(0) invert(1)' : 'none',
-        maskImage: 'radial-gradient(ellipse at 82% 84%, black 0%, black 28%, rgba(0,0,0,.72) 48%, rgba(0,0,0,.28) 68%, transparent 88%)',
-        WebkitMaskImage: 'radial-gradient(ellipse at 82% 84%, black 0%, black 28%, rgba(0,0,0,.72) 48%, rgba(0,0,0,.28) 68%, transparent 88%)',
+        maskImage: 'radial-gradient(ellipse at 72% 72%, black 0%, black 42%, rgba(0,0,0,.78) 56%, rgba(0,0,0,.38) 72%, transparent 92%)',
+        WebkitMaskImage: 'radial-gradient(ellipse at 72% 72%, black 0%, black 42%, rgba(0,0,0,.78) 56%, rgba(0,0,0,.38) 72%, transparent 92%)',
       }}
     />
   );
