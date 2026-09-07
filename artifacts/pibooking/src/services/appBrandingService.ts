@@ -8,7 +8,8 @@ function resolveBrandingAsset(path: string | null | undefined, fallback: string)
   const value = String(path || '').trim();
   if (!value) return fallback;
 
-  // Allow the admin to use either a Supabase Storage path or a complete public URL.
+  // Direct application paths and public URLs are used as-is.
+  // Other values are treated as paths inside the w3c-assets Storage bucket.
   if (/^(https?:|data:|blob:)/i.test(value) || value.startsWith('/')) return value;
 
   const { data: publicUrlData } = supabase.storage
