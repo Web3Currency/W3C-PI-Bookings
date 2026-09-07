@@ -2,23 +2,23 @@
 -- Table: public.app_branding
 -- Column: pi_watermark_path
 --
--- Supported values:
--- 1) Empty/NULL: application uses the bundled /pi-watermark.svg fallback.
--- 2) Supabase Storage path inside the w3c-assets bucket, e.g. pi-watermark.svg
--- 3) A complete public HTTPS URL to an SVG/PNG/WebP asset.
--- 4) A root-relative application asset path, e.g. /pi-watermark.svg
+-- The app now accepts any of these values:
+-- 1) NULL/empty -> bundled /pi-watermark.svg is used.
+-- 2) /pi-watermark.svg -> bundled application asset.
+-- 3) A Supabase Storage path in the w3c-assets bucket, e.g. branding/my-watermark.svg
+-- 4) A complete public HTTPS URL, e.g. https://cdn.example.com/my-watermark.svg
 --
--- Example using the bundled asset:
+-- To use the bundled watermark explicitly:
 -- UPDATE public.app_branding
 -- SET pi_watermark_path = '/pi-watermark.svg'
 -- WHERE id = 'global';
 --
--- Example using a Supabase Storage object:
+-- To use a file uploaded to the w3c-assets bucket:
 -- UPDATE public.app_branding
--- SET pi_watermark_path = 'branding/my-pi-watermark.svg'
+-- SET pi_watermark_path = 'branding/my-watermark.svg'
 -- WHERE id = 'global';
 --
--- Example using a public external URL:
+-- To use an externally hosted public asset:
 -- UPDATE public.app_branding
--- SET pi_watermark_path = 'https://example.com/my-pi-watermark.svg'
+-- SET pi_watermark_path = 'https://example.com/my-watermark.svg'
 -- WHERE id = 'global';
