@@ -1,6 +1,24 @@
--- Add optional storage path for the Pi Network watermark used by client-facing hero sections.
-ALTER TABLE public.app_branding
-  ADD COLUMN IF NOT EXISTS pi_watermark_path text;
-
-COMMENT ON COLUMN public.app_branding.pi_watermark_path IS
-  'Optional Supabase Storage path for the Pi Network watermark asset used in client-facing hero sections.';
+-- Pi watermark branding
+-- Table: public.app_branding
+-- Column: pi_watermark_path
+--
+-- Supported values:
+-- 1) Empty/NULL: application uses the bundled /pi-watermark.svg fallback.
+-- 2) Supabase Storage path inside the w3c-assets bucket, e.g. pi-watermark.svg
+-- 3) A complete public HTTPS URL to an SVG/PNG/WebP asset.
+-- 4) A root-relative application asset path, e.g. /pi-watermark.svg
+--
+-- Example using the bundled asset:
+-- UPDATE public.app_branding
+-- SET pi_watermark_path = '/pi-watermark.svg'
+-- WHERE id = 'global';
+--
+-- Example using a Supabase Storage object:
+-- UPDATE public.app_branding
+-- SET pi_watermark_path = 'branding/my-pi-watermark.svg'
+-- WHERE id = 'global';
+--
+-- Example using a public external URL:
+-- UPDATE public.app_branding
+-- SET pi_watermark_path = 'https://example.com/my-pi-watermark.svg'
+-- WHERE id = 'global';
