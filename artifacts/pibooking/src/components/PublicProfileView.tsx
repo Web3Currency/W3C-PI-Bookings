@@ -24,8 +24,10 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({ merchant, 
   const hasRealRating = rating !== undefined && rating !== null && Number(rating) > 0 && reviewsCount !== undefined && reviewsCount !== null && Number(reviewsCount) > 0;
   const specialties = isBusiness ? (merchant as BusinessProfile).specialties || [] : (merchant as Provider).specialties || [];
   const skills = isProvider ? (merchant as Provider).skills || [] : []; const allTags = Array.from(new Set([...specialties, ...skills]));
-  const languages = isProvider ? (merchant as Provider).languages || [] : []; const experienceLevel = isProvider ? (merchant as Provider).experienceLevel : undefined;
-  const yearsExperience = isProvider ? (merchant as Provider).yearsExperience : undefined; const serviceMode = isProvider ? (merchant as Provider).serviceMode : undefined;
+  const languages = isProvider ? (merchant as Provider).languages || [];
+  const experienceLevel = isProvider ? (merchant as Provider).experienceLevel : undefined;
+  const yearsExperience = isProvider ? (merchant as Provider).yearsExperience : undefined;
+  const serviceMode = isProvider ? (merchant as Provider).serviceMode : undefined;
   const rawSocials: SocialLink[] = isBusiness ? (merchant as BusinessProfile).socials || (merchant as BusinessProfile).socialLinks || [] : (merchant as Provider).socialLinks || [];
   const website = merchant.website; const email = (merchant as BusinessProfile).email; const phone = (merchant as BusinessProfile).phone;
   const publishedServices = services.filter((s) => s.status === 'Published' && isProvider && s.providerId === merchant.id);
