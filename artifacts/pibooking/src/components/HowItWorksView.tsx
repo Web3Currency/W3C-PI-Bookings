@@ -1,10 +1,7 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 
-interface HowItWorksViewProps {
-  onBack: () => void;
-}
-
+interface HowItWorksViewProps { onBack: () => void; }
 const steps = [
   ['1', 'Find a service', 'Browse or search the marketplace for a service that matches what you need. You can review available services and provider profiles before making a decision.'],
   ['2', 'Choose a provider and service', 'Review the service description, price, delivery information and provider details. Choose the service that best matches your needs.'],
@@ -16,119 +13,25 @@ const steps = [
   ['8', 'Client confirms completion', 'After the service has been completed, the client confirms completion from the booking. The booking then moves to the settlement stage.'],
   ['9', 'Provider receives payout', 'The provider payout is handled through the settlement process after the booking reaches the appropriate completion state.'],
 ];
-
 const capabilities = [
-  ['Marketplace', 'Browse, search and filter available services and providers.'],
-  ['Provider profiles', 'View provider information, skills, specialties and published services.'],
-  ['Provider onboarding', 'Create a provider profile and publish services for clients to discover.'],
-  ['Booking management', 'Create and track bookings from the initial request through completion.'],
-  ['Pi payments', 'Pay for a booking in Pi with the payment connected to the booking record.'],
-  ['Payment and payout separation', 'The system separates the client payment stage from the provider payout stage.'],
-  ['Booking-linked chat', 'Communicate with the other party in the context of the relevant booking.'],
-  ['Delivery and revisions', 'Deliver work and handle revision requests through the booking process.'],
-  ['Completion and reviews', 'Confirm completed work and submit a review after a booking.'],
-  ['Provider earnings', 'View booking earnings and payout states from the provider side of the application.'],
+  ['Marketplace', 'Browse, search and filter available services and providers.'], ['Provider profiles', 'View provider information, skills, specialties and published services.'], ['Provider onboarding', 'Create a provider profile and publish services for clients to discover.'], ['Booking management', 'Create and track bookings from the initial request through completion.'], ['Pi payments', 'Pay for a booking in Pi with the payment connected to the booking record.'], ['Payment and payout separation', 'The system separates the client payment stage from the provider payout stage.'], ['Booking-linked chat', 'Communicate with the other party in the context of the relevant booking.'], ['Delivery and revisions', 'Deliver work and handle revision requests through the booking process.'], ['Completion and reviews', 'Confirm completed work and submit a review after a booking.'], ['Provider earnings', 'View booking earnings and payout states from the provider side of the application.'],
 ];
-
 export const HowItWorksView: React.FC<HowItWorksViewProps> = ({ onBack }) => (
   <article className="max-w-3xl mx-auto pb-16">
-    <div className="flex items-center justify-between border-b border-zinc-200 pb-4 mb-10">
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 hover:text-orange-700 cursor-pointer">
-        <ArrowLeft className="w-4 h-4" />
-        Back
-      </button>
-      <span className="text-xs font-semibold text-zinc-400">W3C Pi Bookings</span>
-    </div>
-
-    <header className="mb-12">
-      <p className="text-xs uppercase tracking-[0.18em] font-bold text-orange-600 mb-4">W3C Pi Bookings</p>
-      <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-tight text-zinc-950 mb-5">How W3C Pi Bookings Works</h1>
-      <p className="text-lg text-zinc-600 leading-8">W3C Pi Bookings is a marketplace for everyday services in the Pi Network ecosystem. It connects people who need services with people who have the skills to provide them. The application connects the booking, Pi payment, communication, delivery, completion and settlement stages in one place.</p>
-    </header>
-
-    <div className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">1. What W3C Pi Bookings is</h2>
-      <p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is designed to make it possible for people to discover services, choose a provider, make a booking and pay in Pi. The provider then receives the booking request, works with the client, delivers the service and moves through the completion and payout process.</p>
-      <p className="text-base text-zinc-700 leading-8">The main purpose is to keep the important parts of a service transaction connected. Instead of treating discovery, booking, payment, communication, delivery and settlement as separate activities, they are tied to the same booking.</p>
-    </div>
-
+    <div className="flex items-center justify-between border-b border-zinc-200 pb-4 mb-10"><button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 cursor-pointer"><ArrowLeft className="w-4 h-4" />Back</button><span className="text-xs font-semibold text-zinc-400">W3C Pi Bookings</span></div>
+    <header className="mb-12"><p className="text-xs uppercase tracking-[0.18em] font-bold text-orange-600 mb-4">W3C Pi Bookings</p><h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-tight text-zinc-950 mb-5">How W3C Pi Bookings Works</h1><p className="text-lg text-zinc-600 leading-8">W3C Pi Bookings is a marketplace for everyday services in the Pi Network ecosystem. It connects people who need services with people who have the skills to provide them. The application connects the booking, Pi payment, communication, delivery, completion and settlement stages in one place.</p></header>
+    <div className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">1. What W3C Pi Bookings is</h2><p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is designed to make it possible for people to discover services, choose a provider, make a booking and pay in Pi. The provider then receives the booking request, works with the client, delivers the service and moves through the completion and payout process.</p><p className="text-base text-zinc-700 leading-8">The main purpose is to keep the important parts of a service transaction connected. Instead of treating discovery, booking, payment, communication, delivery and settlement as separate activities, they are tied to the same booking.</p></div>
     <hr className="border-zinc-200 mb-12" />
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-2">2. The booking process</h2>
-      <p className="text-base text-zinc-600 leading-8 mb-8">A normal booking follows these stages.</p>
-      <ol className="space-y-9">
-        {steps.map(([number, title, text]) => (
-          <li key={number} className="grid grid-cols-[2rem_1fr] gap-4">
-            <span className="text-sm font-black text-orange-600 pt-1">{number}.</span>
-            <div>
-              <h3 className="text-lg font-extrabold text-zinc-950 mb-2">{title}</h3>
-              <p className="text-base text-zinc-700 leading-8">{text}</p>
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-2">2. The booking process</h2><p className="text-base text-zinc-600 leading-8 mb-8">A normal booking follows these stages.</p><ol className="space-y-9">{steps.map(([number,title,text])=><li key={number} className="grid grid-cols-[2rem_1fr] gap-4"><span className="text-sm font-black text-orange-600 pt-1">{number}.</span><div><h3 className="text-lg font-extrabold text-zinc-950 mb-2">{title}</h3><p className="text-base text-zinc-700 leading-8">{text}</p></div></li>)}</ol></section>
     <hr className="border-zinc-200 mb-12" />
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">3. How payment protection works</h2>
-      <p className="text-base text-zinc-700 leading-8 mb-5">W3C Pi Bookings separates the point at which the client pays from the point at which the provider receives the payout. This is the part of the booking process commonly referred to as escrow.</p>
-      <p className="text-base text-zinc-700 leading-8 mb-5">In a normal completed booking, the process is:</p>
-      <p className="text-base font-bold text-zinc-950 leading-8 mb-5">Client pays in Pi. The booking becomes active. The provider accepts the request. The service is delivered. The client confirms completion. The provider payout is processed.</p>
-      <p className="text-base text-zinc-700 leading-8">Keeping these stages connected makes it possible to see where a booking stands and whether the payment, work and settlement have reached their expected states.</p>
-    </section>
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">4. For clients</h2>
-      <p className="text-base text-zinc-700 leading-8 mb-4">Clients can browse services and providers, review the available information, select a service, provide booking details and pay in Pi. Once the provider accepts the request, the client can communicate with the provider through the booking, receive the work and request a revision when necessary.</p>
-      <p className="text-base text-zinc-700 leading-8">When the service has been completed, the client confirms completion. The client can also leave a review after the booking.</p>
-    </section>
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">5. For service providers</h2>
-      <p className="text-base text-zinc-700 leading-8 mb-4">A person who wants to provide services can create a provider profile, add their skills and specialties, and publish services for clients to discover.</p>
-      <p className="text-base text-zinc-700 leading-8">When a client makes a booking, the provider receives the request and can accept or reject it. Accepted bookings can then be managed through communication, delivery and completion. Provider earnings and payout states are available through the provider side of the application.</p>
-    </section>
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">6. What the application currently provides</h2>
-      <div className="space-y-5">
-        {capabilities.map(([title, text]) => (
-          <div key={title} className="border-l-2 border-orange-500 pl-5">
-            <h3 className="text-base font-extrabold text-zinc-950 mb-1">{title}</h3>
-            <p className="text-sm text-zinc-700 leading-7">{text}</p>
-          </div>
-        ))}
-      </div>
-    </section>
-
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">3. How payment protection works</h2><p className="text-base text-zinc-700 leading-8 mb-5">W3C Pi Bookings separates the point at which the client pays from the point at which the provider receives the payout. This is the part of the booking process commonly referred to as escrow.</p><p className="text-base text-zinc-700 leading-8 mb-5">In a normal completed booking, the process is:</p><p className="text-base font-bold text-zinc-950 leading-8 mb-5">Client pays in Pi. The booking becomes active. The provider accepts the request. The service is delivered. The client confirms completion. The provider payout is processed.</p><p className="text-base text-zinc-700 leading-8">Keeping these stages connected makes it possible to see where a booking stands and whether the payment, work and settlement have reached their expected states.</p></section>
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">4. For clients</h2><p className="text-base text-zinc-700 leading-8 mb-4">Clients can browse services and providers, review the available information, select a service, provide booking details and pay in Pi. Once the provider accepts the request, the client can communicate with the provider through the booking, receive the work and request a revision when necessary.</p><p className="text-base text-zinc-700 leading-8">When the service has been completed, the client confirms completion. The client can also leave a review after the booking.</p></section>
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">5. For service providers</h2><p className="text-base text-zinc-700 leading-8 mb-4">A person who wants to provide services can create a provider profile, add their skills and specialties, and publish services for clients to discover.</p><p className="text-base text-zinc-700 leading-8">When a client makes a booking, the provider receives the request and can accept or reject it. Accepted bookings can then be managed through communication, delivery and completion. Provider earnings and payout states are available through the provider side of the application.</p></section>
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">6. What the application currently provides</h2><div className="space-y-5">{capabilities.map(([title,text])=><div key={title} className="border-l-2 border-orange-500 pl-5"><h3 className="text-base font-extrabold text-zinc-950 mb-1">{title}</h3><p className="text-sm text-zinc-700 leading-7">{text}</p></div>)}</div></section>
     <hr className="border-zinc-200 mb-12" />
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">7. What happens when a booking is rejected or cancelled</h2>
-      <p className="text-base text-zinc-700 leading-8">A provider can reject a booking and provide a reason. The rejection is recorded against the booking, and the booking follows the cancellation and refund process instead of continuing as a normal completed service.</p>
-      <p className="text-base text-zinc-700 leading-8 mt-4">Other exceptional situations are handled through the booking and administrative processes. The application records important booking states and actions so that the transaction can be followed from its current state.</p>
-    </section>
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">8. What users should understand</h2>
-      <p className="text-base text-zinc-700 leading-8">W3C Pi Bookings provides the application and transaction structure. It does not guarantee that every client or provider will behave correctly. Users should review provider profiles, service descriptions, prices, delivery details and booking information before proceeding.</p>
-    </section>
-
-    <section className="mb-12">
-      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">9. Current status</h2>
-      <p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is currently being developed and validated on Pi Testnet. The core marketplace and booking journey is substantially implemented and is being tested and hardened.</p>
-      <p className="text-base text-zinc-700 leading-8">Current development work includes improving unusual failure and recovery cases, release timing, duplicate actions, missed deadlines and dispute and recovery handling. This document describes the application as it currently works. It should not be read as a description of features that have not yet been implemented.</p>
-    </section>
-
-    <hr className="border-zinc-200 mb-8" />
-
-    <footer className="text-sm text-zinc-500 leading-7">
-      <p className="font-semibold text-zinc-700">W3C Pi Bookings</p>
-      <p>Built by W3C Digital Network.</p>
-      <p>Current environment: Pi Testnet.</p>
-    </footer>
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">7. What happens when a booking is rejected or cancelled</h2><p className="text-base text-zinc-700 leading-8">A provider can reject a booking and provide a reason. The rejection is recorded against the booking, and the booking follows the cancellation and refund process instead of continuing as a normal completed service.</p><p className="text-base text-zinc-700 leading-8 mt-4">Other exceptional situations are handled through the booking and administrative processes. The application records important booking states and actions so that the transaction can be followed from its current state.</p></section>
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">8. What users should understand</h2><p className="text-base text-zinc-700 leading-8">W3C Pi Bookings provides the application and transaction structure. It does not guarantee that every client or provider will behave correctly. Users should review provider profiles, service descriptions, prices, delivery details and booking information before proceeding.</p></section>
+    <section className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">9. Current status</h2><p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is currently being developed and validated on Pi Testnet. The core marketplace and booking journey is substantially implemented and is being tested and hardened.</p><p className="text-base text-zinc-700 leading-8">Current development work includes improving unusual failure and recovery cases, release timing, duplicate actions, missed deadlines and dispute and recovery handling. This document describes the application as it currently works. It should not be read as a description of features that have not yet been implemented.</p></section>
+    <hr className="border-zinc-200 mb-8" /><footer className="text-sm text-zinc-500 leading-7"><p className="font-semibold text-zinc-700">W3C Pi Bookings</p><p>Built by W3C Digital Network.</p><p>Current environment: Pi Testnet.</p></footer>
   </article>
 );
