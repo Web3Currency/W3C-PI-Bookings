@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { BusinessProfile, Provider, Service } from '../types';
 import { providerMediaService } from '../services/providerMediaService';
+import { BadgeCheck } from 'lucide-react';
 
 export interface MerchantCardProps { merchant?: BusinessProfile | Provider | null; services?: Service[]; title?: string; badgeText?: string; onOpenAbout?: (merchant?: BusinessProfile | Provider) => void; actionLabel?: string; className?: string; showBadge?: boolean; }
 export const MerchantCard: React.FC<MerchantCardProps> = ({ merchant, services = [], title, onOpenAbout, actionLabel = 'View Profile', className = '', showBadge = true }) => {
@@ -12,13 +13,17 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({ merchant, services =
   const specialties = (isBusiness ? (merchant as BusinessProfile).specialties : (merchant as Provider).specialties) || []; const skills = isProvider ? (merchant as Provider).skills || [] : []; const allTags = Array.from(new Set([...specialties, ...skills])).slice(0, 3);
   const rating = merchant?.rating; const reviewsCount = merchant?.reviewsCount; const hasRealRating = rating != null && Number(rating) > 0 && reviewsCount != null && Number(reviewsCount) > 0;
   const availabilityStatus = isProvider ? (merchant as Provider).availabilityStatus || 'available' : isBusiness ? (merchant as BusinessProfile).availabilityStatus || 'available' : 'available';
+  const profileVerified = isProvider && (merchant as Provider).profileVerified === true;
   const publishedServicesCount = services.filter(s => s.status === 'Published' && (!isProvider || s.providerId === merchant?.id)).length;
   const serviceMode = isProvider ? ((merchant as Provider).serviceMode || 'Remote') : 'Global / Remote';
   return <div className={`relative rounded-2xl bg-zinc-50 hover:bg-orange-50/60 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-zinc-900 space-y-4 ${className}`}>
     <div className="space-y-3">
       <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-4">
         <div className="min-w-0 space-y-1 pt-0.5 text-left">
-          <h3 className="text-base font-black tracking-tight text-zinc-900 truncate">{name}</h3>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <h3 className="text-base font-black tracking-tight text-zinc-900 truncate">{name}</h3>
+            {showBadge && profileVerified && <BadgeCheck className="w-4 h-4 shrink-0 text-orange-600 fill-orange-600 stroke-white" strokeWidth={2.2} title="Verified by W3C Pi Bookings" aria-label="Verified by W3C Pi Bookings" />}
+          </div>
           <p className="text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>
           <p className="text-[11px] text-zinc-500 font-medium truncate">{serviceMode}</p>
         </div>
