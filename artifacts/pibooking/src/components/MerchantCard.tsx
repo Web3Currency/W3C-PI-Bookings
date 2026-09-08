@@ -12,7 +12,8 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({ merchant, services =
   const rawBio = (isBusiness ? (merchant as BusinessProfile).bio : (merchant as Provider).bio); const bio = rawBio?.trim() || null;
   const specialties = (isBusiness ? (merchant as BusinessProfile).specialties : (merchant as Provider).specialties) || []; const skills = isProvider ? (merchant as Provider).skills || [] : []; const allTags = Array.from(new Set([...specialties, ...skills])).slice(0, 3);
   const rating = merchant?.rating; const reviewsCount = merchant?.reviewsCount; const hasRealRating = rating != null && Number(rating) > 0 && reviewsCount != null && Number(reviewsCount) > 0;
-  const availabilityStatus = isProvider ? (merchant as Provider).availabilityStatus || 'available' : isBusiness ? (merchant as BusinessProfile).availabilityStatus || 'available' : 'available';
+  const rawAvailability = isProvider ? (merchant as Provider).availabilityStatus : isBusiness ? (merchant as BusinessProfile).availabilityStatus : undefined;
+  const availabilityStatus = rawAvailability === 'available' || rawAvailability === 'online' ? 'online' : 'offline';
   const profileVerified = isProvider && (merchant as Provider).profileVerified === true;
   const publishedServicesCount = services.filter(s => s.status === 'Published' && (!isProvider || s.providerId === merchant?.id)).length;
   const serviceMode = isProvider ? ((merchant as Provider).serviceMode || 'Remote') : 'Global / Remote';
@@ -31,7 +32,7 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({ merchant, services =
           <div className="w-14 h-14 rounded-full bg-orange-100 p-0.5 overflow-hidden">
             <img src={avatarUrl} alt={name} onError={() => setImgError(true)} className="w-full h-full object-cover rounded-full" />
           </div>
-          {showBadge && availabilityStatus && <span className="inline-block max-w-full px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 text-[10px] font-extrabold uppercase tracking-wider text-center truncate">{availabilityStatus}</span>}
+          {showBadge && <span className={`inline-block max-w-full px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider text-center truncate ${availabilityStatus === 'online' ? 'bg-emerald-50 text-emerald-800' : 'bg-zinc-100 text-zinc-600'}`}>{availabilityStatus}</span>}
         </div>
       </div>
       {bio && <p className="text-xs text-zinc-600 line-clamp-2 leading-relaxed font-normal text-left">{bio}</p>}
