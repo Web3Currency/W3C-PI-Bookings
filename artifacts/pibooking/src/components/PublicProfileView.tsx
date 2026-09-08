@@ -66,11 +66,6 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({ merchant, 
       </div>
 
       <div className="relative rounded-3xl bg-profile-hero-gradient p-6 sm:p-8 space-y-4 shadow-sm">
-        {profileVerified && (
-          <div className="absolute top-5 right-5 sm:top-6 sm:right-6" title="Verified by W3C Pi Bookings" aria-label="Verified by W3C Pi Bookings">
-            <BadgeCheck className="w-7 h-7 sm:w-8 sm:h-8 text-orange-600 fill-orange-600 stroke-white drop-shadow-sm" strokeWidth={2.2} />
-          </div>
-        )}
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           <div className="relative shrink-0">
             <div className="w-24 h-24 rounded-full bg-orange-100 p-0.5 overflow-hidden shadow-xs">
@@ -81,6 +76,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({ merchant, 
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tight">{isBusiness ? `About ${name}` : name}</h1>
+              {isProvider && profileVerified && <BadgeCheck className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 text-orange-600 fill-orange-600 stroke-white" strokeWidth={2.2} title="Verified by W3C Pi Bookings" aria-label="Verified by W3C Pi Bookings" />}
               {isBusiness && <span className="inline-block px-3 py-0.5 rounded-full bg-orange-100 text-orange-950 font-extrabold text-[10px] uppercase tracking-wider">Marketplace Owner</span>}
             </div>
             {headline && <p className="text-xs sm:text-sm text-orange-600 font-bold">{headline}</p>}
