@@ -3,14 +3,27 @@ import { PiUser } from '../types';
 import { piAuthService } from '../services/piAuthService';
 import { userProfileService } from '../services/userProfileService';
 
-interface UsePiAuthReturn { piUser: PiUser | null; loading: boolean; error: string | null; signIn: () => Promise<PiUser | null>; signOut: () => void; refreshProfile: () => Promise<void>; }
+export type PiAuthState = 'guest' | 'authenticated';
+
+interface UsePiAuthReturn {
+  piUser: PiUser | null;
+  authState: PiAuthState;
+  isGuest: boolean;
+  loading: boolean;
+  error: string | null;
+  signIn: () => Promise<PiUser | null>;
+  signOut: () => void;
+  refreshProfile: () => Promise<void>;
+}
 
 async function withGlobalProfile(user: PiUser): Promise<PiUser> {
   if (!user.accessToken) return user;
   try {
     const profile = await userProfileService.getProfile(user.accessToken);
     return userProfileService.applyToPiUser(user, profile);
-  } catch { return user; }
+  } catch {
+    return user;
+  }
 }
 
 export function usePiAuth(): UsePiAuthReturn {
@@ -36,5 +49,9 @@ export function usePiAuth(): UsePiAuthReturn {
   }, [piUser]);
 
   const signOut = useCallback(() => { piAuthService.signOut(); setPiUser(null); setError(null); }, []);
-  return { piUser, loading, error, signIn, signOut, refreshProfile };
+
+  const authState: PiAuthState = piUser ? 'authenticated' : 'guest';
+  const isGuest = authState === 'guest';
+
+  return { piUser, authState, isGuest, loading, error, signIn, signOut, refreshProfile };
 }
