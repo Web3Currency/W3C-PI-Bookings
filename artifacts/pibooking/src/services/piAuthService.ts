@@ -31,9 +31,6 @@ export const piAuthService = {
     if (!stored) throw new Error('Please sign in with Pi before making a payment.');
     if (!await ensureInit() || !window.Pi) throw new Error('Pi SDK not available. Open this app in Pi Browser to make a payment.');
     try {
-      // Re-authenticate with the same payment scope while retaining the current app session.
-      // Pi can return the existing session immediately when the grant is still valid, or
-      // refresh the grant when the local SDK session has lost the payments scope.
       const auth = await window.Pi.authenticate([...PI_SCOPES], () => {});
       return await this.storeValidatedAuth(auth);
     } catch (error: any) {
@@ -46,3 +43,19 @@ export const piAuthService = {
   async ensureSDKReady(): Promise<boolean> { return ensureInit(); },
   async authenticateUser(): Promise<PiUser> { const stored = this.getStoredUser(); return stored || this.signIn(); },
 };
+
+export async function requireSignIn(action: () => void): Promise<boolean> {
+  const stored = piAuthService.getStoredUser();
+  if (stored) {
+    action();
+    return true;
+  }
+  try {
+    await piAuthService.signIn();
+    action();
+    return true;
+  } catch (error) {
+    console.warn('[Pi] Sign-in required:', error);
+    return false;
+  }
+}
