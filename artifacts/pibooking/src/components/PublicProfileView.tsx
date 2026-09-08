@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BusinessProfile, Provider, Service, SocialLink } from '../types';
-import { X, MessageSquare } from 'lucide-react';
+import { X, MessageSquare, BadgeCheck } from 'lucide-react';
 import { providerMediaService } from '../services/providerMediaService';
 
 interface PublicProfileViewProps {
@@ -28,6 +28,7 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({ merchant, 
   const bio = merchant.bio;
   const availabilityStatus = isProvider ? (merchant as Provider).availabilityStatus || 'available' : (merchant as BusinessProfile).availabilityStatus || 'available';
   const responseTime = isProvider ? (merchant as Provider).responseTime : (merchant as BusinessProfile).responseTime;
+  const profileVerified = isProvider && (merchant as Provider).profileVerified === true;
   const rating = merchant.rating;
   const reviewsCount = merchant.reviewsCount;
   const hasRealRating = rating !== undefined && rating !== null && Number(rating) > 0 && reviewsCount !== undefined && reviewsCount !== null && Number(reviewsCount) > 0;
@@ -65,6 +66,11 @@ export const PublicProfileView: React.FC<PublicProfileViewProps> = ({ merchant, 
       </div>
 
       <div className="relative rounded-3xl bg-profile-hero-gradient p-6 sm:p-8 space-y-4 shadow-sm">
+        {profileVerified && (
+          <div className="absolute top-5 right-5 sm:top-6 sm:right-6" title="Verified by W3C Pi Bookings" aria-label="Verified by W3C Pi Bookings">
+            <BadgeCheck className="w-7 h-7 sm:w-8 sm:h-8 text-orange-600 fill-orange-600 stroke-white drop-shadow-sm" strokeWidth={2.2} />
+          </div>
+        )}
         <div className="flex flex-col sm:flex-row sm:items-center gap-5">
           <div className="relative shrink-0">
             <div className="w-24 h-24 rounded-full bg-orange-100 p-0.5 overflow-hidden shadow-xs">
