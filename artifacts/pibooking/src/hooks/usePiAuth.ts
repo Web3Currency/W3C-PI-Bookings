@@ -23,18 +23,10 @@ export function usePiAuth(): UsePiAuthReturn {
     withGlobalProfile(piUser).then((updated) => setPiUser(updated));
   }, []);
 
-  useEffect(() => {
-    if (piUser) return;
-    let cancelled = false;
-    setLoading(true); setError(null);
-    piAuthService.signIn().then((user) => { if (!cancelled) withGlobalProfile(user).then((updated) => setPiUser(updated)); }).catch((err: Error) => { if (!cancelled) { console.warn('[Pi Auth] Auto sign-in skipped:', err.message); setError(err.message); } }).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, []);
-
   const signIn = useCallback(async () => {
     setLoading(true); setError(null);
     try { const user = await piAuthService.signIn(); const updated = await withGlobalProfile(user); setPiUser(updated); return updated; }
-    catch (err: any) { setError(err.message ?? 'Sign-in failed.'); return null; }
+    catch (err: any) { setError(err?.message ?? 'Sign-in failed.'); return null; }
     finally { setLoading(false); }
   }, []);
 
