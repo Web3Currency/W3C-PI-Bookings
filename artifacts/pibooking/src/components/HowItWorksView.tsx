@@ -1,88 +1,134 @@
 import React from 'react';
-import { ArrowLeft, CheckCircle2, ShieldCheck, Users, WalletCards, MessageCircle, ClipboardCheck, Search, Briefcase, Clock3 } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
-interface HowItWorksViewProps { onBack: () => void; }
+interface HowItWorksViewProps {
+  onBack: () => void;
+}
 
 const steps = [
-  ['1', 'Provider offers a service', 'A service provider creates a profile and publishes the service they want to offer, including the price, description, delivery details and relevant information.'],
-  ['2', 'Client finds a service', 'Clients can browse or search available services and providers, then open a service or provider profile to understand what is being offered.'],
-  ['3', 'Client chooses the service', 'The client selects the service that matches what they need and provides the booking details required to start the job.'],
-  ['4', 'Client pays in Pi', 'The client reviews the booking and completes payment in Pi through the application. The payment is connected to that specific booking.'],
-  ['5', 'Provider accepts or rejects', 'The provider receives the booking request and can accept it or reject it with a reason. An acceptance deadline is attached to the booking.'],
-  ['6', 'Client and provider communicate', 'The booking has connected chat so both sides can discuss the work, clarify requirements and keep the conversation tied to the job.'],
-  ['7', 'Provider delivers the work', 'The provider completes and delivers the agreed service. The client can request a revision when the delivered work needs changes.'],
-  ['8', 'Client confirms completion', 'When the client is satisfied that the service has been completed, they confirm completion from the booking.'],
-  ['9', 'Settlement is completed', 'After completion is confirmed, the booking moves through the settlement process so the provider can receive the payout.'],
+  ['1', 'Find a service', 'Browse or search the marketplace for a service that matches what you need. You can review available services and provider profiles before making a decision.'],
+  ['2', 'Choose a provider and service', 'Review the service description, price, delivery information and provider details. Choose the service that best matches your needs.'],
+  ['3', 'Create the booking', 'Enter the information required for the booking. Review the booking details carefully before moving to payment.'],
+  ['4', 'Pay in Pi', 'Complete the payment in Pi through W3C Pi Bookings. The payment is connected to the specific booking so the transaction and the service request remain linked.'],
+  ['5', 'Provider receives the request', 'The provider receives the booking request and can accept it or reject it. If the provider rejects the request, a reason is recorded and the booking follows the cancellation and refund process.'],
+  ['6', 'Communicate through the booking', 'The client and provider can use the booking-linked chat to discuss the work, clarify requirements and keep communication connected to the job.'],
+  ['7', 'Provider delivers the service', 'The provider completes the agreed work and delivers it to the client. If changes are needed, the client can request a revision where the booking process supports it.'],
+  ['8', 'Client confirms completion', 'After the service has been completed, the client confirms completion from the booking. The booking then moves to the settlement stage.'],
+  ['9', 'Provider receives payout', 'The provider payout is handled through the settlement process after the booking reaches the appropriate completion state.'],
 ];
 
 const capabilities = [
-  [Search, 'Find services and providers', 'Browse, search and filter the marketplace.'],
-  [Users, 'Provider profiles', 'Review provider information, skills, specialties and services.'],
-  [Briefcase, 'Provider onboarding', 'Create a provider profile and enter the provider network.'],
-  [ClipboardCheck, 'Booking management', 'Create, track and manage service bookings from request through completion.'],
-  [WalletCards, 'Pi payment', 'Pay for a booking in Pi with the payment connected to the booking record.'],
-  [ShieldCheck, 'Protected booking state', 'Keep payment and provider payout as separate stages of the booking.'],
-  [MessageCircle, 'Booking-linked chat', 'Communicate with the other party in the context of the booking.'],
-  [CheckCircle2, 'Completion and reviews', 'Confirm completed work and submit a review after a booking.'],
-  [Clock3, 'Provider earnings', 'Track booking earnings and payout states through the provider side of the app.'],
+  ['Marketplace', 'Browse, search and filter available services and providers.'],
+  ['Provider profiles', 'View provider information, skills, specialties and published services.'],
+  ['Provider onboarding', 'Create a provider profile and publish services for clients to discover.'],
+  ['Booking management', 'Create and track bookings from the initial request through completion.'],
+  ['Pi payments', 'Pay for a booking in Pi with the payment connected to the booking record.'],
+  ['Payment and payout separation', 'The system separates the client payment stage from the provider payout stage.'],
+  ['Booking-linked chat', 'Communicate with the other party in the context of the relevant booking.'],
+  ['Delivery and revisions', 'Deliver work and handle revision requests through the booking process.'],
+  ['Completion and reviews', 'Confirm completed work and submit a review after a booking.'],
+  ['Provider earnings', 'View booking earnings and payout states from the provider side of the application.'],
 ];
 
 export const HowItWorksView: React.FC<HowItWorksViewProps> = ({ onBack }) => (
-  <div className="max-w-4xl mx-auto pb-12">
-    <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-xs font-bold text-zinc-600 hover:text-orange-700 mb-5 cursor-pointer">
-      <ArrowLeft className="w-4 h-4" /> Back
-    </button>
-
-    <div className="rounded-3xl bg-zinc-950 text-white p-6 sm:p-10 mb-6">
-      <p className="text-[10px] uppercase tracking-[0.2em] font-black text-orange-400 mb-3">W3C Pi Bookings</p>
-      <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-4">How W3C Pi Bookings Works</h1>
-      <p className="text-sm sm:text-base text-zinc-300 leading-7 max-w-3xl">W3C Pi Bookings is a marketplace for everyday services in the Pi Network ecosystem. It connects people who need a service with people who have the skills to provide it, while keeping the booking, Pi payment, communication, delivery, completion and settlement connected in one place.</p>
-      <div className="mt-6 flex flex-wrap gap-2 text-[11px] font-bold">
-        {['Discover', 'Choose', 'Book', 'Pay in Pi', 'Accept', 'Communicate', 'Deliver', 'Confirm', 'Settle'].map((item) => <span key={item} className="px-3 py-1.5 rounded-full bg-white/10 border border-white/10">{item}</span>)}
-      </div>
+  <article className="max-w-3xl mx-auto pb-16">
+    <div className="flex items-center justify-between border-b border-zinc-200 pb-4 mb-10">
+      <button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 hover:text-orange-700 cursor-pointer">
+        <ArrowLeft className="w-4 h-4" />
+        Back
+      </button>
+      <span className="text-xs font-semibold text-zinc-400">W3C Pi Bookings</span>
     </div>
 
-    <section className="rounded-3xl border border-zinc-200 bg-white p-5 sm:p-8 mb-6">
-      <h2 className="text-xl font-black tracking-tight mb-2">The basic idea</h2>
-      <p className="text-sm text-zinc-600 leading-7">The application brings the main parts of a service transaction together. A client finds a provider, books a service and pays in Pi. The provider receives the request, accepts it, communicates with the client and delivers the work. The client confirms completion, and the provider moves through the payout process.</p>
+    <header className="mb-12">
+      <p className="text-xs uppercase tracking-[0.18em] font-bold text-orange-600 mb-4">W3C Pi Bookings</p>
+      <h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-tight text-zinc-950 mb-5">How W3C Pi Bookings Works</h1>
+      <p className="text-lg text-zinc-600 leading-8">W3C Pi Bookings is a marketplace for everyday services in the Pi Network ecosystem. It connects people who need services with people who have the skills to provide them. The application connects the booking, Pi payment, communication, delivery, completion and settlement stages in one place.</p>
+    </header>
+
+    <div className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">1. What W3C Pi Bookings is</h2>
+      <p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is designed to make it possible for people to discover services, choose a provider, make a booking and pay in Pi. The provider then receives the booking request, works with the client, delivers the service and moves through the completion and payout process.</p>
+      <p className="text-base text-zinc-700 leading-8">The main purpose is to keep the important parts of a service transaction connected. Instead of treating discovery, booking, payment, communication, delivery and settlement as separate activities, they are tied to the same booking.</p>
+    </div>
+
+    <hr className="border-zinc-200 mb-12" />
+
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-2">2. The booking process</h2>
+      <p className="text-base text-zinc-600 leading-8 mb-8">A normal booking follows these stages.</p>
+      <ol className="space-y-9">
+        {steps.map(([number, title, text]) => (
+          <li key={number} className="grid grid-cols-[2rem_1fr] gap-4">
+            <span className="text-sm font-black text-orange-600 pt-1">{number}.</span>
+            <div>
+              <h3 className="text-lg font-extrabold text-zinc-950 mb-2">{title}</h3>
+              <p className="text-base text-zinc-700 leading-8">{text}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
     </section>
 
-    <section className="mb-8">
-      <div className="mb-4"><p className="text-[10px] uppercase tracking-widest font-black text-orange-600">The booking journey</p><h2 className="text-2xl font-black tracking-tight">From service discovery to settlement</h2></div>
-      <div className="space-y-3">
-        {steps.map(([number, title, text]) => <div key={number} className="flex gap-4 rounded-2xl border border-zinc-200 bg-white p-4 sm:p-5"><div className="w-8 h-8 shrink-0 rounded-full bg-orange-600 text-white flex items-center justify-center text-xs font-black">{number}</div><div><h3 className="font-extrabold text-sm mb-1">{title}</h3><p className="text-sm text-zinc-600 leading-6">{text}</p></div></div>)}
+    <hr className="border-zinc-200 mb-12" />
+
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">3. How payment protection works</h2>
+      <p className="text-base text-zinc-700 leading-8 mb-5">W3C Pi Bookings separates the point at which the client pays from the point at which the provider receives the payout. This is the part of the booking process commonly referred to as escrow.</p>
+      <p className="text-base text-zinc-700 leading-8 mb-5">In a normal completed booking, the process is:</p>
+      <p className="text-base font-bold text-zinc-950 leading-8 mb-5">Client pays in Pi. The booking becomes active. The provider accepts the request. The service is delivered. The client confirms completion. The provider payout is processed.</p>
+      <p className="text-base text-zinc-700 leading-8">Keeping these stages connected makes it possible to see where a booking stands and whether the payment, work and settlement have reached their expected states.</p>
+    </section>
+
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">4. For clients</h2>
+      <p className="text-base text-zinc-700 leading-8 mb-4">Clients can browse services and providers, review the available information, select a service, provide booking details and pay in Pi. Once the provider accepts the request, the client can communicate with the provider through the booking, receive the work and request a revision when necessary.</p>
+      <p className="text-base text-zinc-700 leading-8">When the service has been completed, the client confirms completion. The client can also leave a review after the booking.</p>
+    </section>
+
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">5. For service providers</h2>
+      <p className="text-base text-zinc-700 leading-8 mb-4">A person who wants to provide services can create a provider profile, add their skills and specialties, and publish services for clients to discover.</p>
+      <p className="text-base text-zinc-700 leading-8">When a client makes a booking, the provider receives the request and can accept or reject it. Accepted bookings can then be managed through communication, delivery and completion. Provider earnings and payout states are available through the provider side of the application.</p>
+    </section>
+
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">6. What the application currently provides</h2>
+      <div className="space-y-5">
+        {capabilities.map(([title, text]) => (
+          <div key={title} className="border-l-2 border-orange-500 pl-5">
+            <h3 className="text-base font-extrabold text-zinc-950 mb-1">{title}</h3>
+            <p className="text-sm text-zinc-700 leading-7">{text}</p>
+          </div>
+        ))}
       </div>
     </section>
 
-    <section className="rounded-3xl bg-orange-50 border border-orange-100 p-5 sm:p-8 mb-8">
-      <h2 className="text-xl font-black tracking-tight mb-2">What “escrow” means here</h2>
-      <p className="text-sm text-zinc-700 leading-7 mb-4">Escrow separates the moment a client pays from the moment a provider receives the payout. The booking keeps track of the payment and the work as the service moves forward.</p>
-      <div className="flex flex-wrap items-center gap-2 text-xs font-black text-zinc-800"><span className="px-3 py-2 rounded-xl bg-white border border-orange-100">Client pays</span><span>→</span><span className="px-3 py-2 rounded-xl bg-white border border-orange-100">Booking active</span><span>→</span><span className="px-3 py-2 rounded-xl bg-white border border-orange-100">Service delivered</span><span>→</span><span className="px-3 py-2 rounded-xl bg-white border border-orange-100">Client confirms</span><span>→</span><span className="px-3 py-2 rounded-xl bg-white border border-orange-100">Provider payout</span></div>
-      <p className="text-xs text-zinc-600 leading-6 mt-4">If a provider rejects a booking, the rejection reason is recorded and the booking follows the cancellation/refund process rather than proceeding as a normal completed job.</p>
+    <hr className="border-zinc-200 mb-12" />
+
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">7. What happens when a booking is rejected or cancelled</h2>
+      <p className="text-base text-zinc-700 leading-8">A provider can reject a booking and provide a reason. The rejection is recorded against the booking, and the booking follows the cancellation and refund process instead of continuing as a normal completed service.</p>
+      <p className="text-base text-zinc-700 leading-8 mt-4">Other exceptional situations are handled through the booking and administrative processes. The application records important booking states and actions so that the transaction can be followed from its current state.</p>
     </section>
 
-    <section className="mb-8">
-      <div className="mb-4"><p className="text-[10px] uppercase tracking-widest font-black text-orange-600">What is available</p><h2 className="text-2xl font-black tracking-tight">Current application capabilities</h2></div>
-      <div className="grid sm:grid-cols-2 gap-3">{capabilities.map(([Icon, title, text]) => <div key={title as string} className="rounded-2xl border border-zinc-200 bg-white p-4"><Icon className="w-5 h-5 text-orange-600 mb-3" /><h3 className="font-extrabold text-sm mb-1">{title as string}</h3><p className="text-xs text-zinc-600 leading-5">{text as string}</p></div>)}</div>
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">8. What users should understand</h2>
+      <p className="text-base text-zinc-700 leading-8">W3C Pi Bookings provides the application and transaction structure. It does not guarantee that every client or provider will behave correctly. Users should review provider profiles, service descriptions, prices, delivery details and booking information before proceeding.</p>
     </section>
 
-    <section className="grid sm:grid-cols-2 gap-4 mb-8">
-      <div className="rounded-3xl border border-zinc-200 p-5"><h2 className="font-black mb-2">For clients</h2><p className="text-sm text-zinc-600 leading-6">Find services, review providers, book in Pi, communicate through the booking, receive the work, request revisions when needed and confirm completion.</p></div>
-      <div className="rounded-3xl border border-zinc-200 p-5"><h2 className="font-black mb-2">For service providers</h2><p className="text-sm text-zinc-600 leading-6">Create a provider profile, publish services, receive booking requests, accept or reject jobs, communicate with clients, deliver work and track earnings and payout states.</p></div>
+    <section className="mb-12">
+      <h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">9. Current status</h2>
+      <p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is currently being developed and validated on Pi Testnet. The core marketplace and booking journey is substantially implemented and is being tested and hardened.</p>
+      <p className="text-base text-zinc-700 leading-8">Current development work includes improving unusual failure and recovery cases, release timing, duplicate actions, missed deadlines and dispute and recovery handling. This document describes the application as it currently works. It should not be read as a description of features that have not yet been implemented.</p>
     </section>
 
-    <section className="rounded-3xl border border-zinc-200 bg-zinc-50 p-5 sm:p-8 mb-8">
-      <h2 className="text-xl font-black tracking-tight mb-3">What happens when something goes wrong?</h2>
-      <p className="text-sm text-zinc-600 leading-7">The application records important booking actions and keeps payment, communication, delivery and completion connected to the booking. Provider rejection, cancellation, refund-related actions and other exceptional states can be handled through the booking and administrative processes. This does not guarantee that every user will behave correctly, so clients and providers should still review profiles, service details and booking terms carefully.</p>
-    </section>
+    <hr className="border-zinc-200 mb-8" />
 
-    <section className="rounded-3xl border border-zinc-200 bg-white p-5 sm:p-8">
-      <p className="text-[10px] uppercase tracking-widest font-black text-orange-600 mb-2">Current status</p>
-      <h2 className="text-xl font-black tracking-tight mb-3">Built and being validated on Pi Testnet</h2>
-      <p className="text-sm text-zinc-600 leading-7">The core marketplace and booking journey is substantially implemented and is being hardened through testing. Work still includes improving unusual failure and recovery cases, release timing, duplicate actions, missed deadlines and dispute/recovery handling. This page describes the application as it currently works; it is not a promise of future features.</p>
-      <div className="mt-5 rounded-2xl bg-zinc-950 text-white p-4 text-sm font-black text-center">Find a service → Book → Pay in Pi → Work gets done → Confirm → Settle</div>
-    </section>
-
-    <p className="text-center text-[11px] text-zinc-400 mt-8">Built by W3C Digital Network · Current environment: Pi Testnet</p>
-  </div>
+    <footer className="text-sm text-zinc-500 leading-7">
+      <p className="font-semibold text-zinc-700">W3C Pi Bookings</p>
+      <p>Built by W3C Digital Network.</p>
+      <p>Current environment: Pi Testnet.</p>
+    </footer>
+  </article>
 );
