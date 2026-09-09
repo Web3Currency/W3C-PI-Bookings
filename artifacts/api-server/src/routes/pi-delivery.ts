@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { ensureConversationForBooking, addBookingSystemMessage } from "./pi-chat";
+import { ensureConversationForBooking } from "./pi-chat";
 const router: IRouter = Router();
 function getSupabaseConfig() { const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL; const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY; return url && key ? { url: url.replace(/\/$/, ""), key } : null; }
 async function supabaseRequest(path: string, init: RequestInit = {}) { const config = getSupabaseConfig(); if (!config) throw new Error("Booking database configuration is unavailable."); const headers = new Headers(init.headers); headers.set("apikey", config.key); headers.set("Content-Type", "application/json"); headers.set("Prefer", headers.get("Prefer") || "return=representation"); if (config.key.startsWith("eyJ")) headers.set("Authorization", `Bearer ${config.key}`); const response = await fetch(`${config.url}/rest/v1/${path}`, { ...init, headers }); if (!response.ok) throw new Error((await response.text().catch(() => "")) || `Supabase request failed (${response.status}).`); const text = await response.text(); return text ? JSON.parse(text) : []; }
@@ -21,8 +21,11 @@ router.post("/pi/bookings/:bookingId/deliver", async (req, res) => {
     const updated = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&status=eq.In%20Progress&provider_id=eq.${encodeURIComponent(booking.provider_id)}`, { method: "PATCH", body: JSON.stringify({ status: "Delivered", delivered_at: nowIso, delivery_notes: trimmedNotes || null, delivery_attachments: attachments, client_review_status: "pending", client_review_deadline: reviewDeadline, project_deadline: null, updated_at: nowIso }) });
     if (!updated?.length) return void res.status(409).json({ error: "Booking changed state before delivery could be recorded." });
     try {
-      await addBookingSystemMessage(bookingId, "Provider has marked this service as delivered. Please review the deliverables and confirm completion.", provider.pi_uid);
-      if (trimmedNotes) { const { conversationId } = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: false }); await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "user", content: trimmedNotes.slice(0, 5000) }) }); }
+      const { conversationId } = await ensureConversationForBooking(bookingId, { includeAcceptanceMessage: false });
+      const systemContent = "Provider has marked this service as delivered. Please review the deliverables and confirm completion.";
+      await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "system", content: systemContent }) });
+      if (trimmedNotes) await supabaseRequest("messages", { method: "POST", body: JSON.stringify({ conversation_id: conversationId, booking_id: bookingId, sender_pi_uid: provider.pi_uid, message_type: "user", content: trimmedNotes.slice(0, 5000) }) });
+      await supabaseRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}`, { method: "PATCH", body: JSON.stringify({ booking_id: bookingId, updated_at: nowIso }) });
     } catch (chatErr: any) { req.log.error({ chatErr, bookingId }, "Delivery recorded but delivery chat messages failed"); }
     return void res.json({ success: true, booking: updated[0] });
   } catch (err: any) { req.log.error({ err, bookingId }, "Provider delivery submission failed"); return void res.status(500).json({ error: err?.message || "Failed to submit delivery." }); }
