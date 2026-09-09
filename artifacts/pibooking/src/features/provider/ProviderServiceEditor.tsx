@@ -110,8 +110,7 @@ export const ProviderServiceEditor: React.FC<ProviderServiceEditorProps> = ({ se
       <button onClick={onBack} className="px-3.5 py-2 rounded-full bg-zinc-100 text-zinc-800 text-xs font-bold hover:bg-zinc-200 transition cursor-pointer"><ArrowLeft className="inline w-4 h-4 mr-1" />Back to Services</button>
     </div>
     <div>
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">Provider Services</p>
-      <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 mt-1">{service ? 'Edit Service' : 'Create Service'}</h1>
+      <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950">{service ? 'Edit Service' : 'Create Service'}</h1>
       <p className="text-sm text-zinc-500 mt-2 max-w-2xl">{service ? 'Update the service information that clients see on its public-facing page.' : 'Add a service to your W3C Pi Bookings marketplace profile.'}</p>
     </div>
     {categoryError && <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700">{categoryError}</div>}
