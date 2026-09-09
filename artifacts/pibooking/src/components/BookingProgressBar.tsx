@@ -16,8 +16,8 @@ export const BookingProgressBar: React.FC<BookingProgressBarProps> = ({ currentS
 
   return (
     <div className="w-full py-2 px-1 mb-4">
-      <div className="relative flex items-center justify-between">
-        <div className="pointer-events-none absolute left-[16.666%] right-[16.666%] top-3.5 h-0.5 bg-zinc-200 z-0">
+      <div className="relative grid grid-cols-3 items-start">
+        <div className="pointer-events-none absolute left-[calc(16.6667%+14px)] right-[calc(16.6667%+14px)] top-3.5 h-0.5 bg-zinc-200 z-0">
           <div
             className="h-full bg-amber-600 transition-all duration-300"
             style={{ width: progressWidth }}
@@ -29,7 +29,7 @@ export const BookingProgressBar: React.FC<BookingProgressBarProps> = ({ currentS
           const isCurrent = s.step === currentStep;
 
           return (
-            <div key={s.step} className="flex flex-col items-center relative z-10 shrink-0 max-w-[30%]">
+            <div key={s.step} className="relative z-10 flex min-w-0 flex-col items-center">
               <div
                 className={`relative w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black transition-all duration-200 border-2 ${
                   isCompleted
