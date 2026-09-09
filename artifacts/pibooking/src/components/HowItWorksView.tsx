@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { BackButton } from './BackButton';
 
 interface HowItWorksViewProps { onBack: () => void; }
 const steps = [
@@ -18,7 +18,7 @@ const capabilities = [
 ];
 export const HowItWorksView: React.FC<HowItWorksViewProps> = ({ onBack }) => (
   <article className="max-w-3xl mx-auto pb-16">
-    <div className="flex items-center justify-between border-b border-zinc-200 pb-4 mb-10"><button type="button" onClick={onBack} className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-600 hover:text-zinc-900 cursor-pointer"><ArrowLeft className="w-4 h-4" />Back</button><span className="text-xs font-semibold text-zinc-400">W3C Pi Bookings</span></div>
+    <div className="flex items-center justify-between border-b border-zinc-200 pb-4 mb-10"><BackButton onClick={onBack} label="Go back" /><span className="text-xs font-semibold text-zinc-400">W3C Pi Bookings</span></div>
     <header className="mb-12"><p className="text-xs uppercase tracking-[0.18em] font-bold text-orange-600 mb-4">W3C Pi Bookings</p><h1 className="text-4xl sm:text-5xl font-black tracking-tight leading-tight text-zinc-950 mb-5">How W3C Pi Bookings Works</h1><p className="text-lg text-zinc-600 leading-8">W3C Pi Bookings is a marketplace for everyday services in the Pi Network ecosystem. It connects people who need services with people who have the skills to provide them. The application connects the booking, Pi payment, communication, delivery, completion and settlement stages in one place.</p></header>
     <div className="mb-12"><h2 className="text-2xl font-black tracking-tight text-zinc-950 mb-4">1. What W3C Pi Bookings is</h2><p className="text-base text-zinc-700 leading-8 mb-4">W3C Pi Bookings is designed to make it possible for people to discover services, choose a provider, make a booking and pay in Pi. The provider then receives the booking request, works with the client, delivers the service and moves through the completion and payout process.</p><p className="text-base text-zinc-700 leading-8">The main purpose is to keep the important parts of a service transaction connected. Instead of treating discovery, booking, payment, communication, delivery and settlement as separate activities, they are tied to the same booking.</p></div>
     <hr className="border-zinc-200 mb-12" />
