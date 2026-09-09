@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
 interface BackButtonProps {
   onClick: () => void;
@@ -15,8 +15,8 @@ export const BackButton: React.FC<BackButtonProps> = ({ onClick, id, className =
     id={id}
     aria-label={label}
     title={label}
-    className={`w-10 h-10 rounded-full bg-zinc-100 text-zinc-800 hover:bg-orange-50 hover:text-orange-700 transition inline-flex items-center justify-center shrink-0 cursor-pointer ${className}`}
+    className={`w-10 h-10 rounded-full bg-amber-50 text-amber-700 border border-amber-200/70 hover:bg-amber-100 hover:text-amber-800 transition inline-flex items-center justify-center shrink-0 cursor-pointer ${className}`}
   >
-    <ArrowLeft className="w-4 h-4" strokeWidth={2.5} />
+    <ChevronLeft className="w-5 h-5" strokeWidth={2.5} />
   </button>
 );
