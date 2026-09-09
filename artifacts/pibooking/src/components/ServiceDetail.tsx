@@ -1,17 +1,33 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Service, BusinessProfile, Provider } from '../types';
 import { ArrowLeft, BadgeCheck } from 'lucide-react';
 import { formatDuration } from '../lib/formatDuration';
 import { providerMediaService } from '../services/providerMediaService';
+import { providerService } from '../services/providerService';
 import { requireSignIn } from '../services/piAuthService';
 
 interface ServiceDetailProps { service: Service; business: BusinessProfile & { services?: Service[] }; onBack: () => void; onProceedToBooking: () => void; onOpenProviderProfile?: (provider: Provider) => void; }
 
 export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business, onBack, onProceedToBooking, onOpenProviderProfile }) => {
-  const resolvedProvider = service.provider;
+  const [resolvedProvider, setResolvedProvider] = useState<Provider | undefined>(service.provider);
+
+  useEffect(() => {
+    let active = true;
+    const loadGlobalProvider = async () => {
+      if (!service.providerId) return;
+      try {
+        const providers = await providerService.getProvidersAsync();
+        const provider = providers.find((item) => item.id === service.providerId);
+        if (active && provider) setResolvedProvider(provider);
+      } catch {}
+    };
+    void loadGlobalProvider();
+    return () => { active = false; };
+  }, [service.providerId]);
+
   const providerName = resolvedProvider?.fullName || service.providerName;
   const providerRole = resolvedProvider?.roleTitle || service.providerRole;
-  const providerAvatar = providerMediaService.getMediaUrl(resolvedProvider?.photoUrl || service.providerPhotoUrl)?.trim();
+  const providerAvatar = providerMediaService.getMediaUrl(resolvedProvider?.photoUrl)?.trim();
   const profileVerified = resolvedProvider?.profileVerified === true;
   const coverImage = service.coverImageUrl || business.logoUrl || business.avatarUrl || '';
 
