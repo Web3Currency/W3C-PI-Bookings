@@ -1,0 +1,135 @@
+import React, { useEffect, useState } from 'react';
+import { ArrowLeft, Check, Save, Upload } from 'lucide-react';
+import { DurationUnit, Service } from '../../types';
+import { providerServiceService, ProviderServiceInput } from '../../services/providerServiceService';
+import { providerMediaService } from '../../services/providerMediaService';
+import { piAuthService } from '../../services/piAuthService';
+import { categoryService, type ServiceCategory } from '../../services/categoryService';
+
+interface ProviderServiceEditorProps {
+  service?: Service | null;
+  onBack: () => void;
+  onSaved: (service: Service) => void;
+}
+
+type ServiceDraft = ProviderServiceInput;
+const DEFAULT_DRAFT: ServiceDraft = { title: '', shortDescription: '', coverImage: '', deliverables: [], duration: 60, durationValue: 60, durationUnit: 'minutes', basePriceNgn: 0, category: '', categoryId: '', locationType: 'Online / Remote', status: 'Draft' };
+const durationLimits: Record<DurationUnit, number> = { minutes: 59, hours: 24, days: 30, weeks: 4, months: 12 };
+const durationLabels: Record<DurationUnit, string> = { minutes: 'Minutes', hours: 'Hours', days: 'Days', weeks: 'Weeks', months: 'Months' };
+const inputClass = 'w-full px-3.5 py-2.5 rounded-xl border border-zinc-200 bg-white text-sm text-zinc-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100 transition';
+const labelClass = 'block text-[11px] font-black uppercase tracking-wider text-zinc-500 mb-1.5';
+
+export const ProviderServiceEditor: React.FC<ProviderServiceEditorProps> = ({ service, onBack, onSaved }) => {
+  const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [categoryLoading, setCategoryLoading] = useState(true);
+  const [categoryError, setCategoryError] = useState('');
+  const [draft, setDraft] = useState<ServiceDraft>(() => service ? {
+    title: service.name,
+    shortDescription: service.description || '',
+    coverImage: service.coverImageUrl || '',
+    deliverables: service.included || [],
+    duration: service.durationMinutes,
+    durationValue: service.durationValue || service.durationMinutes || 60,
+    durationUnit: service.durationUnit || 'minutes',
+    basePriceNgn: service.priceNGN,
+    category: service.category || '',
+    categoryId: service.categoryId || '',
+    locationType: service.locationType || 'Online / Remote',
+    status: service.status || 'Draft',
+  } : DEFAULT_DRAFT);
+  const [deliverablesText, setDeliverablesText] = useState(() => (service?.included || []).join('\n'));
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setCategoryLoading(true);
+    setCategoryError('');
+    categoryService.listActive().then((items) => {
+      if (!active) return;
+      setCategories(items);
+      if (!service && items[0]) setDraft((current) => ({ ...current, categoryId: current.categoryId || items[0].id, category: current.category || items[0].slug }));
+    }).catch((e) => {
+      if (active) setCategoryError(e?.message || 'Unable to load categories.');
+    }).finally(() => {
+      if (active) setCategoryLoading(false);
+    });
+    return () => { active = false; };
+  }, [service]);
+
+  const update = <K extends keyof ServiceDraft>(key: K, value: ServiceDraft[K]) => setDraft((current) => ({ ...current, [key]: value }));
+
+  const uploadCover = async (file: File) => {
+    const user = piAuthService.getStoredUser();
+    if (!user?.accessToken || !user.uid) {
+      setError('Please sign in with Pi Network first.');
+      return;
+    }
+    setUploadingCover(true);
+    setError('');
+    try {
+      const result = await providerMediaService.uploadServiceCover(file, { providerIdentifier: user.uid, piAccessToken: user.accessToken });
+      update('coverImage', result.publicUrl);
+      setNotice('Cover image uploaded.');
+    } catch (e: any) {
+      setError(e?.message || 'Cover image upload failed.');
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setError('');
+    setNotice('');
+    const payload: ServiceDraft = {
+      ...draft,
+      title: draft.title.trim(),
+      shortDescription: draft.shortDescription.trim(),
+      coverImage: draft.coverImage.trim(),
+      deliverables: deliverablesText.split('\n').map((item) => item.trim()).filter(Boolean),
+      duration: draft.durationValue * ({ minutes: 1, hours: 60, days: 1440, weeks: 10080, months: 43200 } as Record<DurationUnit, number>)[draft.durationUnit],
+    };
+    try {
+      if (!payload.title || !payload.shortDescription || !payload.basePriceNgn || payload.basePriceNgn <= 0) throw new Error('Title, description and a valid base price are required.');
+      if (!payload.categoryId) throw new Error('Marketplace category is required.');
+      if (!payload.durationValue || payload.durationValue < 1 || payload.durationValue > durationLimits[payload.durationUnit]) throw new Error(`Duration must be between 1 and ${durationLimits[payload.durationUnit]} ${payload.durationUnit}.`);
+      const saved = service ? await providerServiceService.update(service.id, payload) : await providerServiceService.create(payload);
+      onSaved(saved);
+    } catch (e: any) {
+      setError(e?.message || 'Unable to save service.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+    <div className="flex items-center gap-3">
+      <button onClick={onBack} className="px-3.5 py-2 rounded-full bg-zinc-100 text-zinc-800 text-xs font-bold hover:bg-zinc-200 transition cursor-pointer"><ArrowLeft className="inline w-4 h-4 mr-1" />Back to Services</button>
+    </div>
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-orange-600">Provider Services</p>
+      <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-zinc-950 mt-1">{service ? 'Edit Service' : 'Create Service'}</h1>
+      <p className="text-sm text-zinc-500 mt-2 max-w-2xl">{service ? 'Update the service information that clients see on its public-facing page.' : 'Add a service to your W3C Pi Bookings marketplace profile.'}</p>
+    </div>
+    {categoryError && <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700">{categoryError}</div>}
+    {error && <div className="px-4 py-3 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700">{error}</div>}
+    {notice && <div className="px-4 py-3 rounded-xl bg-green-50 border border-green-100 text-xs font-semibold text-green-700">{notice}</div>}
+    <section className="border-y border-zinc-200 py-6 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="lg:col-span-2"><label className={labelClass}>Cover Image</label><div className="flex items-center gap-3"><label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-orange-50 text-orange-700 text-xs font-black cursor-pointer hover:bg-orange-100"><Upload className="w-4 h-4" />{uploadingCover ? 'Uploading…' : 'Upload Cover Image'}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingCover} onChange={(e) => { const file = e.target.files?.[0]; if (file) void uploadCover(file); e.currentTarget.value = ''; }} /></label>{draft.coverImage && <img src={draft.coverImage} alt="Cover preview" className="w-20 h-14 rounded-xl object-cover border border-zinc-200" />}</div></div>
+        <div><label className={labelClass}>Service Title</label><input className={inputClass} value={draft.title} onChange={(e) => update('title', e.target.value)} placeholder="e.g. Business Website Development" /></div>
+        <div><label className={labelClass}>Category</label><select className={inputClass} value={draft.categoryId} disabled={categoryLoading} onChange={(e) => { const category = categories.find((item) => item.id === e.target.value); update('categoryId', e.target.value); update('category', category?.slug || ''); }}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></div>
+        <div className="lg:col-span-2"><label className={labelClass}>Description</label><textarea className={`${inputClass} min-h-32 resize-y`} value={draft.shortDescription} onChange={(e) => update('shortDescription', e.target.value)} placeholder="Explain clearly what the client receives." /></div>
+        <div className="lg:col-span-2"><label className={labelClass}>Deliverables / Inclusions</label><textarea className={`${inputClass} min-h-32 resize-y`} value={deliverablesText} onChange={(e) => setDeliverablesText(e.target.value)} placeholder="One deliverable per line" /></div>
+        <div><label className={labelClass}>Service Duration</label><div className="grid grid-cols-[1fr_1.35fr] gap-2"><input type="number" min={1} max={durationLimits[draft.durationUnit]} className={inputClass} value={draft.durationValue} onChange={(e) => update('durationValue', Number(e.target.value))} /><select className={inputClass} value={draft.durationUnit} onChange={(e) => { const unit = e.target.value as DurationUnit; update('durationUnit', unit); if (draft.durationValue > durationLimits[unit]) update('durationValue', durationLimits[unit]); }}>{(Object.keys(durationLabels) as DurationUnit[]).map((unit) => <option key={unit} value={unit}>{durationLabels[unit]} (max {durationLimits[unit]})</option>)}</select></div><p className="text-[10px] text-zinc-400 mt-1">Set how long you expect to take to deliver this service. This starts when you accept a paid booking.</p></div>
+        <div><label className={labelClass}>Base Price (NGN)</label><input type="number" min={1} className={inputClass} value={draft.basePriceNgn || ''} onChange={(e) => update('basePriceNgn', Number(e.target.value))} placeholder="50000" /></div>
+        <div><label className={labelClass}>Service Mode</label><select className={inputClass} value={draft.locationType} onChange={(e) => update('locationType', e.target.value)}><option>Online / Remote</option><option>On-site</option><option>Hybrid</option></select></div>
+        <div><label className={labelClass}>Status</label><select className={inputClass} value={draft.status} onChange={(e) => update('status', e.target.value as ServiceDraft['status'])}><option value="Draft">Draft</option><option value="Published">Published</option><option value="Archived">Archived</option></select></div>
+      </div>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 border-t border-zinc-100"><button onClick={onBack} className="px-4 py-2.5 rounded-xl text-xs font-bold text-zinc-600 hover:bg-zinc-100 cursor-pointer">Cancel</button><button onClick={save} disabled={saving || uploadingCover || categoryLoading || !draft.categoryId} className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-white text-xs font-black cursor-pointer"><Save className="w-4 h-4" />{saving ? 'Saving…' : service ? 'Save Changes' : 'Create Service'}</button></div>
+    </section>
+  </div>;
+};
