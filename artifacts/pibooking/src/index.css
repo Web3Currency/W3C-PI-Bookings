@@ -183,4 +183,56 @@
     font-weight: 700;
     cursor: pointer;
   }
+
+  /* Universal legacy Back-button visual normalization.
+     Existing Back handlers remain untouched. Any legacy Back button that uses
+     ArrowLeft, plus the public-profile text Back control, receives the exact
+     same circular amber treatment as the shared BackButton component. */
+  button:has(svg.lucide-arrow-left),
+  button#btn-back-from-public-profile {
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    padding: 0;
+    border-radius: 9999px;
+    background: #fffbeb;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    font-size: 0;
+    line-height: 1;
+    transition: background-color .2s ease, color .2s ease, border-color .2s ease;
+    cursor: pointer;
+  }
+
+  button:has(svg.lucide-arrow-left):hover,
+  button#btn-back-from-public-profile:hover {
+    background: #fef3c7;
+    color: #92400e;
+    border-color: #fcd34d;
+  }
+
+  button:has(svg.lucide-arrow-left) svg,
+  button#btn-back-from-public-profile svg {
+    display: none;
+  }
+
+  button:has(svg.lucide-arrow-left)::before,
+  button#btn-back-from-public-profile::before {
+    content: '‹';
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 2rem;
+    line-height: 1;
+    font-weight: 400;
+    transform: translateY(-1px);
+  }
+
+  button:has(svg.lucide-arrow-left):disabled {
+    opacity: .5;
+    cursor: not-allowed;
+  }
 }
