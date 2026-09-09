@@ -16,4 +16,4 @@ export interface Customer { id: string; name: string; piUsername: string; phone:
 export interface PiUser { uid: string; username: string; accessToken?: string; globalUsername?: string; globalPhotoUrl?: string | null; }
 export interface PiPaymentResult { identifier: string; txHash: string; amount: number; memo: string; bookingId?: string; }
 export interface ClientDetails { clientName: string; clientPiUsername: string; clientPhone: string; clientEmail?: string; notes?: string; attachments?: BookingAttachment[]; }
-export interface BecomeProviderDetails { fullName: string; categoryIds?: string[]; [key: string]: any; }
+export interface BecomeProviderDetails { fullName: string; categoryIds?: string[]; contactEmail?: string; [key: string]: any; }
