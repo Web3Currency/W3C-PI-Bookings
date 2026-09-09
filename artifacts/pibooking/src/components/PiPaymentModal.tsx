@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Service, BusinessProfile, Booking, PiUser } from '../types';
 import { piPaymentService } from '../services/piPaymentService';
 import { settingsService } from '../services/settingsService';
-import { ArrowLeft, Wallet, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Wallet, Lock, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BookingProgressBar } from './BookingProgressBar';
+import { BackButton } from './BackButton';
 
 interface PiPaymentModalProps {
   service: Service;
@@ -40,7 +41,7 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({ service, busines
 
   return (
     <div className="max-w-md mx-auto space-y-4 pb-20 animate-in fade-in duration-200">
-      <div className="flex items-center justify-between"><button onClick={onBack} disabled={paymentStatus === 'processing' || paymentStatus === 'confirming'} id="btn-back-from-pi-payment" className="p-2 rounded-xl bg-zinc-100 text-zinc-700 hover:bg-zinc-200 transition disabled:opacity-50 cursor-pointer"><ArrowLeft className="w-4 h-4" /></button><div className="w-8" /></div>
+      <div className="flex items-center justify-between"><BackButton onClick={onBack} id="btn-back-from-pi-payment" label="Back" /><div className="w-8" /></div>
       <BookingProgressBar currentStep={3} />
       <div className="p-5 rounded-3xl bg-white shadow-md space-y-5">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-4"><div><span className="text-xs text-zinc-500 block font-bold">Total Payment</span><div className="text-3xl font-black text-amber-600 font-mono tracking-tight flex items-center gap-1"><span>{totalPayable.toFixed(2)}</span><span className="text-lg text-amber-600">π</span></div></div><div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-2xs"><Wallet className="w-6 h-6" /></div></div>
