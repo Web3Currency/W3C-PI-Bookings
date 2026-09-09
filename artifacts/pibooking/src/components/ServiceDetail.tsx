@@ -1,38 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { Service, BusinessProfile, Provider } from '../types';
-import { ArrowLeft, BadgeCheck } from 'lucide-react';
+import { BadgeCheck } from 'lucide-react';
 import { formatDuration } from '../lib/formatDuration';
 import { providerMediaService } from '../services/providerMediaService';
 import { providerService } from '../services/providerService';
 import { requireSignIn } from '../services/piAuthService';
+import { BackButton } from './BackButton';
 
 interface ServiceDetailProps { service: Service; business: BusinessProfile & { services?: Service[] }; onBack: () => void; onProceedToBooking: () => void; onOpenProviderProfile?: (provider: Provider) => void; }
 
 export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business, onBack, onProceedToBooking, onOpenProviderProfile }) => {
   const [resolvedProvider, setResolvedProvider] = useState<Provider | undefined>(service.provider);
-
-  useEffect(() => {
-    let active = true;
-    const loadGlobalProvider = async () => {
-      if (!service.providerId) return;
-      try {
-        const providers = await providerService.getProvidersAsync();
-        const provider = providers.find((item) => item.id === service.providerId);
-        if (active && provider) setResolvedProvider(provider);
-      } catch {}
-    };
-    void loadGlobalProvider();
-    return () => { active = false; };
-  }, [service.providerId]);
-
-  const providerName = resolvedProvider?.fullName || service.providerName;
-  const providerRole = resolvedProvider?.roleTitle || service.providerRole;
-  const providerAvatar = providerMediaService.getMediaUrl(resolvedProvider?.photoUrl)?.trim();
-  const profileVerified = resolvedProvider?.profileVerified === true;
-  const coverImage = service.coverImageUrl || business.logoUrl || business.avatarUrl || '';
-
+  useEffect(() => { let active = true; const loadGlobalProvider = async () => { if (!service.providerId) return; try { const providers = await providerService.getProvidersAsync(); const provider = providers.find((item) => item.id === service.providerId); if (active && provider) setResolvedProvider(provider); } catch {} }; void loadGlobalProvider(); return () => { active = false; }; }, [service.providerId]);
+  const providerName = resolvedProvider?.fullName || service.providerName; const providerRole = resolvedProvider?.roleTitle || service.providerRole; const providerAvatar = providerMediaService.getMediaUrl(resolvedProvider?.photoUrl)?.trim(); const profileVerified = resolvedProvider?.profileVerified === true; const coverImage = service.coverImageUrl || business.logoUrl || business.avatarUrl || '';
   return <div className="space-y-6 pb-28 animate-in fade-in slide-in-from-right-4 duration-200">
-    <div className="flex items-center justify-between"><button onClick={onBack} id="btn-back-to-browse" className="px-4 py-2 rounded-full bg-zinc-100 text-zinc-800 text-xs font-bold hover:bg-zinc-200 transition cursor-pointer">← Back to Services</button></div>
+    <div className="flex items-center justify-between"><BackButton onClick={onBack} id="btn-back-to-browse" label="Go back" /></div>
     <div className="relative rounded-3xl overflow-hidden bg-zinc-100 shadow-md"><div className="h-52 sm:h-64 w-full relative"><img src={coverImage} alt={service.name} className="w-full h-full object-cover" /><div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/30 to-transparent" /></div><div className="absolute bottom-4 left-5 right-5 flex items-end justify-between gap-3"><div><span className="inline-block px-3 py-0.5 rounded-full bg-orange-600 text-white text-[10px] font-black uppercase tracking-wider mb-2 shadow-xs">{String(service.category || '').replace('_', ' ')}</span><h1 className="text-xl sm:text-2xl font-black text-white leading-tight drop-shadow-md">{service.name}</h1></div><div className="text-right shrink-0"><div className="text-2xl font-black text-orange-400 drop-shadow-md">{service.pricePi} <span className="text-sm font-bold text-orange-300">π</span></div></div></div></div>
     <div className="p-6 rounded-3xl bg-white shadow-sm space-y-4"><div className="text-xs text-zinc-500 font-medium">Offered by <strong className="text-zinc-900 font-bold">{business.name}</strong></div><p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-normal whitespace-pre-line">{service.description}</p><div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-100 text-xs"><div className="p-3.5 rounded-2xl bg-zinc-50 space-y-0.5"><span className="block text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider">Estimated Duration</span><span className="font-extrabold text-zinc-900 text-xs">{formatDuration(service.durationMinutes, service.durationValue, service.durationUnit)}</span></div><div className="p-3.5 rounded-2xl bg-zinc-50 space-y-0.5 min-w-0"><span className="block text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider">Service Mode</span><span className="font-extrabold text-zinc-900 text-xs truncate block">{service.locationType}</span></div></div></div>
     <div className="p-6 rounded-3xl bg-white shadow-sm space-y-4"><h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">Service Deliverables & Inclusions</h2><ul className="space-y-2.5">{(service.included || []).map((item, idx) => <li key={idx} className="flex items-start gap-2.5 text-xs text-zinc-800 font-medium"><span className="w-1.5 h-1.5 rounded-full bg-orange-600 mt-1.5 shrink-0" /><span>{item}</span></li>)}</ul></div>
