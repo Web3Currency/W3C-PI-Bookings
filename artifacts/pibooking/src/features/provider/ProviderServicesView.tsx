@@ -1,1 +1,145 @@
-aW1wb3J0IFJlYWN0LCB7IHVzZUVmZmVjdCwgdXNlU3RhdGUgfSBmcm9tICdyZWFjdCc7CmltcG9ydCB7IEV5ZSwgRWRpdDMsIFBlbmNpbCwgUGx1cyB9IGZyb20gJ2x1Y2lkZS1yZWFjdCc7CmltcG9ydCB7IFByb3ZpZGVyLCBTZXJ2aWNlIH0gZnJvbSAnLi4vLi4vdHlwZXMnOwppbXBvcnQgeyBwcm92aWRlclNlcnZpY2UgfSBmcm9tICcuLi8uLi9zZXJ2aWNlcy9wcm92aWRlclNlcnZpY2UnOwppbXBvcnQgeyBwcm92aWRlclNlcnZpY2VTZXJ2aWNlIH0gZnJvbSAnLi4vLi4vc2VydmljZXMvcHJvdmlkZXJTZXJ2aWNlU2VydmljZSc7CmltcG9ydCB7IFByb3ZpZGVyUHJvZmlsZUVkaXRvciB9IGZyb20gJy4uLy4uL2NvbXBvbmVudHMvUHJvdmlkZXJQcm9maWxlRWRpdG9yJzsKaW1wb3J0IHsgQmFja0J1dHRvbiB9IGZyb20gJy4uLy4uL2NvbXBvbmVudHMvQmFja0J1dHRvbic7CgppbnRlcmZhY2UgUHJvdmlkZXJTZXJ2aWNlc1ZpZXdQcm9wcyB7CiAgcHJvdmlkZXJJZDogc3RyaW5nOwogIG9uQmFjazogKCkgPT4gdm9pZDsKICBvbkNyZWF0ZVNlcnZpY2U6ICgpID0+IHZvaWQ7CiAgb25FZGl0U2VydmljZTogKHNlcnZpY2U6IFNlcnZpY2UpID0+IHZvaWQ7CiAgb25QcmV2aWV3U2VydmljZTogKHNlcnZpY2U6IFNlcnZpY2UpID0+IHZvaWQ7CiAgb25Qcm92aWRlclVwZGF0ZWQ/OiAoKSA9PiB2b2lkOwp9CgpleHBvcnQgY29uc3QgUHJvdmlkZXJTZXJ2aWNlc1ZpZXc6IFJlYWN0LkZDPFByb3ZpZGVyU2VydmljZXNWaWV3UHJvcHM+ID0gKHsgcHJvdmlkZXJJZCwgb25CYWNrLCBvbkNyZWF0ZVNlcnZpY2UsIG9uRWRpdFNlcnZpY2UsIG9uUHJldmlld1NlcnZpY2UsIG9uUHJvdmlkZXJVcGRhdGVkIH0pID0+IHsKICBjb25zdCBbc2VydmljZXMsIHNldFNlcnZpY2VzXSA9IHVzZVN0YXRlPFNlcnZpY2VbXT4oW10pOwogIGNvbnN0IFtwcm92aWRlciwgc2V0UHJvdmlkZXJdID0gdXNlU3RhdGU8UHJvdmlkZXJ8bnVsbD4obnVsbCk7CiAgY29uc3QgW3ZpZXcsIHNldFZpZXddID0gdXNlU3RhdGU8J3NlcnZpY2VzJyB8ICdwcm9maWxlJz4oJ3NlcnZpY2VzJyk7CiAgY29uc3QgW2xvYWRpbmcsIHNldExvYWRpbmddID0gdXNlU3RhdGUodHJ1ZSk7CiAgY29uc3QgW3Byb2ZpbGVMb2FkaW5nLCBzZXRQcm9maWxlTG9hZGluZ10gPSB1c2VTdGF0ZSh0cnVlKTsKICBjb25zdCBbZXJyb3IsIHNldEVycm9yXSA9IHVzZVN0YXRlKCcnKTsKICBjb25zdCBsb2FkID0gYXN5bmMgKCkgPT4gewogICAgc2V0TG9hZGluZyh0cnVlKTsKICAgIHNldEVycm9yKCcnKTsKICAgIHRyeSB7IHNldFNlcnZpY2VzKGF3YWl0IHByb3ZpZGVyU2VydmljZVNlcnZpY2UubGlzdCgpKTsgY2F0Y2ggKGU6IGFueSkgeyBzZXRFcnJvcihlPy5tZXNzYWdlIHx8ICdVbmFibGUgdG8gbG9hZCB5b3VyIHNlcnZpY2VzLicpOyB9IGZpbmFsbHkgeyBzZXRMb2FkaW5nKGZhbHNlKTsgfQogIH07CiAgY29uc3QgbG9hZFByb3ZpZGVyID0gYXN5bmMgKCkgPT4gewogICAgc2V0UHJvZmlsZUxvYWRpbmcodHJ1ZSk7CiAgICB0cnkgewogICAgICBjb25zdCBwcm92aWRlcnMgPSBhd2FpdCBwcm92aWRlclNlcnZpY2UuZ2V0UHJvdmlkZXJzQXN5bmMoKTsKICAgICAgc2V0UHJvdmlkZXIocHJvdmlkZXJzLmZpbmQoaXRlbSA9PiBpdGVtLmlkID09PSBwcm92aWRlcklkKSB8fCBudWxsKTsKICAgIH0gY2F0Y2ggeyBzZXRQcm92aWRlcihudWxsKTsgfSBmaW5hbGx5IHsgc2V0UHJvZmlsZUxvYWRpbmcoZmFsc2UpOyB9CiAgfTsKICB1c2VFZmZlY3QoKCkgPT4geyB2b2lkIGxvYWQoKTsgfSwgW10pOwogIHVzZUVmZmVjdCgoKSA9PiB7IHZvaWQgbG9hZFByb3ZpZGVyKCk7IH0sIFtwcm92aWRlcklkXSk7CiAgY29uc3QgaGFuZGxlU2F2ZWQgPSAoc2F2ZWQ6IFByb3ZpZGVyKSA9PiB7IHNldFByb3ZpZGVyKHNhdmVkKTsgc2V0Vmlldygic2VydmljZXMiKTsgb25Qcm92aWRlclVwZGF0ZWQ/LigpOyB9OwogIGNvbnN0IHNlcnZpY2VMaXN0ID0gbG9hZGluZyA/IDxkaXYgY2xhc3NOYW1lPSJweS0xMiB0ZXh0LWNlbnRlciB0ZXh0LXhzIGZvbnQtc2VtaWJvbGQgdGV4dC16aW5jLTQwMCI+TG9hZGluZyB5b3VyIHNlcnZpY2VzLi4uPC9kaXY+IDogc2VydmljZXMubGVuZ3RoID09PSAwID8gPGRpdiBjbGFzc05hbWU9InB5LTEyIGJvcmRlci15IGJvcmRlci16aW5jLTIwMCB0ZXh0LWNlbnRlciI+PHAgY2xhc3NOYW1lPSJ0ZXh0LXNtIGZvbnQtYm9sZCB0ZXh0LXppbmMtNzAwIj5ObyBzZXJ2aWNlcyB5ZXQuPC9wPjxwIGNsYXNzTmFtZT0idGV4dC14cyB0ZXh0LXppbmMtNDAwIG10LTEiPkNyZWF0ZSB5b3VyIGZpcnN0IHNlcnZpY2UgdG8gc3RhcnQgb2ZmZXJpbmcgaXQgdG8gY2xpZW50cy48L3A+PC9kaXY+IDogPGRpdiBjbGFzcz0iZGl2aWRlLXkgZGl2aWRlLXppbmMtMjAwIGJvcmRlci15IGJvcmRlci16aW5jLTIwMCI+eyBzZXJ2aWNlcy5tYXAoc2VydmljZSA9PiAoPGRpdiBrZXk9e3NlcnZpY2UuaWR9IGNsYXNzTmFtZT0icHktMyBmbGV4IGl0ZW1zLWNlbnRlciBnYXAtNCI+PGRpdiBjbGFzcz0idy0xNiBoLTE2IHJvdW5kZWQteGwgb3ZlcmZsb3ctaGlkZGVuIGJnLXppbmMtMTAwIHNocmluay0wIj57c2VydmljZS5jb3ZlckltYWdlVXJsID8gPGltZyBzcmM9e3NlcnZpY2UuY292ZXJJbWFnZVVybH0gYWx0PSIiIGNsYXNzTmFtZT0idy1mdWxsIGgtZnVsbCBvYmplY3QtY292ZXIiIC8+IDogPGRpdiBjbGFzcz0idy1mdWxsIGgtZnVsbCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciB0ZXh0LVsxMHB4XSBmb250LWJvbGQgdGV4dC16aW5jLTQwMCI+Tm8gaW1hZ2U8L2Rpdj59PC9kaXY+PGRpdiBjbGFzcz0ibWwtYXV0byBtaW4tdy0wIGZsZXggZmxleC1jb2wgaXRlbXMtZW5kIGdhcC0yIj48ZGl2IGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1lbmQgZ2FwLTIgbWluLXctMCI+PGgzIGNsYXNzTmFtZT0iZm9udC1ibGFjayB0ZXh0LXNtIHRleHQtemluYy05MDAgdHJ1bmNhdGUiPntzZXJ2aWNlLm5hbWV9PC9oMz48c3BhbiBjbGFzc05hbWU9e3Bgc2hyaW5rLTAgcHgtMiBweS0wLjUgcm91bmRlZC1mdWxsIHRleHQtWzlleF0gZm9udC1ibGFjayAke3NlcnZpY2Uuc3RhdHVzPT09J1B1Ymxpc2hlZCc/J2JnLWdyZWVuLTUwIHRleHQtZ3JlZW4tNzAwJzpzZXJ2aWNlLnN0YXR1cz09PSdBcmNoaXZlZCc/J2JnLXppbmMtMTAwIHRleHItemluYy01MDAiOidwZy1hbWJlci01MCB0ZXh0LWFtYmVyLTcwMCd9YH0+e3NlcnZpY2Uuc3RhdHVzfTwvc3Bhbj48L2Rpdj48ZGl2IGNsYXNzTmFtZT0iZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTIgc2hyaW5rLTAiPjxidXR0b24gdHlwZT0iYnV0dG9uIiBvbkNsaWNrPXsoKT0+b25QcmV2aWV3U2VydmljZShzZXJ2aWNlKX0gY2xhc3NOYW1lPSJpbmxpbmUtZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTEuNSBweC0zIHB5LTIgcm91bmRlZC14bCBiZy16aW5jLTEwMCB0ZXh0LXppbmMtNzAwIHRleHQtWzExcHhdIGZvbnQtYm9sZCBob3ZlcjpiZy16aW5jLTIwMCBjdXJzb3ItcG9pbnRlciI+PEV5ZSBjbGFzcz0idy0zLjUgaC0zLjUiIC8+UHJldmlldzwvYnV0dG9uPjxidXR0b24gdHlwZT0iYnV0dG9uIiBvbkNsaWNrPXsoKT0+b25FZGl0U2VydmljZShzZXJ2aWNlKX0gY2xhc3NOYW1lPSJpbmxpbmUtZmxleCBpdGVtcy1jZW50ZXIgZ2FwLTEuNSBweC0zIHB5LTIgcm91bmRlZC14bCBiZy1vcmFuZ2UtNTAgdGV4dC1vcmFuZ2UtNzAwIHRleHQtWzExcHhdIGZvbnQtYm9sZCBob3ZlcjpiZy1vcmFuZ2UtMTAwIGN1cnNvci1wb2ludGVyIj48RWRpdDMgY2xhc3NOYW1lPSJ3LTMuNSBoLTMuNSIgLz5FZGl0PC9idXR0b24+PC9kaXY+PC9kaXY+PC9kaXY+KSk8L2Rpdj4pOwoKICByZXR1cm4gKAogICAgPGRpdiBjbGFzc05hbWU9InNwYWNlLXktNiBwYi0xMiBhbmltYXRlLWluIGZhZGUtaW4gZHVyYXRpb24tMjAwIj4KICAgICAgPGRpdiBjbGFzcz0iZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1iZXR3ZWVuIGdhcC0zIj4KICAgICAgICA8QmFja0J1dHRvbiBvblNsaWNrPXtvbkJhY2t9IGxhYmVsPSJHbyBiYWNrIiAvPgogICAgICAgIDxkaXYgY2xhc3NOYW1lPSJtaW4tdy0wIGZsZXgtMSI+PGgxIGNsYXNzTmFtZT0idGV4dC1sZyBzbTp0ZXh0LTJ4bCBmb250LWJsYWNrIHRyYWNraW5nLXRpZ2h0IHRleHQtemluYy05NTAiPk1hbmFnZSBQcm9maWxlIGFuZCBTZXJ2aWNlczwvaDE+PC9kaXY+CiAgICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIG9uQ2xpY2s9e29uQ3JlYXRlU2VydmljZX0gYXJpYS1sYWJlbD0iQ3JlYXRlIHNlcnZpY2UiIGNsYXNzTmFtZT0ic2hyaW5rLTAgb25saW5lLWZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIGdhcC0yIHB4LTQgcHktMi41IHJvdW5kZWQteGwgYmctb3JhbmdlLTYwMCBob3ZlcjpiZy1vcmFuZ2UtNTAwIHRleHQtd2hpdGUgdGV4dC14cyBmb250LWJsYWNrIHRyYW5zaXRpb24gY3Vyc29yLXBvaW50ZXIiPjxQbHVzIGNsYXNzTmFtZT0idy00IGgtNCIgLz48c3BhbiBjbGFzcz0iaGlkZGVuIHNtOmlubGluZSI+U2VydmljZXM8L3NwYW4+PC9idXR0b24+CiAgICAgIDwvZGl2PgoKICAgICAgPGRpdiBjbGFzcz0idy1mdWxsIj4KICAgICAgICA8ZGl2IGNsYXNzTmFtZT0iZmxleCB3LWZ1bGwgaXRlbXMtY2VudGVyIHJvdW5kZWQteGwgcC0xIGJnLXppbmMtMTAwIGJvcmRlciBib3JkZXItemluYy0yMDAiPgogICAgICAgICAgPGJ1dHRvbiB0eXBlPSJidXR0b24iIG9uQ2xpY2s9eygpID0+IHNldFZpZXcoJ3NlcnZpY2VzJyl9IGNsYXNzTmFtZT17YHJlbGF0aXZlIGZsZXgtMSByb3VuZGVkLWxnIHB4LTQgcHktMi41IHRleHQteFsxMXB4XSBmb250LWJsYWNrIHRyYW5zaXRpb24gJHt2aWV3PT09J3NlcnZpY2VzJz8nYmctd2hpdGUgdGV4dC16aW5jLTkwMCBzaGFkb3ctc20nOid0ZXh0LXppbmMtNTAwJyl9YH0+TXkgU2VydmljZXN7dmlldz09PSdzZXJ2aWNlcycmJjxz cGFuIGNsYXNzTmFtZT0iYWJzb2x1dGUgbGVmdC00IHJpZ2h0LTQgdGJvdHRvbS0wLjUtIGgtMC41IHJvdW5kZWQtZnVsbCBiZy1vcmFuZ2UtNTAwIiAvPnxicj4= ...
+import React, { useEffect, useState } from 'react';
+import { Edit3, Eye, Plus } from 'lucide-react';
+import { Provider, Service } from '../../types';
+import { providerService } from '../../services/providerService';
+import { providerServiceService } from '../../services/providerServiceService';
+import { ProviderProfileEditor } from '../../components/ProviderProfileEditor';
+import { BackButton } from '../../components/BackButton';
+
+interface ProviderServicesViewProps {
+  providerId: string;
+  onBack: () => void;
+  onCreateService: () => void;
+  onEditService: (service: Service) => void;
+  onPreviewService: (service: Service) => void;
+  onProviderUpdated?: () => void;
+}
+
+export const ProviderServicesView: React.FC<ProviderServicesViewProps> = ({
+  providerId,
+  onBack,
+  onCreateService,
+  onEditService,
+  onPreviewService,
+  onProviderUpdated,
+}) => {
+  const [services, setServices] = useState<Service[]>([]);
+  const [provider, setProvider] = useState<Provider | null>(null);
+  const [view, setView] = useState<'services' | 'profile'>('services');
+  const [loading, setLoading] = useState(true);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setServices(await providerServiceService.list());
+    } catch (e: any) {
+      setError(e?.message || 'Unable to load your services.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadProvider = async () => {
+    setProfileLoading(true);
+    try {
+      const providers = await providerService.getProvidersAsync();
+      setProvider(providers.find((item) => item.id === providerId) || null);
+    } catch {
+      setProvider(null);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  useEffect(() => { void load(); }, []);
+  useEffect(() => { void loadProvider(); }, [providerId]);
+
+  const handleProviderSaved = (saved: Provider) => {
+    setProvider(saved);
+    setView('services');
+    onProviderUpdated?.();
+  };
+
+  return (
+    <div className="space-y-6 pb-12 animate-in fade-in duration-200">
+      <div className="flex items-center justify-between gap-3">
+        <BackButton onClick={onBack} label="Go back" />
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-2xl font-black tracking-tight text-zinc-950">Manage Profile and Services</h1>
+        </div>
+        <button type="button" onClick={onCreateService} aria-label="Create service" className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-xs font-black transition cursor-pointer">
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Services</span>
+        </button>
+      </div>
+
+      <div className="w-full">
+        <div className="flex w-full items-center rounded-xl bg-zinc-100 border border-zinc-200 p-1">
+          <button type="button" onClick={() => setView('services')} className={`relative flex-1 rounded-lg px-4 py-2.5 text-xs font-black transition ${view === 'services' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}>
+            My Services
+            {view === 'services' && <span className="absolute left-4 right-4 -bottom-1 h-0.5 rounded-full bg-orange-500" />}
+          </button>
+          <button type="button" onClick={() => setView('profile')} className={`relative flex-1 rounded-lg px-4 py-2.5 text-xs font-bold transition ${view === 'profile' ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-800'}`}>
+            Edit Profile
+            {view === 'profile' && <span className="absolute left-4 right-4 -bottom-1 h-0.5 rounded-full bg-orange-500" />}
+          </button>
+        </div>
+      </div>
+
+      {view === 'profile' ? (
+        <div className="pt-2">
+          <div className="mb-5">
+            <h2 className="text-sm font-black text-zinc-900">Edit Profile</h2>
+            <p className="text-xs text-zinc-500 mt-1 max-w-2xl">Update the public profile clients see when they visit your profile.</p>
+          </div>
+          {profileLoading ? (
+            <div className="py-12 text-center text-xs font-semibold text-zinc-400">Loading profile...</div>
+          ) : provider ? (
+            <ProviderProfileEditor provider={provider} onBack={() => setView('services')} onSaved={handleProviderSaved} />
+          ) : (
+            <div className="py-12 text-center text-xs font-semibold text-zinc-400">Unable to load your provider profile.</div>
+          )}
+        </div>
+      ) : (
+        <section className="pt-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-black text-zinc-900">My Published Services</h2>
+            <span className="shrink-0 px-2 py-1 rounded-full bg-zinc-100 text-[10px] font-bold text-zinc-600">({services.length} service{services.length === 1 ? '' : 's'})</span>
+          </div>
+          {error && <div className="px-4 py-3 mb-3 rounded-xl bg-red-50 border border-red-100 text-xs font-semibold text-red-700">{error}</div>}
+          {loading ? (
+            <div className="py-12 text-center text-xs font-semibold text-zinc-400">Loading your services...</div>
+          ) : services.length === 0 ? (
+            <div className="py-12 border-y border-zinc-200 text-center">
+              <p className="text-sm font-bold text-zinc-700">No services yet.</p>
+              <p className="text-xs text-zinc-400 mt-1">Create your first service to start offering it to clients.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-zinc-200 border-y border-zinc-200">
+              {services.map((service) => (
+                <div key={service.id} className="py-3 flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-xl overflow-hidden bg-zinc-100 shrink-0">
+                    {service.coverImageUrl ? <img src={service.coverImageUrl} alt="" className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-zinc-400">No image</div>}
+                  </div>
+                  <div className="ml-auto min-w-0 flex flex-col items-end gap-2">
+                    <div className="flex items-center justify-end gap-2 min-w-0">
+                      <h3 className="font-black text-sm text-zinc-900 truncate">{service.name}</h3>
+                      <span className={`shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black ${service.status === 'Published' ? 'bg-green-50 text-green-700' : service.status === 'Archived' ? 'bg-zinc-100 text-zinc-500' : 'bg-amber-50 text-amber-700'}`}>{service.status}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button type="button" onClick={() => onPreviewService(service)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-100 text-zinc-700 text-[11px] font-bold hover:bg-zinc-200 cursor-pointer"><Eye className="w-3.5 h-3.5" />Preview</button>
+                      <button type="button" onClick={() => onEditService(service)} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 text-[11px] font-bold hover:bg-orange-100 cursor-pointer"><Edit3 className="w-3.5 h-3.5" />Edit</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
+};
