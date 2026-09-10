@@ -22,11 +22,11 @@ export function ProviderPendingActions({ booking, acceptingBookingId, onAccept, 
   const expired = isAcceptanceExpired(booking.acceptance_deadline);
   const remain = formatCountdown(getRemainingMs(booking.acceptance_deadline));
   return (
-    <div className="flex flex-col items-end gap-1.5 shrink-0">
-      <span className={`text-[10px] font-bold tabular-nums ${expired ? 'text-rose-600' : 'text-amber-700'}`}>
+    <div className="w-full flex flex-col items-center gap-2 pt-1">
+      <span className={`inline-flex items-center justify-center text-[10px] font-bold tabular-nums ${expired ? 'text-rose-600' : 'text-zinc-600'}`}>
         {expired ? 'Acceptance window expired' : `Accept within ${remain}`}
       </span>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-2">
         <button
           type="button"
           disabled={expired || acceptingBookingId === booking.id}
