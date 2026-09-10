@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Globe, Twitter, Facebook, Instagram, Linkedin, Send, Youtube, Github, User, ShieldCheck, X } from 'lucide-react';
+import { Globe, Twitter, Facebook, Instagram, Linkedin, Send, Youtube, Github, User, ShieldCheck, X, Mail } from 'lucide-react';
 import { BusinessProfile } from '../types';
 
 interface FooterProps {
@@ -13,6 +13,7 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
   const socials = (currentBusiness?.socials || currentBusiness?.socialLinks || []).filter(
     (s) => s && s.url && s.url.trim().length > 0
   );
+  const businessEmail = currentBusiness?.email?.trim() || '';
 
   const getSocialIcon = (platformName: string) => {
     const p = platformName.toLowerCase();
@@ -50,7 +51,7 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
     if (p.includes('pinterest')) {
       return (
         <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-          <path d="M12 0a12 12 0 0 0-4.37 23.17c-.08-.94-.15-2.39.03-3.42l1.24-5.26s-.31-.63-.31-1.56c0-1.46.85-2.55 1.9-2.55.9 0 1.33.67 1.33 1.48 0 .9-.58 2.26-.88 3.51-.25 1.05.53 1.91 1.56 1.91 1.88 0 3.33-1.98 3.33-4.84 0-2.53-1.82-4.3-4.41-4.3-3.01 0-4.78 2.26-4.78 4.59 0 .91.35 1.89.79 2.42.09.11.1.2.07.31l-.29 1.18c-.05.18-.15.22-.35.13-1.32-.61-2.14-2.53-2.14-4.08 0-3.32 2.42-6.37 6.96-6.37 3.65 0 6.49 2.6 6.49 6.08 0 3.63-2.29 6.55-5.47 6.55-1.07 0-2.07-.56-2.42-1.22l-.66 2.5c-.24.92-.88 2.07-1.31 2.76A12 12 0 1 0 12 0z" />
+          <path d="M12 0a12 12 0 0 0-4.37 23.17c-.08-.94-.15-2.39.03-3.42l1.24-5.26s-.31-.63-.31-1.56c0-1.46.85-2.55 1.9-2.55 0.9 0 1.33.67 1.33 1.48 0 .9-.58 2.26-.88 3.51-.25 1.05.53 1.91 1.56 1.91 1.88 0 3.33-1.98 3.33-4.84 0-2.53-1.82-4.3-4.41-4.3-3.01 0-4.78 2.26-4.78 4.59 0 .91.35 1.89.79 2.42.09.11.1.2.07.31l-.29 1.18c-.05.18-.15.22-.35.13-1.32-.61-2.14-2.53-2.14-4.08 0-3.32 2.42-6.37 6.96-6.37 3.65 0 6.49 2.6 6.49 6.08 0 3.63-2.29 6.55-5.47 6.55-1.07 0-2.07-.56-2.42-1.22l-.66 2.5c-.24.92-.88 2.07-1.31 2.76A12 12 0 1 0 12 0z" />
         </svg>
       );
     }
@@ -77,7 +78,7 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
         </div>
 
         {/* Social Icons (Only render social media in business profile) */}
-        {socials.length > 0 && (
+        {(socials.length > 0 || businessEmail) && (
           <div className="flex items-center justify-center flex-wrap gap-5 text-zinc-400">
             {socials.map((item, idx) => (
               <a
@@ -92,6 +93,16 @@ export const Footer: React.FC<FooterProps> = ({ currentBusiness }) => {
                 {getSocialIcon(item.platform || item.url)}
               </a>
             ))}
+            {businessEmail && (
+              <a
+                href={`mailto:${businessEmail}`}
+                aria-label={`Email ${currentBusiness?.name || 'W3C Pi Bookings'}`}
+                title={businessEmail}
+                className="hover:text-white transition-colors p-1"
+              >
+                <Mail className="w-4 h-4" />
+              </a>
+            )}
           </div>
         )}
 
