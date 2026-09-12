@@ -1,2 +1,1 @@
-import React from 'react';
-import { supabase, isSupabaseConfigured, safeSupabaseInsert, safeSupabaseUpdate } from './lib/supabase';
+export type ServiceCategory = 'landing_page' | 'web_dev' | 'ux_design' | 'pi_sdk' | 'consulting';
