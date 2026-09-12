@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Service, BusinessProfile, Booking, PiUser } from '../types';
 import { piPaymentService } from '../services/piPaymentService';
 import { settingsService } from '../services/settingsService';
-import { Wallet, Lock, Loader2, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
+import { Wallet, Lock, Loader2, CheckCircle2, AlertCircle, ChevronRight, ShieldCheck, MessageCircle, Clock3, RotateCcw } from 'lucide-react';
 import { BookingProgressBar } from './BookingProgressBar';
 import { BackButton } from './BackButton';
 
@@ -43,6 +43,17 @@ export const PiPaymentModal: React.FC<PiPaymentModalProps> = ({ service, busines
     <div className="max-w-md mx-auto space-y-4 pb-28 animate-in fade-in duration-200">
       <div className="flex items-center justify-between"><BackButton onClick={onBack} id="btn-back-from-pi-payment" label="Back" /><span className="text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200/80">Step 3: Payment</span></div>
       <BookingProgressBar currentStep={3} />
+      <div className="p-4 rounded-3xl bg-amber-500/10 shadow-md flex items-center justify-between gap-3"><div className="min-w-0"><span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 block">Selected Service</span><h2 className="text-sm font-black text-zinc-900 truncate">{service.name}</h2></div><div className="text-right shrink-0"><span className="text-lg font-black text-amber-600">{service.pricePi} π</span></div></div>
+      <div className="p-4 rounded-3xl bg-amber-500/10 shadow-md"><span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 block">Confirm Booking Details</span><p className="text-xs text-zinc-600 font-medium mt-1">Review your service order before authorizing Pi payment.</p></div>
+      <div className="p-5 rounded-3xl bg-white shadow-md space-y-4">
+        <div className="flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-amber-600" /><h3 className="text-sm font-black text-zinc-900">Your payment is protected</h3></div>
+        <p className="text-xs text-zinc-600 leading-relaxed">Your payment is held safely while the provider works on your booking. You stay protected until the service is completed and you confirm it.</p>
+        <div className="space-y-3">
+          <div className="flex items-start gap-3"><Clock3 className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" /><div><p className="text-xs font-bold text-zinc-900">The provider must accept your booking</p><p className="text-[11px] text-zinc-500 leading-relaxed mt-0.5">If the provider does not accept within the acceptance window, the booking is cancelled and your payment is refunded.</p></div></div>
+          <div className="flex items-start gap-3"><MessageCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" /><div><p className="text-xs font-bold text-zinc-900">Your conversation opens after payment</p><p className="text-[11px] text-zinc-500 leading-relaxed mt-0.5">Once your payment is confirmed, you can communicate with the provider about the booking.</p></div></div>
+          <div className="flex items-start gap-3"><RotateCcw className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" /><div><p className="text-xs font-bold text-zinc-900">You are protected if the service cannot be provided</p><p className="text-[11px] text-zinc-500 leading-relaxed mt-0.5">If the provider cannot fulfil the booking, the booking can be cancelled and your payment handled through the refund process.</p></div></div>
+        </div>
+      </div>
       <div className="p-5 rounded-3xl bg-white shadow-md space-y-5">
         <div className="flex items-center justify-between border-b border-zinc-100 pb-4"><div><span className="text-xs text-zinc-500 block font-bold">Total Payment</span><div className="text-3xl font-black text-amber-600 font-mono tracking-tight flex items-center gap-1"><span>{totalPayable.toFixed(2)}</span><span className="text-lg text-amber-600">π</span></div></div><div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center shadow-2xs"><Wallet className="w-6 h-6" /></div></div>
         {paymentStatus === 'error' && errorMessage && <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-800 text-xs flex items-center gap-2 font-medium shadow-2xs"><AlertCircle className="w-4 h-4 text-rose-600 shrink-0" /><span>{errorMessage}</span></div>}
