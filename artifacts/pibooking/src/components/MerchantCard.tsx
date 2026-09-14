@@ -80,7 +80,7 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
           {isTestAccount && <span className="shrink-0 rounded-sm border border-purple-700 bg-purple-600 px-1.5 py-0 text-[8px] leading-4 font-black uppercase tracking-wide text-white">TEST</span>}
           {showBadge && profileVerified && <BadgeCheck className="w-3.5 h-3.5 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}
         </div>
-        {headline && <p className="mt-1 text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>}
+        {isProvider ? (roleTitle && <p className="mt-1 text-xs font-bold text-orange-600 line-clamp-1">{roleTitle}</p>) : (headline && <p className="mt-1 text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>)}
         {bio && <p className="mt-3 text-xs text-zinc-600 line-clamp-2 leading-relaxed">{bio}</p>}
       </div>
       <div className="flex items-center gap-3">
