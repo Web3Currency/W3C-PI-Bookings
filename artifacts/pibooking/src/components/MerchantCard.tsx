@@ -53,10 +53,10 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
             {avatarUrl ? <img src={avatarUrl} alt={name} onError={() => setImgError(true)} className="w-full h-full object-cover rounded-full" /> : <div className="w-full h-full rounded-full flex items-center justify-center text-orange-700 font-black text-xl bg-orange-100">{name.charAt(0).toUpperCase() || '?'}</div>}
           </div>
           <div className="w-full mt-2 px-1 min-h-0">
-            <div className="flex items-center justify-center gap-1.5 min-w-0">
-              {isTestAccount && <span className="shrink-0 rounded-md border border-purple-700 bg-purple-600 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-sm">TEST</span>}
-              {showBadge && profileVerified && <BadgeCheck className="w-4 h-4 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}
-              <h3 className="font-black text-sm sm:text-base leading-tight tracking-tight text-zinc-900 line-clamp-2 break-words">{name}</h3>
+            <div className="flex items-center justify-center gap-1 min-w-0 flex-nowrap">
+              <h3 className="min-w-0 truncate font-black text-sm sm:text-base leading-tight tracking-tight text-zinc-900">{name}</h3>
+              {isTestAccount && <span className="shrink-0 rounded-sm border border-purple-700 bg-purple-600 px-1.5 py-0 text-[8px] leading-4 font-black uppercase tracking-wide text-white">TEST</span>}
+              {showBadge && profileVerified && <BadgeCheck className="w-3.5 h-3.5 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}
             </div>
           </div>
         </div>
@@ -73,10 +73,10 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
     <div className={rootClass}>
       {showBadge && availabilityStatus && <span className={`absolute top-3 right-3 z-10 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${availabilityStatus === 'online' ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-600'}`}>{availabilityStatus}</span>}
       <div>
-        <div className="flex items-center gap-2 min-w-0">
-          {isTestAccount && <span className="shrink-0 rounded-md border border-purple-700 bg-purple-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">TEST</span>}
-          {showBadge && profileVerified && <BadgeCheck className="w-4 h-4 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}
-          <h3 className="text-base font-black tracking-tight text-zinc-900 truncate">{name}</h3>
+        <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
+          <h3 className="min-w-0 truncate text-base font-black tracking-tight text-zinc-900">{name}</h3>
+          {isTestAccount && <span className="shrink-0 rounded-sm border border-purple-700 bg-purple-600 px-1.5 py-0 text-[8px] leading-4 font-black uppercase tracking-wide text-white">TEST</span>}
+          {showBadge && profileVerified && <BadgeCheck className="w-3.5 h-3.5 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}
         </div>
         {headline && <p className="mt-1 text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>}
         {bio && <p className="mt-3 text-xs text-zinc-600 line-clamp-2 leading-relaxed">{bio}</p>}
