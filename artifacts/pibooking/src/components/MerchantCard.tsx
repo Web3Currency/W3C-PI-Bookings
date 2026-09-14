@@ -41,6 +41,7 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
   const availabilityStatus = rawAvailability === 'online' || rawAvailability === 'offline' ? rawAvailability : undefined;
   const profileVerified = isProvider && (merchant as Provider).profileVerified === true;
   const isTestAccount = isProvider && (merchant as Provider).isTestAccount === true;
+  const roleTitle = isProvider ? ((merchant as Provider).roleTitle || '').trim() : '';
 
   const openProfile = () => onOpenAbout?.(merchant);
 
@@ -58,6 +59,7 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
               {isTestAccount && <span className="shrink-0 rounded-sm border border-purple-700 bg-purple-600 px-1.5 py-0 text-[8px] leading-4 font-black uppercase tracking-wide text-white">TEST</span>}
               {showBadge && profileVerified && <BadgeCheck className="w-3.5 h-3.5 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}
             </div>
+            {roleTitle && <p className="mt-0.5 truncate text-[10px] sm:text-[11px] leading-tight font-bold text-orange-600">{roleTitle}</p>}
           </div>
         </div>
         <div className="w-full pt-2 border-t border-zinc-200/80 flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-zinc-500 shrink-0">
