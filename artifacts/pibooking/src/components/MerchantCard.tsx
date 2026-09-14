@@ -68,11 +68,11 @@ export const MerchantCard: React.FC<MerchantCardProps> = ({
   const rootClass = `relative rounded-2xl bg-zinc-50 hover:bg-orange-50/60 p-5 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between text-zinc-900 space-y-4 ${className}`;
   return (
     <div className={rootClass}>
-      {isTestAccount && <span className="absolute top-3 right-3 z-10 rounded-md border border-purple-700 bg-purple-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">TEST</span>}
+      {showBadge && availabilityStatus && <span className={`absolute top-3 right-3 z-10 rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${availabilityStatus === 'online' ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-600'}`}>{availabilityStatus}</span>}
       <div>
         <div className="flex items-center gap-2 min-w-0"><h3 className="text-base font-black tracking-tight text-zinc-900 truncate">{name}</h3>{showBadge && profileVerified && <BadgeCheck className="w-4 h-4 shrink-0 text-orange-600 fill-orange-100" strokeWidth={2.2} aria-label="Verified by W3C Pi Bookings" />}</div>
         {headline && <p className="mt-1 text-xs font-bold text-orange-600 line-clamp-1">{headline}</p>}
-        {availabilityStatus && <span className={`mt-2 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider ${availabilityStatus === 'online' ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-600'}`}>{availabilityStatus}</span>}
+        {isTestAccount && <span className="mt-2 inline-block rounded-md border border-purple-700 bg-purple-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-sm">TEST</span>}
         {bio && <p className="mt-3 text-xs text-zinc-600 line-clamp-2 leading-relaxed">{bio}</p>}
       </div>
       <div className="flex items-center gap-3">
