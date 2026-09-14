@@ -97,10 +97,7 @@ router.post("/feedback", async (req: Request, res: Response) => {
     const userAgent = String(body.userAgent || "").trim().slice(0, MAX_UA_LENGTH) || "unknown";
     const optionalContact = String(body.contact || "").trim().slice(0, 120);
 
-    let piUser: { uid: string; username: string } | null = null;
-    if (body.accessToken) {
-      piUser = await verifyPiAccessToken(body.accessToken);
-    }
+    const piUser = await verifyPiAccessToken(body.accessToken);
 
     const botToken = process.env.TELEGRAM_BOT_TOKEN?.trim();
     const chatId = process.env.TELEGRAM_CHAT_ID?.trim();
