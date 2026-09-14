@@ -1,1 +1,134 @@
-aW1wb3J0IFJlYWN0LCB7IHVzZUVmZmVjdCwgdXNlU3RhdGUgfSBmcm9tICdyZWFjdCc7CmltcG9ydCB7IFNlcnZpY2UsIEJ1c2luZXNzUHJvZmlsZSwgUHJvdmlkZXIgfSBmcm9tICcuLi90eXBlcyc7CmltcG9ydCB7IEJhZGdlQ2hlY2sgfSBmcm9tICdsdWNpZGUtcmVhY3QnOwppbXBvcnQgeyBmb3JtYXREdXJhdGlvbiB9IGZyb20gJy4uL2xpYi9mb3JtYXREdXJhdGlvbic7CmltcG9ydCB7IHByb3ZpZGVyTWVkaWFTZXJ2aWNlIH0gZnJvbSAnLi4vc2VydmljZXMvcHJvdmlkZXJNZWRpYVNlcnZpY2UnOwppbXBvcnQgeyBwcm92aWRlclNlcnZpY2UgfSBmcm9tICcuLi9zZXJ2aWNlcy9wcm92aWRlclNlcnZpY2UnOwppbXBvcnQgeyByZXF1aXJlU2lnbkluIH0gZnJvbSAnLi4vc2VydmljZXMvcGlBdXRoU2VydmljZSc7CmltcG9ydCB7IEJhY2tCdXR0b24gfSBmcm9tICcuL0JhY2tCdXR0b24nOwoKaW50ZXJmYWNlIFNlcnZpY2VEZXRhaWxQcm9wcyB7IHNlcnZpY2U6IFNlcnZpY2U7IGJ1c2luZXNzOiBCdXNpbmVzc1Byb2ZpbGUgJiB7IHNlcnZpY2VzPzogU2VydmljZVtdIH07IG9uQmFjazogKCkgPT4gdm9pZDsgb25Qcm9jZWVkVG9Cb29raW5nOiAoKSA9PiB2b2lkOyBvbk9wZW5Qcm92aWRlclByb2ZpbGU/OiAocHJvdmlkZXI6IFByb3ZpZGVyKSA9PiB2b2lkOyB9CgpleHBvcnQgY29uc3QgU2VydmljZURldGFpbDogUmVhY3QuRkM8U2VydmljZURldGFpbFByb3BzPiA9ICh7IHNlcnZpY2UsIGJ1c2luZXNzLCBvbkJhY2ssIG9uUHJvY2VlZFRvQm9va2luZywgb25PcGVuUHJvdmlkZXJQcm9maWxlIH0pID0+IHsKICBjb25zdCBbcmVzb2x2ZWRQcm92aWRlciwgc2V0UmVzb2x2ZWRQcm92aWRlcl0gPSB1c2VTdGF0ZTxQcm92aWRlciB8IHVuZGVmaW5lZD4oc2VydmljZS5wcm92aWRlcik7CiAgdXNlRWZmZWN0KCgpID0+IHsgbGV0IGFjdGl2ZSA9IHRydWU7IGNvbnN0IGxvYWRHbG9iYWxQcm92aWRlciA9IGFzeW5jICgpID0+IHsgaWYgKCFzZXJ2aWNlLnByb3ZpZGVySWQpIHJldHVybjsgdHJ5IHsgY29uc3QgcHJvdmlkZXJzID0gYXdhaXQgcHJvdmlkZXJTZXJ2aWNlLmdldFByb3ZpZGVyc0FzeW5jKCk7IGNvbnN0IHByb3ZpZGVyID0gcHJvdmlkZXJzLmZpbmQoKGl0ZW0pID0+IGl0ZW0uaWQgPT09IHNlcnZpY2UucHJvdmlkZXJJZCk7IGlmIChhY3RpdmUgJiYgcHJvdmlkZXIpIHNldFJlc29sdmVkUHJvdmlkZXIocHJvdmlkZXIpOyB9IGNhdGNoIHt9IH07IHZvaWQgbG9hZEdsb2JhbFByb3ZpZGVyKCk7IHJldHVybiAoKSA9PiB7IGFjdGl2ZSA9IGZhbHNlOyB9OyB9LCBbc2VydmljZS5wcm92aWRlcklkXSk7CiAgY29uc3QgcHJvdmlkZXJOYW1lID0gcmVzb2x2ZWRQcm92aWRlcj8uZnVsbE5hbWUgfHwgc2VydmljZS5wcm92aWRlck5hbWU7IGNvbnN0IHByb3ZpZGVyUm9sZSA9IHJlc29sdmVkUHJvdmlkZXI/LnJvbGVUaXRsZSB8fCBzZXJ2aWNlLnByb3ZpZGVyUm9sZTsgY29uc3QgcHJvdmlkZXJBdmF0YXIgPSBwcm92aWRlck1lZGlhU2VydmljZS5nZXRNZWRpYVVybChyZXNvbHZlZFByb3ZpZGVyPy5waG90b1VybCk/LnRyaW0oKTsgY29uc3QgcHJvZmlsZVZlcmlmaWVkID0gcmVzb2x2ZWRQcm92aWRlcj8ucHJvZmlsZVZlcmlmaWVkID09PSB0cnVlOyBjb25zdCBpc1Rlc3RBY2NvdW50ID0gcmVzb2x2ZWRQcm92aWRlcj8uaXNUZXN0QWNjb3VudCA9PT0gdHJ1ZTsgY29uc3QgcmF3QXZhaWxhYmlsaXR5ID0gcmVzb2x2ZWRQcm92aWRlcj8uYXZhaWxhYmlsaXR5U3RhdHVzOyBjb25zdCBhdmFpbGFiaWxpdHlTdGF0dXMgPSByYXdBdmFpbGFiaWxpdHkgPT09ICdhdmFpbGFibGUnIHx8IHJhd0F2YWlsYWJpbGl0eSA9PT0gJ29ubGluZScgPyAnb25saW5lJyA6ICdvZmZsaW5lJzsgY29uc3QgY292ZXJJbWFnZSA9IHNlcnZpY2UuY292ZXJJbWFnZVVybCB8fCBidXNpbmVzcy5sb2dvVXJsIHx8IGJ1c2luZXNzLmF2YXRhclVybCB8fCAnJzsKICByZXR1cm4gPGRpdiBjbGFzc05hbWU9InNwYWNlLXktNiBwYi0yOCBhbmltYXRlLWluIGZhZGUtY3VycmVudCBzbGlkZS1pbi1mcm9tLXJpZ2h0LTQgZHVyYXRpb24tMjAwIj4KICAgIDxkaXYgY2xhc3NOYW1lPSJmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWJldHdlZW4iPjxCYWNrQnV0dG9uIG9uQ2xpY2s9e29uQmFja30gaWQ9ImJ0bi1iYWNrLXRvLWJyb3dzZSIgbGFiZWw9IkdvIGJhY2siIC8+PC9kaXY+CiAgICA8ZGl2IGNsYXNzTmFtZT0icmVsYXRpdmUgcm91bmRlZC0z eGwgb3ZlcmZsb3ctaGlkZGVuIGJnLXppbmstMTAwIHNoYWRvdy1tZCI+PC9kaXY+CiAgICA8ZGl2IGNsYXNzTmFtZT0icC02IHJvdW5kZWQtM3hsIGJnLXdoaXRlIHNoYWRvdy1zbSBzcGFjZS15LTQiPjxoMiBjbGFzc05hbWU9InRleHQteHMgZm9udC1ibGFjayB1cHBlcmNhc2UgdHJhY2tpbmctd2lkZXIgdGV4dC16aW5rLTUwMCI+U2VydmljZSBEZXNjcmlwdGlvbjwvaDI+PHAgY2xhc3NOYW1lPSJ0ZXh0LXhzIHNtOnRleHQtc20gdGV4dC16aW5rLTcwMCBsZWFkaW5nLXJlbGF4ZWQgZm9udC1ub3JtYWwgd2hpdGUtc3BhY2UtcHJlLWxpbmUiPntzZXJ2aWNlLmRlc2NyaXB0aW9ufTwvcD48ZGl2IGNsYXNzTmFtZT0iZ3JpZCBncmlkLWNvbHMtMiBnYXAtMyBwdC0zIGJvcmRlci10IGJvcmRlci16aW5rLTEwMCB0ZXh0LXhzIj48ZGl2IGNsYXNzTmFtZT0icC0zLjUgcm91bmRlZC0yeGwgYmctemluay01MCBzcGFjZS15LTAuNSI+PHNwYW4gY2xhc3NOYW1lPSJibG9jayB0ZXh0Wy0xMHB4XSB0ZXh0LXppbmstNDAwIGZvbnQtZXh0cmFib2xkIHVwcGVyY2FzZSB0cmFja2luZy13aWRlIj5Fc3RpbWF0ZWQgRHVyYXRpb248L3NwYW4+PHNwYW4gY2xhc3NOYW1lPSJmb250LWV4dHJhYm9sZCB0ZXh0LXppbmstOTAwIHRleHQteHM+e2Zvcm1hdER1cmF0aW9uKHNlcnZpY2UuZHVyYXRpb25NaW51dGVzLCBzZXJ2aWNlLmR1cmF0aW9uVmFsdWUsIHNlcnZpY2UuZHVyYXRpb25Vbml0KX08L3NwYW4+PC9kaXY+PGRpdiBjbGFzc05hbWU9InAtMy41IHJvdW5kZWQtMnhsIGJnLXppbmstNTAgc3BhY2UteS0wLjUgbWluLXctMCI+PHNwYW4gY2xhc3NOYW1lPSJibG9jayB0ZXh0Wy0xMHB4XSB0ZXh0LXppbmstNDAwIGZvbnQtZXh0cmFib2xkIHVwcGVyY2FzZSB0cmFja2luZy13aWRlciI+U2VydmljZSBNb2RlPC9zcGFuPjxzcGFuIGNsYXNzTmFtZT0iZm9udC1leHRyYWJvbGQgdGV4dC16aW5rLTkwMCB0ZXh0LXhzIHRydW5jYXRlIGJsb2NrIj57c2VydmljZS5sb2NhdGlvblR5cGV9PC9zcGFuPjwvZGl2PjwvZGl2PjwvZGl2PgogICAgPGRpdiBjbGFzc05hbWU9InAtNiByb3VuZGVkLTN4bCBiZy13aGl0ZSBzaGFkb3ctc20gc3BhY2UteS00Ij48aDIgY2xhc3NOYW1lPSJ0ZXh0LXhzIGZvbnQtYmxhY2sgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGVyIHRleHQtemluay01MDAiPlNlcnZpY2UgRGVsaXZlcmFibGVzICYgSW5jbHVzaW9uczwvaDI+PHVsIGNsYXNzTmFtZT0ic3BhY2UteS0yLjUiPntzZXJ2aWNlLmluY2x1ZGVkIHx8IFtdKS5tYXAoKGl0ZW0sIGlkeCkgPT4gPGxpIGtleT17aWR4fSBjbGFzc05hbWU9ImZsZXggaXRlbXMtc3RhcnQgZ2FwLTIuNSB0ZXh0LXhzIHRleHQtemluay04MDAgZm9udC1tZWRpdW0iPjxzcGFuIGNsYXNzTmFtZT0idy0xLjUgaC0xLjUgcm91bmRlZC1mdWxsIGJnLW9yYW5nZS02MDAgbXQtMS41IHNocmluay0wIiAvPjxzcGFuPntpdGVtfTwvc3Bhbj48L2xpPik8L3VsPjwvZGl2PgogICAgIHtwcm92aWRlck5hbWUgJiYgPGRpdiBjbGFzc05hbWU9InJlbGF0aXZlIHAtNSByb3VuZGVkLTN4bCBiZy13aGl0ZSBzaGFkb3ctc20gZmxleCBpdGVtcy1lbmQgZ2FwLTQiPjxkaXYgY2xhc3NOYW1lPXtgbmJzb3VsdXRlIHRvcC00IHJpZ2h0LTUgcHgtMiBweS0wLjUgcm91bmRlZC1mdWxsIHRleHQtWzktcHhdIGZvbnQtZXh0cmFib2xkIHVwcGVyY2FzZSB0cmFja2luZy13aWRlciAke2F2YWlsYWJpbGl0eVN0YXR1cz09J29ubGluZSc/J2JnLWVtZXJhbGQtMTAwIHRleHQtZW1lcmFsZC04MDAnOidiZy16aW5rLTEwMCB0ZXh0LXppbmstNjAwJ31gfX0+e2F2YWlsYWJpbGl0eVN0YXR1c308L2Rpdj48ZGl2IGNsYXNzTmFtZT0idy0xMiBoLTEyIHJvdW5kZWQtZnVsbCBvdmVyZmxvdy1oaWRkZW4gc2hyaW5rLTAgYmctemluay0xMDAiPntwcm92aWRlckF2YXRhciAmJiA8aW1nIHNyYz17cHJvdmlkZXJBdmF0YXJ9IGFsdD17cHJvdmlkZXJOYW1lfSBjbGFzc05hbWU9InctZnVsbCBoLWZ1bGwgb2JqZWN0LWNvdmVyIiAvPn08L2Rpdj48ZGl2IGNsYXNzTmFtZT0ibWluLXctMCBmbGV4LTEgdGV4dC14cyBzZWxmLWVuZCI+PGRpdiBjbGFzc05hbWU9ImZsZXggaXRlbXMtaXRlbXMtY2VudGVyIGdhcC0xLjUgbWluLXctMCBmbGV4LW5vLXdyYXAtbm93cmFwIHByLTk2Ij48ZGl2IGNsYXNzTmFtZT0ibWluLXctMCB0cnVuY2F0IGZvbnQtZXh0cmFib2xkIHRleHQtemluay05MDAgdGV4dC1zbSI+e3Byb3ZpZGVyTmFtZX08L2Rpdj57aXNUZXN0QWNjb3VudCYmPHNwYW4gY2xhc3NOYW1lPSJzaHJpbmstMCByb3VuZGVkLXNtIGJvcmRlciBib3JkZXItcHVycGxlLTcwMCBiZy1wdXJwbGUtNjAwIHB4LTEuNSBweS0wIHRleHRbOFB4XSBsZWFkaW5nLTQgbGluZS1ub25lIGZvbnQtYmxhY2sgdXBwZXJjYXNlIHRyYWNraW5nLXdpZGUiPlRFU1Q8L3NwYW4+fX1{%
+import React, { useEffect, useState } from 'react';
+import { Service, BusinessProfile, Provider } from '../types';
+import { BadgeCheck } from 'lucide-react';
+import { formatDuration } from '../lib/formatDuration';
+import { providerMediaService } from '../services/providerMediaService';
+import { providerService } from '../services/providerService';
+import { requireSignIn } from '../services/piAuthService';
+import { BackButton } from './BackButton';
+
+interface ServiceDetailProps {
+  service: Service;
+  business: BusinessProfile & { services?: Service[] };
+  onBack: () => void;
+  onProceedToBooking: () => void;
+  onOpenProviderProfile?: (provider: Provider) => void;
+}
+
+export const ServiceDetail: React.FC<ServiceDetailProps> = ({ service, business, onBack, onProceedToBooking, onOpenProviderProfile }) => {
+  const [resolvedProvider, setResolvedProvider] = useState<Provider | undefined>(service.provider);
+
+  useEffect(() => {
+    let active = true;
+    const loadGlobalProvider = async () => {
+      if (!service.providerId) return;
+      try {
+        const providers = await providerService.getProvidersAsync();
+        const provider = providers.find((item) => item.id === service.providerId);
+        if (active && provider) setResolvedProvider(provider);
+      } catch {}
+    };
+    void loadGlobalProvider();
+    return () => { active = false; };
+  }, [service.providerId]);
+
+  const providerName = resolvedProvider?.fullName || service.providerName;
+  const providerRole = resolvedProvider?.roleTitle || service.providerRole;
+  const providerAvatar = providerMediaService.getMediaUrl(resolvedProvider?.photoUrl)?.trim();
+  const profileVerified = resolvedProvider?.profileVerified === true;
+  const isTestAccount = resolvedProvider?.isTestAccount === true;
+  const rawAvailability = resolvedProvider?.availabilityStatus;
+  const availabilityStatus = rawAvailability === 'available' || rawAvailability === 'online' ? 'online' : 'offline';
+  const coverImage = service.coverImageUrl || business.logoUrl || business.avatarUrl || '';
+
+  return (
+    <div className="space-y-6 pb-28 animate-in fade-in slide-in-from-right-4 duration-200">
+      <div className="flex items-center justify-between">
+        <BackButton onClick={onBack} id="btn-back-to-browse" label="Go back" />
+      </div>
+
+      <div className="relative rounded-3xl overflow-hidden bg-zinc-100 shadow-md">
+        <div className="h-52 sm:h-64 w-full relative">
+          <img src={coverImage} alt={service.name} className="w-full h-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-zinc-950/30 to-transparent" />
+        </div>
+        <div className="absolute bottom-4 left-5 right-5 flex items-end justify-between gap-3">
+          <div>
+            <span className="inline-block px-3 py-0.5 rounded-full bg-orange-600 text-white text-[10px] font-black uppercase tracking-wider mb-2 shadow-xs">
+              {String(service.category || '').replace('_', ' ')}
+            </span>
+            <h1 className="text-xl sm:text-2xl font-black text-white leading-tight drop-shadow-md">{service.name}</h1>
+          </div>
+          <div className="text-right shrink-0">
+            <div className="text-2xl font-black text-orange-400 drop-shadow-md">{service.pricePi} <span className="text-sm font-bold text-orange-300">π</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 rounded-3xl bg-white shadow-sm space-y-4">
+        <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">Service Description</h2>
+        <p className="text-xs sm:text-sm text-zinc-700 leading-relaxed font-normal whitespace-pre-line">{service.description}</p>
+        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-100 text-xs">
+          <div className="p-3.5 rounded-2xl bg-zinc-50 space-y-0.5">
+            <span className="block text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider">Estimated Duration</span>
+            <span className="font-extrabold text-zinc-900 text-xs">{formatDuration(service.durationMinutes, service.durationValue, service.durationUnit)}</span>
+          </div>
+          <div className="p-3.5 rounded-2xl bg-zinc-50 space-y-0.5 min-w-0">
+            <span className="block text-[10px] text-zinc-400 font-extrabold uppercase tracking-wider">Service Mode</span>
+            <span className="font-extrabold text-zinc-900 text-xs truncate block">{service.locationType}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-6 rounded-3xl bg-white shadow-sm space-y-4">
+        <h2 className="text-xs font-black uppercase tracking-wider text-zinc-500">Service Deliverables &amp; Inclusions</h2>
+        <ul className="space-y-2.5">
+          {(service.included || []).map((item, idx) => (
+            <li key={idx} className="flex items-start gap-2.5 text-xs text-zinc-800 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-orange-600 mt-1.5 shrink-0" />
+              <span>{item}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      {providerName && (
+        <div className="relative p-5 rounded-3xl bg-white shadow-sm flex items-end gap-4">
+          <div className={`absolute top-4 right-5 px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${availabilityStatus === 'online' ? 'bg-emerald-100 text-emerald-800' : 'bg-zinc-100 text-zinc-600'}`}>
+            {availabilityStatus}
+          </div>
+          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 bg-zinc-100">
+            {providerAvatar && <img src={providerAvatar} alt={providerName} className="w-full h-full object-cover" />}
+          </div>
+          <div className="min-w-0 flex-1 text-xs self-end">
+            <div className="flex items-center gap-1.5 min-w-0 flex-nowrap pr-16">
+              <div className="min-w-0 truncate font-extrabold text-zinc-900 text-sm">{providerName}</div>
+              {isTestAccount && <span className="shrink-0 rounded-sm border border-purple-700 bg-purple-600 px-1.5 py-0 text-[8px] leading-4 font-black uppercase tracking-wide text-white">TEST</span>}
+              {profileVerified && <BadgeCheck className="w-4 h-4 shrink-0 text-orange-600 fill-orange-600 stroke-white" strokeWidth={2.2} title="Verified by W3C Pi Bookings" aria-label="Verified by W3C Pi Bookings" />}
+            </div>
+            <div className="mt-0.5 flex items-center justify-between gap-3 min-w-0">
+              <p className="text-orange-600 font-bold truncate">{providerRole}</p>
+              {resolvedProvider && onOpenProviderProfile && (
+                <button type="button" onClick={() => requireSignIn(() => onOpenProviderProfile(resolvedProvider))} className="shrink-0 rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-[11px] font-bold text-orange-700 hover:bg-orange-100 hover:text-orange-800 whitespace-nowrap">
+                  View Profile
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-zinc-100 z-50 shadow-lg">
+        <div className="max-w-md mx-auto flex items-center justify-between gap-4">
+          <div className="text-xs">
+            <span className="block text-zinc-400 font-bold uppercase text-[10px]">Total Price</span>
+            <span className="text-xl font-black text-zinc-900">{service.pricePi} <span className="text-xs font-bold text-orange-600">π</span></span>
+          </div>
+          <button onClick={() => requireSignIn(onProceedToBooking)} id="btn-proceed-to-schedule" className="px-6 py-3 rounded-2xl bg-orange-600 hover:bg-orange-500 text-white font-black text-xs sm:text-sm transition shadow-sm cursor-pointer">
+            Book Now
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
