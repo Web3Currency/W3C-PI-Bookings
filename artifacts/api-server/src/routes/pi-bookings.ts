@@ -25,6 +25,36 @@ router.post("/pi/bookings/:bookingId/reject", async (req, res) => {
   try { const piUser = await verifyPiAccessToken(accessToken); if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." }); const provider = await getProviderByPiUid(piUser.uid); if (!provider) return void res.status(403).json({ error: "No provider profile is linked to this Pi account." }); const lookup = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&provider_id=eq.${encodeURIComponent(provider.id)}&select=id,status,escrow_status,price_pi,client_pi_uid&limit=1`); if (!lookup?.ok) throw new Error((await lookup?.text().catch(() => "")) || "Booking lookup failed."); const rows = await lookup.json() as any[]; if (!rows.length) return void res.status(409).json({ error: "Booking is not available for rejection or is not assigned to this provider." }); const current = rows[0]; if (current.escrow_status === "released" || current.status === "Completed") return void res.status(409).json({ error: "Escrow was already released; this booking cannot be rejected/refunded." }); if (current.escrow_status === "refunded") return void res.json({ success: true, refund: { status: "recovered" }, bookingId }); if (!["paid_escrowed", "refund_processing", "refund_failed"].includes(String(current.escrow_status || ""))) return void res.status(409).json({ error: "Booking is not in a refundable escrow state." }); const refund = await executeAutomaticClientRefund(bookingId, { reason: rejectionReason.trim(), cancelBooking: true, cancellationMessage: `Booking #${bookingId} was cancelled by the provider. Reason: ${rejectionReason.trim()}` }); if (refund.status === "completed" || refund.status === "recovered") { const after = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=*&limit=1`); const booking = after?.ok ? ((await after.json()) as any[])[0] : null; return void res.json({ success: true, refund: { status: refund.status, paymentId: refund.paymentId, txid: refund.txid }, booking }); } req.log.error({ bookingId, refund }, "Provider reject refund execution failed"); return void res.status(502).json({ success: false, error: refund.error || "Pi refund execution failed.", refund: { status: refund.status, paymentId: refund.paymentId, txid: refund.txid } }); } catch (err: any) { req.log.error({ err, bookingId }, "Provider booking rejection failed"); return void res.status(500).json({ error: err?.message || "Failed to reject booking." }); }
 });
 
+router.post("/pi/bookings/:bookingId/cancel", async (req, res) => {
+  const bookingId = req.params.bookingId; const { accessToken } = req.body as { accessToken?: string };
+  if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." });
+  if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." });
+  try {
+    const piUser = await verifyPiAccessToken(accessToken);
+    if (!piUser) return void res.status(401).json({ error: "Invalid or expired Pi access token." });
+    const lookup = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&client_pi_uid=eq.${encodeURIComponent(piUser.uid)}&select=id,status,escrow_status,price_pi,client_pi_uid&limit=1`);
+    if (!lookup?.ok) throw new Error((await lookup?.text().catch(() => "")) || "Booking lookup failed.");
+    const rows = await lookup.json() as any[];
+    if (!rows.length) return void res.status(403).json({ error: "This booking is not available for cancellation on this Pi account." });
+    const current = rows[0];
+    if (current.status !== "Pending") return void res.status(409).json({ error: "This booking can only be cancelled while it is waiting for provider acceptance." });
+    if (current.escrow_status === "released" || current.status === "Completed") return void res.status(409).json({ error: "Escrow was already released; this booking cannot be cancelled/refunded." });
+    if (current.escrow_status === "refunded") return void res.json({ success: true, refund: { status: "recovered" }, bookingId });
+    if (!["paid_escrowed", "refund_processing", "refund_failed"].includes(String(current.escrow_status || ""))) return void res.status(409).json({ error: "Booking is not in a refundable escrow state." });
+    const refund = await executeAutomaticClientRefund(bookingId, { reason: "Client cancelled while awaiting provider acceptance", cancelBooking: true, cancellationMessage: `Booking #${bookingId} was cancelled by the client before the provider accepted.` });
+    if (refund.status === "completed" || refund.status === "recovered") {
+      const after = await supabaseRequest(`bookings?id=eq.${encodeURIComponent(bookingId)}&select=*&limit=1`);
+      const booking = after?.ok ? ((await after.json()) as any[])[0] : null;
+      return void res.json({ success: true, refund: { status: refund.status, paymentId: refund.paymentId, txid: refund.txid }, booking });
+    }
+    req.log.error({ bookingId, refund }, "Client cancel refund execution failed");
+    return void res.status(502).json({ success: false, error: refund.error || "Pi refund execution failed.", refund: { status: refund.status, paymentId: refund.paymentId, txid: refund.txid } });
+  } catch (err: any) {
+    req.log.error({ err, bookingId }, "Client booking cancellation failed");
+    return void res.status(500).json({ error: err?.message || "Failed to cancel booking." });
+  }
+});
+
 router.post("/pi/bookings/:bookingId/complete", async (req, res) => {
   const bookingId = req.params.bookingId; const { accessToken } = req.body as { accessToken?: string };
   if (!bookingId || !/^[0-9a-f-]{36}$/i.test(bookingId)) return void res.status(400).json({ error: "A valid bookingId is required." }); if (!accessToken?.trim()) return void res.status(401).json({ error: "Pi access token is required." });
